@@ -29,37 +29,18 @@ import { HttpStatus } from "../constants/http-status";
 class AuthMiddleware {
   private readonly jwtProvider = JwtProvider;
 
-  public authenticate(req: Request, _: Response, next: NextFunction): void {
-    // ===========================
-    // Obtém o Authorization Header
-    // ===========================
+  public authenticate = (
+    req: Request,
+    _: Response,
+    next: NextFunction
+  ): void => {
+    const token = req.cookies?.accessToken;
 
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader) {
+    if (!token) {
       throw new AppError(HttpMessages.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
     }
 
-    // ===========================
-    // Espera:
-    // Authorization: Bearer <token>
-    // ===========================
-
-    const [scheme, token] = authHeader.split(" ");
-
-    if (scheme !== "Bearer" || !token) {
-      throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
-    }
-
-    // ===========================
-    // Valida o Access Token
-    // ===========================
-
     const payload = this.jwtProvider.verifyAccessToken(token);
-
-    // ===========================
-    // Usuário autenticado
-    // ===========================
 
     req.user = {
       userId: payload.userId,
@@ -68,7 +49,7 @@ class AuthMiddleware {
     };
 
     next();
-  }
+  };
 }
 
 export default new AuthMiddleware();

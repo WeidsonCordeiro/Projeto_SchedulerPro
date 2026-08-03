@@ -112,6 +112,20 @@ class UserRepository {
       lockUntil: until,
     });
   }
+
+  /**
+   * ==========================================================
+   * Busca todos os usuários de uma empresa.
+   * ==========================================================
+   */
+  public async findByCompanyId(
+    companyId: string | Types.ObjectId
+  ): Promise<UserDocument[]> {
+    return User.find({
+      companyId,
+      deletedAt: null,
+    });
+  }
 }
 
 export default new UserRepository();

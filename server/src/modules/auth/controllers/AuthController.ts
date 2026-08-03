@@ -25,7 +25,6 @@ import { ResponseHandler } from "../../../utils/response";
 import { AppError } from "../../../errors/AppError";
 import { HttpStatus } from "../../../constants/http-status";
 import { HttpMessages } from "../../../constants/http-messages";
-import { http } from "winston";
 
 class AuthController {
   /**

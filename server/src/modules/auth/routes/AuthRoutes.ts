@@ -26,15 +26,23 @@ import { registerValidator } from "../validators/register.validator";
 
 const router = Router();
 
+/**
+ * Rotas públicas
+ */
 router.post(
   "/register",
   registerValidator,
   validateRequest,
   AuthController.register
 );
+
 router.post("/login", loginValidator, validateRequest, AuthController.login);
-router.get("/me", AuthMiddleware.authenticate, AuthController.me);
 router.post("/refresh", AuthController.refresh);
-router.post("/logout", AuthController.logout);
+
+/**
+ * Rotas privadas
+ */
+router.get("/me", AuthMiddleware.authenticate, AuthController.me);
+router.post("/logout", AuthMiddleware.authenticate, AuthController.logout);
 
 export default router;
