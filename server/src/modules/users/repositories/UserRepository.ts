@@ -69,7 +69,7 @@ class UserRepository {
    * Soft Delete.
    */
   public async softDelete(id: string): Promise<void> {
-    await User.findByIdAndDelete(id, {
+    await User.findByIdAndUpdate(id, {
       deletedAt: new Date(),
     });
   }
