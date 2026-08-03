@@ -17,10 +17,12 @@
 import { Router } from "express";
 import { ResponseHandler } from "../utils/response";
 import authRoutes from "../modules/auth/routes/AuthRoutes";
+import userRoutes from "../modules/users/routes/UserRoutes";
 
 const router = Router();
 
 router.use("/auth", authRoutes);
+router.use("/users", userRoutes);
 
 /**
  * Health Check
