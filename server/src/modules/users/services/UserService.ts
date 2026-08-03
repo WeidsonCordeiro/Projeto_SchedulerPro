@@ -18,6 +18,7 @@ import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
 import PasswordProvider from "../../../providers/security/PasswordProvider";
 import { Types } from "mongoose";
+import { UpdateUserDto } from "../dto/UpdateUser.dto";
 class UserService {
   private readonly userRepository = UserRepository;
   private readonly passwordProvider = PasswordProvider;
@@ -41,6 +42,7 @@ class UserService {
 
   public async findById(id: string, companyId: string) {
     const user = await this.userRepository.findById(id);
+    console.log("UserService.findById - user:", user);
     if (!user) {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
@@ -94,6 +96,26 @@ class UserService {
       );
     }
     await this.userRepository.softDelete(id);
+  }
+
+  /**
+   * ==========================================================
+   * Atualizar um utilizador.
+   * ==========================================================
+   */
+  public async update(id: string, dto: UpdateUserDto, companyId: string) {
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+    if (user.companyId.toString() !== companyId) {
+      throw new AppError(
+        HttpMessages.USER_NOT_PREVILEGES,
+        HttpStatus.FORBIDDEN
+      );
+    }
+    const updatedUser = await this.userRepository.update(id, dto);
+    return UserMapper.toResponse(updatedUser!);
   }
 }
 

@@ -14,6 +14,8 @@ import UserController from "../controllers/UserController";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
+import { updateUserValidator } from "../validators/update-user.validator";
+import { validateRequest } from "../../../middlewares/validation.middleware";
 
 const router = Router();
 
@@ -56,6 +58,19 @@ router.post(
   UserController.create
 );
 
+/**
+ * ==========================================================
+ * PUT /users
+ * ==========================================================
+ */
+router.put(
+  "/:id",
+  AuthMiddleware.authenticate,
+  hasPermission(Permission.USER_UPDATE),
+  updateUserValidator,
+  validateRequest,
+  UserController.update
+);
 /**
  * ==========================================================
  * DELETE /users/:id

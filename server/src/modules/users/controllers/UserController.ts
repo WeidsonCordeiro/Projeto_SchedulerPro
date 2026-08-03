@@ -55,6 +55,20 @@ class UserController {
 
   /**
    * ==========================================================
+   * Atualiza um usuário.
+   * ==========================================================
+   */
+  public async update(req: Request, res: Response) {
+    const user = await UserService.update(
+      String(req.params.id),
+      req.body,
+      req.user!.companyId
+    );
+    return ResponseHandler.success(res, user, HttpMessages.USER_UPDATED);
+  }
+
+  /**
+   * ==========================================================
    * Remove um usuário.
    * ==========================================================
    */

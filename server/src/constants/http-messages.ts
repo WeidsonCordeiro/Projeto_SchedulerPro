@@ -19,6 +19,7 @@ export const HttpMessages = {
   USER_BLOCKED: "Conta temporariamente bloqueada.",
   USER_CREATED: "Usuário criado com sucesso.",
   USER_FOUND: "Usuário encontrado.",
+  USER_UPDATED: "Usuário atualizado com sucesso.",
   USERS_FOUND: "Usuários encontrados.",
   USER_NOT_FOUND: "Usuário não encontrado.",
   USER_REMOVED: "Usuário removido com sucesso.",
