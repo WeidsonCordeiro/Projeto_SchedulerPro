@@ -22,12 +22,17 @@ class CompanyRepository {
   /**
    * ==========================================================
    * Busca uma empresa pelo ID.
+   *
+   * Apenas empresas não removidas.
    * ==========================================================
    */
   public async findById(
     id: string | Types.ObjectId
   ): Promise<CompanyDocument | null> {
-    return Company.findById(id);
+    return Company.findOne({
+      _id: id,
+      deletedAt: null,
+    });
   }
 
   /**
@@ -38,11 +43,39 @@ class CompanyRepository {
    * ==========================================================
    */
   public async findByName(name: string): Promise<CompanyDocument | null> {
-    console.log("Searching for company by name:", name); // Debug log
     return Company.findOne({
       name: name.trim().toLowerCase(),
       deletedAt: null,
     });
+  }
+
+  /**
+   * ==========================================================
+   * Busca todas as empresas.
+   * ==========================================================
+   */
+  public async findAll(): Promise<CompanyDocument[]> {
+    return Company.find({
+      deletedAt: null,
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Ativa uma empresa.
+   * ==========================================================
+   */
+  public async activate(id: string): Promise<CompanyDocument | null> {
+    return Company.findByIdAndUpdate(id, { isActive: true }, { new: true });
+  }
+
+  /**
+   * ==========================================================
+   * Desativa uma empresa.
+   * ==========================================================
+   */
+  public async deactivate(id: string): Promise<CompanyDocument | null> {
+    return Company.findByIdAndUpdate(id, { isActive: false }, { new: true });
   }
 
   /**
@@ -74,9 +107,9 @@ class CompanyRepository {
    * Remove logicamente uma empresa.
    * ==========================================================
    */
-  public async delete(id: string): Promise<void> {
+  public async softDelete(id: string): Promise<void> {
     await Company.findByIdAndUpdate(id, {
-      deletedAt: new Date(),
+      deletedAt: "",
     });
   }
 }

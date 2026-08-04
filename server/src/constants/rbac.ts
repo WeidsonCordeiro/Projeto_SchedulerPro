@@ -22,6 +22,9 @@ export const RolePermissions: Record<Role, Permission[]> = {
 
     Permission.COMPANY_READ,
     Permission.COMPANY_UPDATE,
+    Permission.COMPANY_DELETE,
+    Permission.COMPANY_ACTIVATE,
+    Permission.COMPANY_DEACTIVATE,
 
     Permission.CLIENT_CREATE,
     Permission.CLIENT_READ,
@@ -43,6 +46,9 @@ export const RolePermissions: Record<Role, Permission[]> = {
     Permission.USER_CREATE,
     Permission.USER_READ,
     Permission.USER_UPDATE,
+
+    Permission.COMPANY_READ,
+    Permission.COMPANY_UPDATE,
 
     Permission.CLIENT_CREATE,
     Permission.CLIENT_READ,
