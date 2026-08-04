@@ -19,6 +19,9 @@ export const HttpMessages = {
   USER_BLOCKED: "Conta temporariamente bloqueada.",
   USER_CREATED: "Usuário criado com sucesso.",
   USER_FOUND: "Usuário encontrado.",
+  USER_ACTIVATED: "Usuário ativado com sucesso.",
+  USER_DEACTIVATED: "Usuário desativado com sucesso.",
+  USER_UPDATED: "Usuário atualizado com sucesso.",
   USERS_FOUND: "Usuários encontrados.",
   USER_NOT_FOUND: "Usuário não encontrado.",
   USER_REMOVED: "Usuário removido com sucesso.",
@@ -36,4 +39,8 @@ export const HttpMessages = {
   LOGOUT_SUCCESS: "Logout realizado com sucesso.",
   INVALID_COMPANY: "Empresa inválida.",
   INVALID_USER: "Usuário inválido.",
+  PASSWORD_CHANGED: "Senha alterada com sucesso.",
+  PASSWORD_CHANGE_FAILED: "Falha ao alterar a senha.",
+  PASSWORD_RESET_TOKEN_INVALID: "Token de redefinição de senha inválido.",
+  PASSWORD_RESET_TOKEN_EXPIRED: "Token de redefinição de senha expirado.",
 } as const;
