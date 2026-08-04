@@ -19,6 +19,7 @@ import { HttpStatus } from "../../../constants/http-status";
 import PasswordProvider from "../../../providers/security/PasswordProvider";
 import { Types } from "mongoose";
 import { UpdateUserDto } from "../dto/UpdateUser.dto";
+import { ChangePasswordDto } from "../dto/ChangePassword.dto";
 class UserService {
   private readonly userRepository = UserRepository;
   private readonly passwordProvider = PasswordProvider;
@@ -116,6 +117,86 @@ class UserService {
     }
     const updatedUser = await this.userRepository.update(id, dto);
     return UserMapper.toResponse(updatedUser!);
+  }
+
+  /**
+   * ==========================================================
+   * Ativa um utilizador.
+   * ==========================================================
+   */
+  public async activate(id: string, companyId: string) {
+    const user = await this.userRepository.findById(id);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (user.companyId.toString() !== companyId) {
+      throw new AppError(
+        HttpMessages.USER_NOT_PREVILEGES,
+        HttpStatus.FORBIDDEN
+      );
+    }
+
+    const updatedUser = await this.userRepository.activate(id);
+
+    return UserMapper.toResponse(updatedUser!);
+  }
+
+  /**
+   * ==========================================================
+   * Desativa um utilizador.
+   * ==========================================================
+   */
+  public async deactivate(id: string, companyId: string) {
+    const user = await this.userRepository.findById(id);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (user.companyId.toString() !== companyId) {
+      throw new AppError(
+        HttpMessages.USER_NOT_PREVILEGES,
+        HttpStatus.FORBIDDEN
+      );
+    }
+
+    const updatedUser = await this.userRepository.deactivate(id);
+
+    return UserMapper.toResponse(updatedUser!);
+  }
+
+  /**
+   * ==========================================================
+   * Atualiza a senha de um utilizador.
+   * ==========================================================
+   */
+  public async changePassword(
+    userId: string,
+    dto: ChangePasswordDto
+  ): Promise<void> {
+    const user = await this.userRepository.findByIdWithPassword(userId);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const isValidPassword = await this.passwordProvider.compare(
+      dto.currentPassword,
+      user.passwordHash
+    );
+
+    if (!isValidPassword) {
+      throw new AppError(
+        HttpMessages.INVALID_CREDENTIALS,
+        HttpStatus.UNAUTHORIZED
+      );
+    }
+
+    const passwordHash = await this.passwordProvider.hash(dto.newPassword);
+
+    await this.userRepository.updatePassword(user.id, passwordHash);
   }
 }
 

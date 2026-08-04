@@ -44,7 +44,7 @@ export interface IUser {
   companyId: Types.ObjectId;
 
   /**
-   * Permissão
+   * Permissões
    */
   role: Role;
 
@@ -61,15 +61,22 @@ export interface IUser {
   failedLoginAttempts: number;
   lockUntil?: Date | null;
   lastLogin?: Date | null;
-  lastPasswordChange?: Date | null;
+
+  /**
+   * Alteração de senha
+   */
+  mustChangePassword: boolean;
+  passwordChangedAt?: Date | null;
+  lastPasswordResetAt?: Date | null;
 
   /**
    * Auditoria
    */
   createdAt: Date;
   updatedAt: Date;
+
   /**
-   * Soft Delete
+   * Soft delete
    */
   deletedAt?: Date | null;
 }
@@ -174,13 +181,23 @@ const UserSchema = new Schema<IUser>(
       default: null,
     },
 
-    lastPasswordChange: {
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
+
+    passwordChangedAt: {
+      type: Date,
+      default: null,
+    },
+
+    lastPasswordResetAt: {
       type: Date,
       default: null,
     },
 
     /**
-     * Soft Delete
+     * Soft delete
      */
     deletedAt: {
       type: Date,
@@ -198,25 +215,24 @@ const UserSchema = new Schema<IUser>(
  * ==========================================================
  * Índices
  * ==========================================================
- *
- * email
- * companyId
- * role
- * deletedAt
- * companyId + isActive
- *
  */
 
 // Multiempresa
-UserSchema.index({ companyId: 1 });
+UserSchema.index({
+  companyId: 1,
+});
 
 // Permissões
-UserSchema.index({ role: 1 });
+UserSchema.index({
+  role: 1,
+});
 
-// Soft Delete
-UserSchema.index({ deletedAt: 1 });
+// Soft delete
+UserSchema.index({
+  deletedAt: 1,
+});
 
-// Empresa + Status
+// Empresa + status
 UserSchema.index({
   companyId: 1,
   isActive: 1,
@@ -225,10 +241,6 @@ UserSchema.index({
 /**
  * ==========================================================
  * Remove informações internas antes de enviar ao cliente.
- *
- * passwordHash
- * __v
- *
  * ==========================================================
  */
 

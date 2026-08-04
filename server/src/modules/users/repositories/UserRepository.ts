@@ -126,6 +126,46 @@ class UserRepository {
       deletedAt: null,
     });
   }
+
+  /**
+   * ==========================================================
+   * Ativa um utilizador.
+   * ==========================================================
+   */
+  public async activate(id: string) {
+    return User.findByIdAndUpdate(id, { isActive: true }, { new: true });
+  }
+
+  /**
+   * ==========================================================
+   * Desativa um utilizador.
+   * ==========================================================
+   */
+  public async deactivate(id: string) {
+    return User.findByIdAndUpdate(id, { isActive: false }, { new: true });
+  }
+
+  /**
+   * ==========================================================
+   * Atualiza a senha de um utilizador.
+   * ==========================================================
+   */
+  public async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await User.findByIdAndUpdate(id, {
+      passwordHash,
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Procura um utilizador por ID incluindo a palavra-passe.
+   * ==========================================================
+   */
+  public async findByIdWithPassword(
+    id: string | Types.ObjectId
+  ): Promise<UserDocument | null> {
+    return User.findById(id).select("+passwordHash");
+  }
 }
 
 export default new UserRepository();

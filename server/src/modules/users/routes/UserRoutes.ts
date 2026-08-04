@@ -16,14 +16,9 @@ import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
 import { updateUserValidator } from "../validators/update-user.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
+import { changePasswordValidator } from "../validators/change-password.validator";
 
 const router = Router();
-
-/**
- * ==========================================================
- * GET /users
- * ==========================================================
- */
 
 router.get(
   "/",
@@ -32,11 +27,12 @@ router.get(
   UserController.findAll
 );
 
-/**
- * ==========================================================
- * GET /users/:id
- * ==========================================================
- */
+router.post(
+  "/",
+  AuthMiddleware.authenticate,
+  hasPermission(Permission.USER_CREATE),
+  UserController.create
+);
 
 router.get(
   "/:id",
@@ -45,24 +41,6 @@ router.get(
   UserController.findById
 );
 
-/**
- * ==========================================================
- * POST /users
- * ==========================================================
- */
-
-router.post(
-  "/",
-  AuthMiddleware.authenticate,
-  hasPermission(Permission.USER_CREATE),
-  UserController.create
-);
-
-/**
- * ==========================================================
- * PUT /users
- * ==========================================================
- */
 router.put(
   "/:id",
   AuthMiddleware.authenticate,
@@ -71,17 +49,34 @@ router.put(
   validateRequest,
   UserController.update
 );
-/**
- * ==========================================================
- * DELETE /users/:id
- * ==========================================================
- */
 
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
   hasPermission(Permission.USER_DELETE),
   UserController.delete
+);
+
+router.patch(
+  "/:id/activate",
+  AuthMiddleware.authenticate,
+  hasPermission(Permission.USER_UPDATE),
+  UserController.activate
+);
+
+router.patch(
+  "/:id/deactivate",
+  AuthMiddleware.authenticate,
+  hasPermission(Permission.USER_UPDATE),
+  UserController.deactivate
+);
+
+router.patch(
+  "/me/password",
+  AuthMiddleware.authenticate,
+  changePasswordValidator,
+  validateRequest,
+  UserController.changePassword
 );
 
 export default router;

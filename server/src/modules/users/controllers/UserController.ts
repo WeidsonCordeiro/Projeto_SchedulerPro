@@ -74,7 +74,46 @@ class UserController {
    */
   public async delete(req: Request, res: Response) {
     await UserService.delete(String(req.params.id), req.user!.companyId);
-    return ResponseHandler.success(res, null, HttpMessages.USER_REMOVED);
+    return ResponseHandler.success(res, null, HttpMessages.USER_DEACTIVATED);
+  }
+
+  /**
+   * ==========================================================
+   * Ativa um utilizador.
+   * ==========================================================
+   */
+  public async activate(req: Request, res: Response) {
+    const user = await UserService.activate(
+      String(req.params.id),
+      req.user!.companyId
+    );
+
+    return ResponseHandler.success(res, user, HttpMessages.USER_ACTIVATED);
+  }
+
+  /**
+   * ==========================================================
+   * Desativa um utilizador.
+   * ==========================================================
+   */
+  public async deactivate(req: Request, res: Response) {
+    const user = await UserService.deactivate(
+      String(req.params.id),
+      req.user!.companyId
+    );
+
+    return ResponseHandler.success(res, user, HttpMessages.USER_DEACTIVATED);
+  }
+
+  /**
+   * ==========================================================
+   * Atualiza a senha de um utilizador.
+   * ==========================================================
+   */
+  public async changePassword(req: Request, res: Response): Promise<Response> {
+    await UserService.changePassword(req.user!.userId, req.body);
+
+    return ResponseHandler.success(res, null, HttpMessages.PASSWORD_CHANGED);
   }
 }
 
