@@ -1,4 +1,5 @@
 export const HttpMessages = {
+  /*Operações*/
   SUCCESS: "Operação realizada com sucesso.",
   CREATED: "Registro criado com sucesso.",
   UPDATED: "Registro atualizado com sucesso.",
@@ -11,6 +12,7 @@ export const HttpMessages = {
   TOKEN_EXPIRED: "Token expirado.",
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
+  /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
   USER_NOT_UNAUTHORIZED: "Usuário não autorizado.",
   USER_NOT_PERMISSION: "Usuário não possui permissão para executar esta ação.",
@@ -35,12 +37,23 @@ export const HttpMessages = {
     "Conta bloqueada devido a múltiplas tentativas de login falhadas.",
   PASSWORDS_DO_NOT_MATCH: "As senhas informadas não conferem.",
   EMAIL_ALREADY_EXISTS: "Já existe um usuário com este e-mail.",
-  COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
+
   LOGOUT_SUCCESS: "Logout realizado com sucesso.",
-  INVALID_COMPANY: "Empresa inválida.",
+
   INVALID_USER: "Usuário inválido.",
   PASSWORD_CHANGED: "Senha alterada com sucesso.",
   PASSWORD_CHANGE_FAILED: "Falha ao alterar a senha.",
   PASSWORD_RESET_TOKEN_INVALID: "Token de redefinição de senha inválido.",
   PASSWORD_RESET_TOKEN_EXPIRED: "Token de redefinição de senha expirado.",
+  /*Empresa*/
+  COMPANY_FOUND: "Empresa encontrada.",
+  COMPANIES_FOUND: "Empresas encontradas.",
+  COMPANY_NOT_FOUND: "Empresa não encontrada.",
+  COMPANY_CREATED: "Empresa criada com sucesso.",
+  COMPANY_UPDATED: "Empresa atualizada com sucesso.",
+  COMPANY_REMOVED: "Empresa removida com sucesso.",
+  COMPANY_ACTIVATED: "Empresa ativada com sucesso.",
+  COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
+  COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
+  COMPANY_INVALID: "Empresa inválida.",
 } as const;
