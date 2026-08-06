@@ -64,6 +64,11 @@ export const env = {
      */
     REFRESH_SECRET: process.env.REFRESH_SECRET!,
     REFRESH_EXPIRES_IN: process.env.REFRESH_EXPIRES_IN || "7d",
+    /**
+     * Reset Token
+     */
+    RESET_PASSWORD_SECRET: process.env.RESET_PASSWORD_SECRET!,
+    RESET_PASSWORD_EXPIRES_IN: process.env.RESET_PASSWORD_EXPIRES_IN || "1h",
   },
   mongo: {
     /**

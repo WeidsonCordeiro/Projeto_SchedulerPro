@@ -57,12 +57,16 @@ import CompanyRepository from "../../companies/repositories/CompanyRepository";
 import { CompanyDocument } from "../../companies/models/Company.model";
 import { Role } from "../../../constants/roles";
 import AuthMapper from "../mapper/AuthMapper";
+import { TokenType } from "../../../constants/token-type";
+import { TokenExpiration } from "../../../constants/token-expiration";
+import PasswordResetRepository from "../repositories/PasswordResetRepository";
 
 class AuthService {
   private readonly userRepository = UserRepository;
   private readonly passwordProvider = PasswordProvider;
   private readonly jwtProvider = JwtProvider;
   private readonly companyRepository = CompanyRepository;
+  private readonly passwordResetRepository = PasswordResetRepository;
 
   // ==========================================================
   // Métodos Públicos
@@ -125,14 +129,14 @@ class AuthService {
       userId: user.id,
       companyId: user.companyId.toString(),
       role: user.role,
-      type: "access",
+      type: TokenType.ACCESS,
     });
 
     const refreshToken = this.jwtProvider.generateRefreshToken({
       userId: user.id,
       companyId: user.companyId.toString(),
       role: user.role,
-      type: "refresh",
+      type: TokenType.REFRESH,
     });
 
     return {
@@ -376,6 +380,82 @@ class AuthService {
       companyId: company._id,
       role: Role.OWNER,
     });
+  }
+
+  /**
+   * ==========================================================
+   * Solicita a recuperação da palavra-passe.
+   * ==========================================================
+   */
+  public async forgotPassword(email: string): Promise<void> {
+    const user = await UserRepository.findByEmail(email);
+
+    /**
+     * Não revela se o utilizador existe.
+     */
+    if (!user) {
+      return;
+    }
+
+    const token = JwtProvider.generateResetPasswordToken({
+      userId: user._id.toString(),
+      companyId: user.companyId.toString(),
+      role: user.role,
+      type: TokenType.RESET_PASSWORD,
+    });
+
+    await this.passwordResetRepository.create({
+      userId: user._id.toString(),
+      token,
+      expiresAt: new Date(Date.now() + TokenExpiration.RESET_PASSWORD_TOKEN),
+    });
+
+    Logger.auth(`Token de recuperação gerado para ${user.email}`);
+
+    Logger.auth(token);
+  }
+
+  /**
+   * ==========================================================
+   * Redefine a palavra-passe do utilizador.
+   * ==========================================================
+   */
+  public async resetPassword(token: string, password: string): Promise<void> {
+    const resetToken = await this.passwordResetRepository.findByToken(token);
+
+    if (!resetToken) {
+      throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.BAD_REQUEST);
+    }
+
+    if (resetToken.usedAt) {
+      throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.BAD_REQUEST);
+    }
+
+    if (resetToken.expiresAt < new Date()) {
+      throw new AppError(HttpMessages.TOKEN_EXPIRED, HttpStatus.BAD_REQUEST);
+    }
+
+    const payload = this.jwtProvider.verifyResetPasswordToken(token);
+
+    const user = await this.userRepository.findById(payload.userId);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    user.passwordHash = await this.passwordProvider.hash(password);
+
+    user.passwordChangedAt = new Date();
+
+    user.lastPasswordResetAt = new Date();
+
+    user.mustChangePassword = false;
+
+    await user.save();
+
+    await this.passwordResetRepository.invalidate(token);
+
+    Logger.auth(`Palavra-passe redefinida para o utilizador ${user.email}`);
   }
 }
 

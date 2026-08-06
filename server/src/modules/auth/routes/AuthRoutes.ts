@@ -23,12 +23,11 @@ import { loginValidator } from "../validators/login.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { registerValidator } from "../validators/register.validator";
+import { forgotPasswordValidator } from "../validators/forgot-password.validator";
+import { resetPasswordValidator } from "../validators/reset-password.validator";
 
 const router = Router();
 
-/**
- * Rotas públicas
- */
 router.post(
   "/register",
   registerValidator,
@@ -39,10 +38,21 @@ router.post(
 router.post("/login", loginValidator, validateRequest, AuthController.login);
 router.post("/refresh", AuthController.refresh);
 
-/**
- * Rotas privadas
- */
 router.get("/me", AuthMiddleware.authenticate, AuthController.me);
 router.post("/logout", AuthMiddleware.authenticate, AuthController.logout);
+
+router.post(
+  "/forgot-password",
+  forgotPasswordValidator,
+  validateRequest,
+  AuthController.forgotPassword
+);
+
+router.post(
+  "/reset-password",
+  resetPasswordValidator,
+  validateRequest,
+  AuthController.resetPassword
+);
 
 export default router;
