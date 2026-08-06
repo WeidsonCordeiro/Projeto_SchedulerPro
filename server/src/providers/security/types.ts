@@ -13,12 +13,13 @@
  * Payload do JWT.
  */
 import { Role } from "../../constants/roles";
+import { TokenType } from "../../constants/token-type";
 
 export interface JwtPayload {
   userId: string;
   companyId: string;
   role: Role;
-  type: "access" | "refresh";
+  type: TokenType;
 }
 
 /*** Tokens gerados após autenticação.*/

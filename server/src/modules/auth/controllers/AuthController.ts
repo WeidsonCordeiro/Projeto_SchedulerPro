@@ -102,6 +102,38 @@ class AuthController {
 
     return ResponseHandler.success(res, null, HttpMessages.LOGOUT_SUCCESS);
   }
+
+  /**
+   * ==========================================================
+   * Solicita a recuperação da palavra-passe.
+   * ==========================================================
+   */
+  public async forgotPassword(req: Request, res: Response): Promise<Response> {
+    await AuthService.forgotPassword(req.body.email);
+
+    return ResponseHandler.success(
+      res,
+      null,
+      "Se o e-mail existir, as instruções serão enviadas." // Ainda nao será enviado email
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Redefine a palavra-passe do utilizador.
+   * ==========================================================
+   */
+  public async resetPassword(req: Request, res: Response): Promise<Response> {
+    const { token, password } = req.body;
+
+    await AuthService.resetPassword(token, password);
+
+    return ResponseHandler.success(
+      res,
+      null,
+      "Palavra-passe alterada com sucesso." // Ainda nao será enviado email
+    );
+  }
 }
 
 export default new AuthController();

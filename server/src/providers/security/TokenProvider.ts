@@ -15,6 +15,7 @@
 
 import JwtProvider from "./JwtProvider";
 import { AuthTokens, JwtPayload } from "./types";
+import { TokenType } from "../../constants/token-type";
 
 class TokenProvider {
   /**
@@ -23,12 +24,12 @@ class TokenProvider {
   public generate(payload: Omit<JwtPayload, "type">): AuthTokens {
     const accessToken = JwtProvider.generateAccessToken({
       ...payload,
-      type: "access",
+      type: TokenType.ACCESS,
     });
 
     const refreshToken = JwtProvider.generateRefreshToken({
       ...payload,
-      type: "refresh",
+      type: TokenType.REFRESH,
     });
 
     return {

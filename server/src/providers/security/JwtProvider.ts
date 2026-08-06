@@ -11,6 +11,7 @@ import { HttpMessages } from "../../constants/http-messages";
 import { HttpStatus } from "../../constants/http-status";
 import { JwtPayload } from "./types";
 import Logger from "../../providers/logger";
+import { TokenType } from "../../constants/token-type";
 
 class JwtProvider {
   /**
@@ -109,6 +110,31 @@ class JwtProvider {
     Logger.auth("Token decodificado.");
 
     return decoded as JwtPayload;
+  }
+
+  /**
+   * =====================================================
+   * Reset password token
+   * =====================================================
+   */
+  public generateResetPasswordToken(payload: JwtPayload): string {
+    return this.sign(
+      {
+        ...payload,
+        type: TokenType.RESET_PASSWORD,
+      },
+      env.jwt.RESET_PASSWORD_SECRET,
+      env.jwt.RESET_PASSWORD_EXPIRES_IN
+    );
+  }
+
+  /**
+   * =====================================================
+   * Verifica o token de recuperação.
+   * =====================================================
+   */
+  public verifyResetPasswordToken(token: string): JwtPayload {
+    return this.verify(token, env.jwt.RESET_PASSWORD_SECRET);
   }
 }
 
