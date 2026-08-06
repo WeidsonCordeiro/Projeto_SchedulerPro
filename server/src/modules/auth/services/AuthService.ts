@@ -60,6 +60,8 @@ import AuthMapper from "../mapper/AuthMapper";
 import { TokenType } from "../../../constants/token-type";
 import { TokenExpiration } from "../../../constants/token-expiration";
 import PasswordResetRepository from "../repositories/PasswordResetRepository";
+import ResendProvider from "../../../providers/mail/ResendProvider";
+import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-password.template";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -410,9 +412,21 @@ class AuthService {
       expiresAt: new Date(Date.now() + TokenExpiration.RESET_PASSWORD_TOKEN),
     });
 
-    Logger.auth(`Token de recuperação gerado para ${user.email}`);
+    const resetUrl = `http://localhost:5173/reset-password?token=${token}`;
 
-    Logger.auth(token);
+    const html = resetPasswordTemplate({
+      name: user.name,
+      resetUrl,
+    });
+
+    await ResendProvider.send({
+      //to: user.email,
+      to: "weidson.ac@gmail.com",
+      subject: "Recuperação de palavra-passe",
+      html,
+    });
+
+    Logger.auth(`Token de recuperação enviado para ${user.email}`);
   }
 
   /**

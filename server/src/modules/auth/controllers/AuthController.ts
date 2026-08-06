@@ -114,7 +114,7 @@ class AuthController {
     return ResponseHandler.success(
       res,
       null,
-      "Se o e-mail existir, as instruções serão enviadas." // Ainda nao será enviado email
+      "Se o email existir, será enviado um email com instruções para redefinir a palavra-passe."
     );
   }
 
@@ -131,7 +131,7 @@ class AuthController {
     return ResponseHandler.success(
       res,
       null,
-      "Palavra-passe alterada com sucesso." // Ainda nao será enviado email
+      "Palavra-passe alterada com sucesso."
     );
   }
 }

@@ -25,11 +25,7 @@ export const registerValidator = [
     .notEmpty()
     .withMessage("Nome é obrigatório.")
     .isLength({ min: 3, max: 120 }),
-  body("email")
-    .trim()
-    .isEmail()
-    .withMessage("E-mail inválido.")
-    .normalizeEmail(),
+  body("email").trim().isEmail().withMessage("E-mail inválido."),
   body("password")
     .isLength({ min: 8 })
     .withMessage("A senha deve possuir no mínimo 8 caracteres."),

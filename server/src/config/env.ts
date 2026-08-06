@@ -96,11 +96,11 @@ export const env = {
 
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
   },
-  resend: {
+  email: {
     /**
      * Resend
      */
-    RESEND_API_KEY: process.env.RESEND_API_KEY!,
+    RESEND_API_KEY: process.env.RESEND_API_KEY || "",
   },
   whatsApp: {
     /**
