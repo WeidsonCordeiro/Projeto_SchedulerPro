@@ -31,21 +31,12 @@ class ResendProvider extends EmailProvider {
    * ==========================================================
    */
   public async send({ to, subject, html }: SendMailDto): Promise<void> {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.email.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "onboarding@resend.dev",
-        to,
-        subject: "Teste",
-        html: "<h1>Hello</h1>",
-      }),
+    await this.client.emails.send({
+      from: "onboarding@resend.dev",
+      to,
+      subject,
+      html,
     });
-
-    console.log(await response.json());
   }
 }
 

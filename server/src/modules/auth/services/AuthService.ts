@@ -202,7 +202,7 @@ class AuthService {
 
       throw new AppError(
         HttpMessages.INVALID_CREDENTIALS,
-        HttpStatus.UNAUTHORIZED
+        HttpStatus.UNAUTHORIZED,
       );
     }
 
@@ -227,7 +227,7 @@ class AuthService {
   private async validatePassword(
     password: string,
     passwordHash: string,
-    email: string
+    email: string,
   ): Promise<void> {
     const valid = await this.passwordProvider.compare(password, passwordHash);
 
@@ -238,7 +238,7 @@ class AuthService {
 
       throw new AppError(
         HttpMessages.INVALID_CREDENTIALS,
-        HttpStatus.UNAUTHORIZED
+        HttpStatus.UNAUTHORIZED,
       );
     }
 
@@ -316,7 +316,7 @@ class AuthService {
     if (dto.password !== dto.confirmPassword) {
       throw new AppError(
         HttpMessages.PASSWORDS_DO_NOT_MATCH,
-        HttpStatus.BAD_REQUEST
+        HttpStatus.BAD_REQUEST,
       );
     }
   }
@@ -335,7 +335,7 @@ class AuthService {
     if (exists) {
       throw new AppError(
         HttpMessages.EMAIL_ALREADY_EXISTS,
-        HttpStatus.CONFLICT
+        HttpStatus.CONFLICT,
       );
     }
   }
@@ -354,7 +354,7 @@ class AuthService {
     if (company) {
       throw new AppError(
         HttpMessages.COMPANY_ALREADY_EXISTS,
-        HttpStatus.CONFLICT
+        HttpStatus.CONFLICT,
       );
     }
   }
@@ -371,7 +371,7 @@ class AuthService {
 
   private async createOwner(
     dto: RegisterDto,
-    company: CompanyDocument
+    company: CompanyDocument,
   ): Promise<UserDocument> {
     const passwordHash = await this.passwordProvider.hash(dto.password);
 
@@ -420,8 +420,7 @@ class AuthService {
     });
 
     await ResendProvider.send({
-      //to: user.email,
-      to: "weidson.ac@gmail.com",
+      to: user.email,
       subject: "Recuperação de palavra-passe",
       html,
     });
