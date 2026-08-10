@@ -62,6 +62,8 @@ import { TokenExpiration } from "../../../constants/token-expiration";
 import PasswordResetRepository from "../repositories/PasswordResetRepository";
 import ResendProvider from "../../../providers/mail/ResendProvider";
 import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-password.template";
+import { welcomeTemplate } from "../../../providers/mail/templates/welcome.template";
+import { env } from "../../../config/env";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -69,24 +71,11 @@ class AuthService {
   private readonly jwtProvider = JwtProvider;
   private readonly companyRepository = CompanyRepository;
   private readonly passwordResetRepository = PasswordResetRepository;
+  private readonly resendProvider = ResendProvider;
 
   // ==========================================================
   // Métodos Públicos
   // ==========================================================
-
-  public async login(dto: LoginDto): Promise<LoginResult> {
-    Logger.auth("Tentativa de login.", {
-      email: dto.email,
-    });
-
-    const user = await this.findUserByEmail(dto.email);
-
-    await this.validatePassword(dto.password, user.passwordHash, dto.email);
-
-    this.validateUserStatus(user);
-
-    return this.authenticate(user);
-  }
 
   public async register(dto: RegisterDto): Promise<LoginResult> {
     Logger.auth("Tentativa de registro.", {
@@ -104,12 +93,24 @@ class AuthService {
 
     const user = await this.createOwner(dto, company);
 
+    await this.sendWelcomeEmail(user, company);
+
     return this.authenticate(user);
   }
 
-  public async refreshToken() {}
+  public async login(dto: LoginDto): Promise<LoginResult> {
+    Logger.auth("Tentativa de login.", {
+      email: dto.email,
+    });
 
-  public async logout() {}
+    const user = await this.findUserByEmail(dto.email);
+
+    await this.validatePassword(dto.password, user.passwordHash, dto.email);
+
+    this.validateUserStatus(user);
+
+    return this.authenticate(user);
+  }
 
   // ==========================================================
   // Fluxo de Autenticação
@@ -412,14 +413,14 @@ class AuthService {
       expiresAt: new Date(Date.now() + TokenExpiration.RESET_PASSWORD_TOKEN),
     });
 
-    const resetUrl = `http://localhost:5173/reset-password?token=${token}`;
+    const resetUrl = `${env.frontend.FRONTEND_URL}/reset-password?token=${token}`;
 
     const html = resetPasswordTemplate({
       name: user.name,
       resetUrl,
     });
 
-    await ResendProvider.send({
+    await this.resendProvider.send({
       to: user.email,
       subject: "Recuperação de palavra-passe",
       html,
@@ -469,6 +470,40 @@ class AuthService {
     await this.passwordResetRepository.invalidate(token);
 
     Logger.auth(`Palavra-passe redefinida para o utilizador ${user.email}`);
+  }
+
+  /**
+   * ==========================================================
+   * Envia o e-mail de boas-vindas ao usuário.
+   * ==========================================================
+   */
+  private async sendWelcomeEmail(
+    user: UserDocument,
+    company: CompanyDocument,
+  ): Promise<void> {
+    const loginUrl = `${env.frontend.FRONTEND_URL}/login`;
+
+    const html = welcomeTemplate({
+      name: user.name,
+      companyName: company.name,
+      loginUrl,
+    });
+
+    try {
+      await this.resendProvider.send({
+        to: user.email,
+        subject: "Bem-vindo ao SchedulerPro",
+        html,
+      });
+
+      Logger.auth(`E-mail de boas-vindas enviado para ${user.email}`);
+    } catch (error) {
+      Logger.error(`Falha ao enviar e-mail de boas-vindas para ${user.email}`, {
+        error: error instanceof Error ? error.message : String(error),
+        userId: user._id.toString(),
+        companyId: company._id.toString(),
+      });
+    }
   }
 }
 
