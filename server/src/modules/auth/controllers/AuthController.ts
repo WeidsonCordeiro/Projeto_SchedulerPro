@@ -54,7 +54,10 @@ class AuthController {
 
     CookieProvider.setRefreshToken(res, result.tokens.refreshToken);
 
-    return ResponseHandler.success(res, result.user);
+    return ResponseHandler.success(res, {
+      ...result.user,
+      mustChangePassword: result.mustChangePassword,
+    });
   }
 
   /**
@@ -79,7 +82,7 @@ class AuthController {
     if (!refreshToken) {
       throw new AppError(
         HttpMessages.INVALID_REFRESH_TOKEN,
-        HttpStatus.UNAUTHORIZED
+        HttpStatus.UNAUTHORIZED,
       );
     }
 
@@ -114,7 +117,7 @@ class AuthController {
     return ResponseHandler.success(
       res,
       null,
-      "Se o email existir, será enviado um email com instruções para redefinir a palavra-passe."
+      "Se o email existir, será enviado um email com instruções para redefinir a palavra-passe.",
     );
   }
 
@@ -131,7 +134,7 @@ class AuthController {
     return ResponseHandler.success(
       res,
       null,
-      "Palavra-passe alterada com sucesso."
+      "Palavra-passe alterada com sucesso.",
     );
   }
 }

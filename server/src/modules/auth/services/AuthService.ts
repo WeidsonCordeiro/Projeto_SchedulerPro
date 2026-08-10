@@ -124,6 +124,7 @@ class AuthService {
     return {
       user: AuthMapper.toAuthUser(user),
       tokens,
+      mustChangePassword: user.mustChangePassword,
     };
   }
 
@@ -382,6 +383,7 @@ class AuthService {
       passwordHash,
       companyId: company._id,
       role: Role.OWNER,
+      mustChangePassword: false,
     });
   }
 

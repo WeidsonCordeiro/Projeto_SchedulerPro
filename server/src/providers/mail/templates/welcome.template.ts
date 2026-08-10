@@ -14,126 +14,162 @@ interface WelcomeTemplateProps {
   name: string;
   companyName: string;
   loginUrl: string;
+  temporaryPassword?: string;
 }
 
 export function welcomeTemplate({
   name,
   companyName,
   loginUrl,
+  temporaryPassword,
 }: WelcomeTemplateProps): string {
   /**
-   * ==========================================================
-   * Gera o HTML do e-mail de boas-vindas.
-   * ==========================================================
-   */
+
+==========================================================
+Gera o HTML do e-mail de boas-vindas.
+==========================================================
+*/
   return `
-    <!DOCTYPE html>
-    <html lang="pt-PT">
-      <head>
-        <meta charset="UTF-8" />
+<p>
+Olá, <strong>${name}</strong>.
+</p>
+<p>
+  A sua conta foi criada com sucesso no SchedulerPro.
+</p>
 
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0"
-        />
+<p>
+  Está associado à empresa
+  <strong>${companyName}</strong>.
+</p>
 
-        <title>Bem-vindo ao SchedulerPro</title>
-      </head>
-
-      <body
+${
+  temporaryPassword
+    ? `
+      <div
         style="
-          margin: 0;
-          padding: 0;
-          background-color: #f4f4f5;
-          font-family: Arial, Helvetica, sans-serif;
-          color: #1f2937;
+          margin: 24px 0;
+          padding: 20px;
+          background-color: #f3f4f6;
+          border: 1px solid #e5e7eb;
+          border-radius: 6px;
         "
       >
-        <div
+        <p
           style="
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 32px;
-            background-color: #ffffff;
-            border-radius: 8px;
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            font-weight: bold;
+            color: #111827;
           "
         >
-          <h1
-            style="
-              margin-bottom: 24px;
-              font-size: 24px;
-            "
-          >
-            Bem-vindo ao SchedulerPro!
-          </h1>
+          Dados de acesso
+        </p>
 
-          <p>
-            Olá, <strong>${name}</strong>.
-          </p>
+        <p
+          style="
+            margin: 0 0 6px 0;
+            font-size: 14px;
+            color: #6b7280;
+          "
+        >
+          Palavra-passe temporária:
+        </p>
 
-          <p>
-            A sua conta foi criada com sucesso no SchedulerPro.
-          </p>
+        <p
+          style="
+            margin: 0;
+            padding: 10px 12px;
+            background-color: #ffffff;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: #111827;
+          "
+        >
+          ${temporaryPassword}
+        </p>
+      </div>
 
-          <p>
-            Está associado à empresa
-            <strong>${companyName}</strong>.
-          </p>
+      <div
+        style="
+          margin: 24px 0;
+          padding: 16px;
+          background-color: #fff7ed;
+          border-left: 4px solid #f97316;
+        "
+      >
+        <p
+          style="
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #9a3412;
+          "
+        >
+          <strong>Importante:</strong>
+          esta é uma palavra-passe temporária.
+          Por motivos de segurança, deverá alterá-la
+          após o primeiro acesso.
+        </p>
+      </div>
+    `
+    : ""
+}
 
-          <p>
-            Para aceder à plataforma, clique no botão abaixo:
-          </p>
+<p>
+  Para aceder à plataforma, clique no botão abaixo:
+</p>
 
-          <div style="margin: 32px 0;">
-            <a
-              href="${loginUrl}"
-              style="
-                display: inline-block;
-                padding: 12px 24px;
-                background-color: #2563eb;
-                color: #ffffff;
-                text-decoration: none;
-                border-radius: 6px;
-                font-weight: bold;
-              "
-            >
-              Aceder ao SchedulerPro
-            </a>
-          </div>
+<div style="margin: 32px 0;">
+  <a
+    href="${loginUrl}"
+    style="
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #2563eb;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    "
+  >
+    Aceder ao SchedulerPro
+  </a>
+</div>
 
-          <p>
-            Se não reconhece esta conta, pode ignorar este e-mail.
-          </p>
+<p>
+  Se não reconhece esta conta, pode ignorar este e-mail.
+</p>
 
-          <hr
-            style="
-              margin: 32px 0;
-              border: 0;
-              border-top: 1px solid #e5e7eb;
-            "
-          />
+<hr
+  style="
+    margin: 32px 0;
+    border: 0;
+    border-top: 1px solid #e5e7eb;
+  "
+/>
 
-          <p
-            style="
-              margin: 0;
-              font-size: 12px;
-              color: #6b7280;
-            "
-          >
-            Este é um e-mail automático. Por favor, não responda.
-          </p>
+<p
+  style="
+    margin: 0;
+    font-size: 12px;
+    color: #6b7280;
+  "
+>
+  Este é um e-mail automático. Por favor, não responda.
+</p>
 
-          <p
-            style="
-              margin-top: 8px;
-              font-size: 12px;
-              color: #6b7280;
-            "
-          >
-            SchedulerPro
-          </p>
-        </div>
-      </body>
-    </html>
-  `;
+<p
+  style="
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
+  "
+>
+  SchedulerPro
+</p>
+
+`;
 }

@@ -153,9 +153,10 @@ class UserRepository {
   public async updatePassword(id: string, passwordHash: string): Promise<void> {
     await User.findByIdAndUpdate(id, {
       passwordHash,
+      mustChangePassword: false,
+      passwordChangedAt: new Date(),
     });
   }
-
   /**
    * ==========================================================
    * Procura um utilizador por ID incluindo a palavra-passe.
