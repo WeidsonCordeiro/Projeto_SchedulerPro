@@ -27,7 +27,7 @@ class CompanyRepository {
    * ==========================================================
    */
   public async findById(
-    id: string | Types.ObjectId
+    id: string | Types.ObjectId,
   ): Promise<CompanyDocument | null> {
     return Company.findOne({
       _id: id,
@@ -44,7 +44,7 @@ class CompanyRepository {
    */
   public async findByName(name: string): Promise<CompanyDocument | null> {
     return Company.findOne({
-      name: name.trim().toLowerCase(),
+      name: name.trim(),
       deletedAt: null,
     });
   }
@@ -94,7 +94,7 @@ class CompanyRepository {
    */
   public async update(
     id: string,
-    data: UpdateCompanyDto
+    data: UpdateCompanyDto,
   ): Promise<CompanyDocument | null> {
     return Company.findByIdAndUpdate(id, data, {
       new: true,

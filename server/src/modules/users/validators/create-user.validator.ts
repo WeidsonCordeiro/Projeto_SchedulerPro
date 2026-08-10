@@ -18,9 +18,9 @@ export const createUserValidator = [
 
   body("email")
     .trim()
+    .toLowerCase()
     .isEmail()
-    .withMessage("O e-mail é inválido.")
-    .normalizeEmail(),
+    .withMessage("O e-mail é inválido."),
 
   body("password")
     .isLength({ min: 8 })
