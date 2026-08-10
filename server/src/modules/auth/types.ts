@@ -39,4 +39,5 @@ export interface AuthUser {
 export interface LoginResult {
   user: AuthUser;
   tokens: AuthTokens;
+  mustChangePassword: boolean;
 }

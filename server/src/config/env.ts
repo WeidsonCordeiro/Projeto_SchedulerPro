@@ -96,11 +96,11 @@ export const env = {
 
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
   },
-  resend: {
+  email: {
     /**
      * Resend
      */
-    RESEND_API_KEY: process.env.RESEND_API_KEY!,
+    RESEND_API_KEY: process.env.RESEND_API_KEY || "",
   },
   whatsApp: {
     /**
@@ -121,5 +121,11 @@ export const env = {
      * Sentry
      */
     SENTRY_DSN: process.env.SENTRY_DSN || "",
+  },
+  frontend: {
+    /**
+     * Frontend URL
+     * */
+    FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
   },
 };

@@ -14,7 +14,7 @@
 import { body } from "express-validator";
 
 export const loginValidator = [
-  body("email").trim().isEmail().withMessage("E-mail inválido"),
+  body("email").trim().toLowerCase().isEmail().withMessage("E-mail inválido"),
 
   body("password")
     .isString()

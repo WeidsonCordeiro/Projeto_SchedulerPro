@@ -16,11 +16,11 @@ import { body } from "express-validator";
 export const loginValidator = [
   body("email")
     .trim()
+    .toLowerCase()
     .notEmpty()
     .withMessage("E-mail é obrigatório.")
     .isEmail()
-    .withMessage("E-mail inválido.")
-    .normalizeEmail(),
+    .withMessage("E-mail inválido."),
 
   body("password")
     .notEmpty()

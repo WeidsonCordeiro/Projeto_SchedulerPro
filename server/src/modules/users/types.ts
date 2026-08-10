@@ -28,6 +28,7 @@ export interface CreateUserDTO {
   role: Role;
   phone?: string | null;
   avatar?: string | null;
+  mustChangePassword: boolean;
 }
 
 /**

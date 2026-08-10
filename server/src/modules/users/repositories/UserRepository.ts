@@ -31,7 +31,7 @@ class UserRepository {
    */
   public async findByEmail(email: string): Promise<UserDocument | null> {
     return User.findOne({
-      email: email.toLowerCase(),
+      email: email,
       deletedAt: null,
     }).select("+passwordHash");
   }
@@ -41,7 +41,7 @@ class UserRepository {
    */
   public async existsByEmail(email: string): Promise<boolean> {
     const exists = await User.exists({
-      email: email.toLowerCase(),
+      email: email,
       deletedAt: null,
     });
 
@@ -119,7 +119,7 @@ class UserRepository {
    * ==========================================================
    */
   public async findByCompanyId(
-    companyId: string | Types.ObjectId
+    companyId: string | Types.ObjectId,
   ): Promise<UserDocument[]> {
     return User.find({
       companyId,
@@ -153,16 +153,17 @@ class UserRepository {
   public async updatePassword(id: string, passwordHash: string): Promise<void> {
     await User.findByIdAndUpdate(id, {
       passwordHash,
+      mustChangePassword: false,
+      passwordChangedAt: new Date(),
     });
   }
-
   /**
    * ==========================================================
    * Procura um utilizador por ID incluindo a palavra-passe.
    * ==========================================================
    */
   public async findByIdWithPassword(
-    id: string | Types.ObjectId
+    id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
     return User.findById(id).select("+passwordHash");
   }
