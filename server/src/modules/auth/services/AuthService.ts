@@ -507,6 +507,31 @@ class AuthService {
       });
     }
   }
+
+  /**
+   * ==========================================================
+   * Verifica o e-mail de um utilizador.
+   * ==========================================================
+   */
+  public async verifyEmail(token: string): Promise<void> {
+    const payload = this.jwtProvider.verifyEmailVerificationToken(token);
+
+    if (payload.type !== TokenType.EMAIL_VERIFICATION) {
+      throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
+    }
+
+    const user = await this.userRepository.findById(payload.userId);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (user.emailVerified) {
+      return;
+    }
+
+    await this.userRepository.verifyEmail(payload.userId);
+  }
 }
 
 export default new AuthService();

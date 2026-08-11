@@ -68,7 +68,7 @@ class JwtProvider {
     return this.sign(
       payload,
       env.jwt.REFRESH_SECRET,
-      env.jwt.REFRESH_EXPIRES_IN
+      env.jwt.REFRESH_EXPIRES_IN,
     );
   }
 
@@ -124,7 +124,7 @@ class JwtProvider {
         type: TokenType.RESET_PASSWORD,
       },
       env.jwt.RESET_PASSWORD_SECRET,
-      env.jwt.RESET_PASSWORD_EXPIRES_IN
+      env.jwt.RESET_PASSWORD_EXPIRES_IN,
     );
   }
 
@@ -135,6 +135,31 @@ class JwtProvider {
    */
   public verifyResetPasswordToken(token: string): JwtPayload {
     return this.verify(token, env.jwt.RESET_PASSWORD_SECRET);
+  }
+
+  /**
+   * =====================================================
+   * Gera o token de verificação de email.
+   * =====================================================
+   */
+  public generateEmailVerificationToken(payload: JwtPayload): string {
+    return this.sign(
+      {
+        ...payload,
+        type: TokenType.EMAIL_VERIFICATION,
+      },
+      env.jwt.EMAIL_VERIFICATION_SECRET,
+      env.jwt.EMAIL_VERIFICATION_EXPIRES_IN,
+    );
+  }
+
+  /**
+   * =====================================================
+   * Verifica o token de verificação de email.
+   * =====================================================
+   */
+  public verifyEmailVerificationToken(token: string): JwtPayload {
+    return this.verify(token, env.jwt.EMAIL_VERIFICATION_SECRET);
   }
 }
 
