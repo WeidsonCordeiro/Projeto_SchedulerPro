@@ -167,6 +167,19 @@ class UserRepository {
   ): Promise<UserDocument | null> {
     return User.findById(id).select("+passwordHash");
   }
+
+  /**
+   * ==========================================================
+   * Busca dados necessários para controle de acesso.
+   * ==========================================================
+   */
+  public async findByIdForAccessControl(
+    id: string | Types.ObjectId,
+  ): Promise<UserDocument | null> {
+    return User.findById(id).select(
+      "_id mustChangePassword isActive deletedAt",
+    );
+  }
 }
 
 export default new UserRepository();

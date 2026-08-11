@@ -17,58 +17,66 @@ import { Permission } from "../../../constants/permissions";
 import { updateUserValidator } from "../validators/update-user.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { changePasswordValidator } from "../validators/change-password.validator";
+import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 
 const router = Router();
 
 router.get(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_READ),
-  UserController.findAll
+  UserController.findAll,
 );
 
 router.post(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_CREATE),
-  UserController.create
+  UserController.create,
 );
 
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_READ),
-  UserController.findById
+  UserController.findById,
 );
 
 router.put(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
   updateUserValidator,
   validateRequest,
-  UserController.update
+  UserController.update,
 );
 
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_DELETE),
-  UserController.delete
+  UserController.delete,
 );
 
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
-  UserController.activate
+  UserController.activate,
 );
 
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
-  UserController.deactivate
+  UserController.deactivate,
 );
 
 router.patch(
@@ -76,7 +84,7 @@ router.patch(
   AuthMiddleware.authenticate,
   changePasswordValidator,
   validateRequest,
-  UserController.changePassword
+  UserController.changePassword,
 );
 
 export default router;
