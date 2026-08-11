@@ -12,6 +12,7 @@ export const HttpMessages = {
   TOKEN_EXPIRED: "Token expirado.",
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
+  PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
   USER_NOT_UNAUTHORIZED: "Usuário não autorizado.",
