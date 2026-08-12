@@ -485,10 +485,20 @@ class AuthService {
   ): Promise<void> {
     const loginUrl = `${env.frontend.FRONTEND_URL}/login`;
 
+    const verificationToken = this.jwtProvider.generateEmailVerificationToken({
+      userId: user.id,
+      companyId: user.companyId.toString(),
+      role: user.role,
+      type: TokenType.EMAIL_VERIFICATION,
+    });
+
+    const verificationUrl = `${env.frontend.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+
     const html = welcomeTemplate({
       name: user.name,
       companyName: company.name,
       loginUrl,
+      verificationUrl,
     });
 
     try {

@@ -26,12 +26,15 @@ import CompanyRepository from "../../companies/repositories/CompanyRepository";
 import Logger from "../../../providers/logger";
 import { env } from "../../../config/env";
 import { Role } from "../../../constants/roles";
+import JwtProvider from "../../../providers/security/JwtProvider";
+import { TokenType } from "../../../constants/token-type";
 
 class UserService {
   private readonly userRepository = UserRepository;
   private readonly passwordProvider = PasswordProvider;
   private readonly resendProvider = ResendProvider;
   private readonly companyRepository = CompanyRepository;
+  private readonly jwtProvider = JwtProvider;
 
   /**
    * ==========================================================
@@ -67,10 +70,20 @@ class UserService {
 
     const loginUrl = `${env.frontend.FRONTEND_URL}/login`;
 
+    const verificationToken = this.jwtProvider.generateEmailVerificationToken({
+      userId: user.id,
+      companyId: user.companyId.toString(),
+      role: user.role,
+      type: TokenType.EMAIL_VERIFICATION,
+    });
+
+    const verificationUrl = `${env.frontend.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+
     const html = welcomeTemplate({
       name: user.name,
       companyName: company.name,
       loginUrl,
+      verificationUrl,
       temporaryPassword: dto.password,
     });
 
