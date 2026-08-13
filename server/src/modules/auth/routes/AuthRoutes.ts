@@ -25,6 +25,7 @@ import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { registerValidator } from "../validators/register.validator";
 import { forgotPasswordValidator } from "../validators/forgot-password.validator";
 import { resetPasswordValidator } from "../validators/reset-password.validator";
+import { verifyEmailValidator } from "../validators/verify-email.validator";
 
 const router = Router();
 
@@ -32,27 +33,29 @@ router.post(
   "/register",
   registerValidator,
   validateRequest,
-  AuthController.register
+  AuthController.register,
 );
-
 router.post("/login", loginValidator, validateRequest, AuthController.login);
 router.post("/refresh", AuthController.refresh);
-
 router.get("/me", AuthMiddleware.authenticate, AuthController.me);
+router.get(
+  "/verify-email",
+  verifyEmailValidator,
+  validateRequest,
+  AuthController.verifyEmail,
+);
 router.post("/logout", AuthMiddleware.authenticate, AuthController.logout);
-
 router.post(
   "/forgot-password",
   forgotPasswordValidator,
   validateRequest,
-  AuthController.forgotPassword
+  AuthController.forgotPassword,
 );
-
 router.post(
   "/reset-password",
   resetPasswordValidator,
   validateRequest,
-  AuthController.resetPassword
+  AuthController.resetPassword,
 );
 
 export default router;

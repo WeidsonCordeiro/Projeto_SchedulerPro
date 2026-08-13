@@ -69,6 +69,12 @@ export const env = {
      */
     RESET_PASSWORD_SECRET: process.env.RESET_PASSWORD_SECRET!,
     RESET_PASSWORD_EXPIRES_IN: process.env.RESET_PASSWORD_EXPIRES_IN || "1h",
+    /**
+     * Email Verification Token
+     */
+    EMAIL_VERIFICATION_SECRET: process.env.EMAIL_VERIFICATION_SECRET!,
+    EMAIL_VERIFICATION_EXPIRES_IN:
+      process.env.EMAIL_VERIFICATION_EXPIRES_IN || "1h",
   },
   mongo: {
     /**

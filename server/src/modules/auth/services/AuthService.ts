@@ -485,10 +485,20 @@ class AuthService {
   ): Promise<void> {
     const loginUrl = `${env.frontend.FRONTEND_URL}/login`;
 
+    const verificationToken = this.jwtProvider.generateEmailVerificationToken({
+      userId: user.id,
+      companyId: user.companyId.toString(),
+      role: user.role,
+      type: TokenType.EMAIL_VERIFICATION,
+    });
+
+    const verificationUrl = `${env.frontend.FRONTEND_URL}/verify-email?token=${verificationToken}`;
+
     const html = welcomeTemplate({
       name: user.name,
       companyName: company.name,
       loginUrl,
+      verificationUrl,
     });
 
     try {
@@ -506,6 +516,31 @@ class AuthService {
         companyId: company._id.toString(),
       });
     }
+  }
+
+  /**
+   * ==========================================================
+   * Verifica o e-mail de um utilizador.
+   * ==========================================================
+   */
+  public async verifyEmail(token: string): Promise<void> {
+    const payload = this.jwtProvider.verifyEmailVerificationToken(token);
+
+    if (payload.type !== TokenType.EMAIL_VERIFICATION) {
+      throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
+    }
+
+    const user = await this.userRepository.findById(payload.userId);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (user.emailVerified) {
+      return;
+    }
+
+    await this.userRepository.verifyEmail(payload.userId);
   }
 }
 

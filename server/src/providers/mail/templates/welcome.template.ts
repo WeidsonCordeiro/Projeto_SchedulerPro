@@ -14,6 +14,7 @@ interface WelcomeTemplateProps {
   name: string;
   companyName: string;
   loginUrl: string;
+  verificationUrl: string;
   temporaryPassword?: string;
 }
 
@@ -21,6 +22,7 @@ export function welcomeTemplate({
   name,
   companyName,
   loginUrl,
+  verificationUrl,
   temporaryPassword,
 }: WelcomeTemplateProps): string {
   /**
@@ -117,6 +119,38 @@ ${
     `
     : ""
 }
+
+<p>
+  Antes de aceder à plataforma, confirme o seu endereço de e-mail:
+</p>
+
+<div style="margin: 32px 0;">
+  <a
+    href="${verificationUrl}"
+    style="
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #16a34a;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    "
+  >
+    Verificar e-mail
+  </a>
+</div>
+
+<p
+  style="
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b7280;
+  "
+>
+  Este link é utilizado para confirmar que este endereço de e-mail
+  pertence a si.
+</p>
 
 <p>
   Para aceder à plataforma, clique no botão abaixo:

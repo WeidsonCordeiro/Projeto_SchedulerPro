@@ -137,6 +137,17 @@ class AuthController {
       "Palavra-passe alterada com sucesso.",
     );
   }
+
+  /**
+   * ======================================================
+   * Verifica o e-mail de um utilizador.
+   * ======================================================
+   */
+  public async verifyEmail(req: Request, res: Response): Promise<Response> {
+    await AuthService.verifyEmail(req.query.token as string);
+
+    return ResponseHandler.success(res, null, "E-mail verificado com sucesso.");
+  }
 }
 
 export default new AuthController();

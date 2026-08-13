@@ -180,6 +180,16 @@ class UserRepository {
       "_id mustChangePassword isActive deletedAt",
     );
   }
+  /**
+   * ==========================================================
+   * Marca o e-mail do utilizador como verificado.
+   * ==========================================================
+   */
+  public async verifyEmail(id: string): Promise<void> {
+    await User.findByIdAndUpdate(id, {
+      emailVerified: true,
+    });
+  }
 }
 
 export default new UserRepository();
