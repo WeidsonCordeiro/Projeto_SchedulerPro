@@ -125,7 +125,7 @@ class UserService {
 
   public async findById(id: string, companyId: string) {
     const user = await this.userRepository.findById(id);
-    console.log("UserService.findById - user:", user);
+
     if (!user) {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
