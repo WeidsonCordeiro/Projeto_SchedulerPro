@@ -277,6 +277,10 @@ class AuthService {
     if (locked) {
       throw new AppError(HttpMessages.USER_BLOCKED, HttpStatus.FORBIDDEN);
     }
+
+    if (!user.emailVerified) {
+      throw new AppError(HttpMessages.EMAIL_NOT_VERIFIED, HttpStatus.FORBIDDEN);
+    }
   }
 
   /**
