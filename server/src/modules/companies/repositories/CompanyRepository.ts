@@ -17,6 +17,7 @@
 import Company, { CompanyDocument } from "../models/Company.model";
 import { CreateCompanyDto, UpdateCompanyDto } from "../types";
 import { Types } from "mongoose";
+import { ClientSession } from "mongoose";
 
 class CompanyRepository {
   /**
@@ -83,8 +84,13 @@ class CompanyRepository {
    * Cria uma nova empresa.
    * ==========================================================
    */
-  public async create(data: CreateCompanyDto): Promise<CompanyDocument> {
-    return Company.create(data);
+  public async create(
+    data: CreateCompanyDto,
+    session?: ClientSession,
+  ): Promise<CompanyDocument> {
+    const [company] = await Company.create([data], { session });
+
+    return company;
   }
 
   /**

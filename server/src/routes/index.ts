@@ -19,12 +19,14 @@ import { ResponseHandler } from "../utils/response";
 import authRoutes from "../modules/auth/routes/AuthRoutes";
 import userRoutes from "../modules/users/routes/UserRoutes";
 import CompanyRoutes from "../modules/companies/routes/CompanyRoutes";
+import serviceRoutes from "../modules/services/routes/ServiceRoutes";
 
 const router = Router();
 
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/companies", CompanyRoutes);
+router.use("/services", serviceRoutes);
 
 /**
  * Health Check
@@ -40,7 +42,7 @@ router.get("/health", (req, res) => {
       timestamp: new Date(),
     },
 
-    "API funcionando."
+    "API funcionando.",
   );
 });
 
