@@ -13,6 +13,7 @@ export const HttpMessages = {
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
   PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",
+
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
   USER_NOT_UNAUTHORIZED: "Usuário não autorizado.",
@@ -46,6 +47,7 @@ export const HttpMessages = {
   PASSWORD_CHANGE_FAILED: "Falha ao alterar a senha.",
   PASSWORD_RESET_TOKEN_INVALID: "Token de redefinição de senha inválido.",
   PASSWORD_RESET_TOKEN_EXPIRED: "Token de redefinição de senha expirado.",
+
   /*Empresa*/
   COMPANY_FOUND: "Empresa encontrada.",
   COMPANIES_FOUND: "Empresas encontradas.",
@@ -57,4 +59,14 @@ export const HttpMessages = {
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
+
+  /*Serviço*/
+  SERVICE_FOUND: "Serviço encontrado.",
+  SERVICES_FOUND: "Serviços encontrados.",
+  SERVICE_NOT_FOUND: "Serviço não encontrado.",
+  SERVICE_CREATED: "Serviço criado com sucesso.",
+  SERVICE_UPDATED: "Serviço atualizado com sucesso.",
+  SERVICE_REMOVED: "Serviço removido com sucesso.",
+  SERVICE_ACTIVATED: "Serviço ativado com sucesso.",
+  SERVICE_DEACTIVATED: "Serviço desativado com sucesso.",
 } as const;

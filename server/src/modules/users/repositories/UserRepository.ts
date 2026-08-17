@@ -15,6 +15,7 @@ import { Types } from "mongoose";
 import User from "../models/User.model";
 import { CreateUserDTO, UpdateUserDTO } from "../types";
 import { UserDocument } from "../models/User.model";
+import { ClientSession } from "mongoose";
 
 class UserRepository {
   /**
@@ -51,8 +52,13 @@ class UserRepository {
   /**
    * Cria usuário.
    */
-  public async create(data: CreateUserDTO): Promise<UserDocument> {
-    return User.create(data);
+  public async create(
+    data: CreateUserDTO,
+    session?: ClientSession,
+  ): Promise<UserDocument> {
+    const [user] = await User.create([data], { session });
+
+    return user;
   }
 
   /**
