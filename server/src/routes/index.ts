@@ -20,6 +20,7 @@ import authRoutes from "../modules/auth/routes/AuthRoutes";
 import userRoutes from "../modules/users/routes/UserRoutes";
 import CompanyRoutes from "../modules/companies/routes/CompanyRoutes";
 import serviceRoutes from "../modules/services/routes/ServiceRoutes";
+import ClientRoutes from "../modules/Clients/routes/ClientRoutes";
 
 const router = Router();
 
@@ -27,6 +28,7 @@ router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/companies", CompanyRoutes);
 router.use("/services", serviceRoutes);
+router.use("/clients", ClientRoutes);
 
 /**
  * Health Check
