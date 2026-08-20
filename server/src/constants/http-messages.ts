@@ -69,4 +69,14 @@ export const HttpMessages = {
   SERVICE_REMOVED: "Serviço removido com sucesso.",
   SERVICE_ACTIVATED: "Serviço ativado com sucesso.",
   SERVICE_DEACTIVATED: "Serviço desativado com sucesso.",
+
+  /*Clientes*/
+  CLIENT_CREATED: "Cliente criado com sucesso.",
+  CLIENT_UPDATED: "Cliente atualizado com sucesso.",
+  CLIENT_DELETED: "Cliente removido com sucesso.",
+  CLIENT_FOUND: "Cliente encontrado.",
+  CLIENTS_FOUND: "Clientes encontrados.",
+  CLIENT_ACTIVATED: "Cliente ativado com sucesso.",
+  CLIENT_DEACTIVATED: "Cliente desativado com sucesso.",
+  CLIENT_NOT_FOUND: "Cliente não encontrado.",
 } as const;
