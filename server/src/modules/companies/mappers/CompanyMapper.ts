@@ -23,6 +23,7 @@ class CompanyMapper {
     return {
       id: company.id,
       name: company.name,
+      timezone: company.timezone,
       isActive: company.isActive,
       createdAt: company.createdAt,
       updatedAt: company.updatedAt,
