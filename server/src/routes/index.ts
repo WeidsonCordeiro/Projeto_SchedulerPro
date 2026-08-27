@@ -21,6 +21,7 @@ import userRoutes from "../modules/users/routes/UserRoutes";
 import CompanyRoutes from "../modules/companies/routes/CompanyRoutes";
 import serviceRoutes from "../modules/services/routes/ServiceRoutes";
 import ClientRoutes from "../modules/Clients/routes/ClientRoutes";
+import appointmentRoutes from "../modules/appointments/routes/AppointmentRoutes";
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.use("/users", userRoutes);
 router.use("/companies", CompanyRoutes);
 router.use("/services", serviceRoutes);
 router.use("/clients", ClientRoutes);
+router.use("/appointments", appointmentRoutes);
 
 /**
  * Health Check
