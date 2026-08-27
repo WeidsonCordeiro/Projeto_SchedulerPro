@@ -13,6 +13,7 @@ export const HttpMessages = {
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
   PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",
+
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
   USER_NOT_UNAUTHORIZED: "Usuário não autorizado.",
@@ -46,6 +47,7 @@ export const HttpMessages = {
   PASSWORD_CHANGE_FAILED: "Falha ao alterar a senha.",
   PASSWORD_RESET_TOKEN_INVALID: "Token de redefinição de senha inválido.",
   PASSWORD_RESET_TOKEN_EXPIRED: "Token de redefinição de senha expirado.",
+
   /*Empresa*/
   COMPANY_FOUND: "Empresa encontrada.",
   COMPANIES_FOUND: "Empresas encontradas.",
@@ -57,4 +59,41 @@ export const HttpMessages = {
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
+
+  /*Serviço*/
+  SERVICE_FOUND: "Serviço encontrado.",
+  SERVICES_FOUND: "Serviços encontrados.",
+  SERVICE_NOT_FOUND: "Serviço não encontrado.",
+  SERVICE_CREATED: "Serviço criado com sucesso.",
+  SERVICE_UPDATED: "Serviço atualizado com sucesso.",
+  SERVICE_REMOVED: "Serviço removido com sucesso.",
+  SERVICE_ACTIVATED: "Serviço ativado com sucesso.",
+  SERVICE_DEACTIVATED: "Serviço desativado com sucesso.",
+
+  /*Clientes*/
+  CLIENT_CREATED: "Cliente criado com sucesso.",
+  CLIENT_UPDATED: "Cliente atualizado com sucesso.",
+  CLIENT_DELETED: "Cliente removido com sucesso.",
+  CLIENT_FOUND: "Cliente encontrado.",
+  CLIENTS_FOUND: "Clientes encontrados.",
+  CLIENT_ACTIVATED: "Cliente ativado com sucesso.",
+  CLIENT_DEACTIVATED: "Cliente desativado com sucesso.",
+  CLIENT_NOT_FOUND: "Cliente não encontrado.",
+
+  /*Agendamentos*/
+  APPOINTMENT_CREATED: "Agendamento criado com sucesso.",
+  APPOINTMENT_UPDATED: "Agendamento atualizado com sucesso.",
+  APPOINTMENT_DELETED: "Agendamento removido com sucesso.",
+  APPOINTMENT_FOUND: "Agendamento encontrado.",
+  APPOINTMENTS_FOUND: "Agendamentos encontrados.",
+  APPOINTMENT_NOT_FOUND: "Agendamento não encontrado.",
+  EMPLOYEE_CONFLICT: "O funcionário já possui um agendamento neste horário.",
+  CLIENT_CONFLICT: "O cliente já possui um agendamento neste horário.",
+  APPOINTMENT_NO_SHOW: "Agendamento marcado como não comparecimento.",
+  APPOINTMENT_CANCELLED: "Agendamento cancelado com sucesso.",
+  APPOINTMENT_COMPLETED: "Agendamento concluído com sucesso.",
+  APPOINTMENT_CONFIRMED: "Agendamento confirmado com sucesso.",
+  STATUS_TRANSITION_NOT_ALLOWED:
+    "Não é possível alterar o status deste agendamento.",
+  STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
 } as const;

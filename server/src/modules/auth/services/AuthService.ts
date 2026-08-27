@@ -64,6 +64,7 @@ import ResendProvider from "../../../providers/mail/ResendProvider";
 import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-password.template";
 import { welcomeTemplate } from "../../../providers/mail/templates/welcome.template";
 import { env } from "../../../config/env";
+import mongoose, { ClientSession } from "mongoose";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -79,6 +80,7 @@ class AuthService {
 
   public async register(dto: RegisterDto): Promise<LoginResult> {
     Logger.auth("Tentativa de registro.", {
+      name: dto.name,
       email: dto.email,
       company: dto.company.name,
     });
@@ -89,13 +91,31 @@ class AuthService {
 
     await this.validateCompany(dto.company.name);
 
-    const company = await this.createCompany(dto);
+    const session = await mongoose.startSession();
 
-    const user = await this.createOwner(dto, company);
+    try {
+      session.startTransaction();
 
-    await this.sendWelcomeEmail(user, company);
+      const company = await this.createCompany(dto, session);
 
-    return this.authenticate(user);
+      const user = await this.createOwner(dto, company, session);
+
+      await session.commitTransaction();
+
+      await this.sendWelcomeEmail(user, company);
+
+      return this.authenticate(user);
+    } catch (error) {
+      Logger.error("Erro ao registar usuário.", {
+        name: dto.name,
+        email: dto.email,
+        company: dto.company.name,
+      });
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
   }
 
   public async login(dto: LoginDto): Promise<LoginResult> {
@@ -369,26 +389,36 @@ class AuthService {
   // Criação
   // ==========================================================
 
-  private async createCompany(dto: RegisterDto): Promise<CompanyDocument> {
-    return this.companyRepository.create({
-      name: dto.company.name,
-    });
+  private async createCompany(
+    dto: RegisterDto,
+    session: ClientSession,
+  ): Promise<CompanyDocument> {
+    return this.companyRepository.create(
+      {
+        name: dto.company.name,
+      },
+      session,
+    );
   }
 
   private async createOwner(
     dto: RegisterDto,
     company: CompanyDocument,
+    session: ClientSession,
   ): Promise<UserDocument> {
     const passwordHash = await this.passwordProvider.hash(dto.password);
 
-    return this.userRepository.create({
-      name: dto.name,
-      email: dto.email,
-      passwordHash,
-      companyId: company._id,
-      role: Role.OWNER,
-      mustChangePassword: false,
-    });
+    return this.userRepository.create(
+      {
+        name: dto.name,
+        email: dto.email,
+        passwordHash,
+        companyId: company._id,
+        role: Role.OWNER,
+        mustChangePassword: false,
+      },
+      session,
+    );
   }
 
   /**
