@@ -65,6 +65,7 @@ import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-p
 import { welcomeTemplate } from "../../../providers/mail/templates/welcome.template";
 import { env } from "../../../config/env";
 import mongoose, { ClientSession } from "mongoose";
+import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -79,6 +80,9 @@ class AuthService {
   // ==========================================================
 
   public async register(dto: RegisterDto): Promise<LoginResult> {
+    if (dto.company.timezone && !isValidIanaTimezone(dto.company.timezone)) {
+      throw new AppError(HttpMessages.TIMEZONE_INVALID, HttpStatus.BAD_REQUEST);
+    }
     Logger.auth("Tentativa de registro.", {
       name: dto.name,
       email: dto.email,
@@ -396,6 +400,7 @@ class AuthService {
     return this.companyRepository.create(
       {
         name: dto.company.name,
+        timezone: dto.company.timezone ?? DEFAULT_TIMEZONE,
       },
       session,
     );

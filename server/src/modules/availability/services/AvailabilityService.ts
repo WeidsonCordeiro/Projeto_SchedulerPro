@@ -30,11 +30,18 @@ import { Role } from "../../../constants/roles";
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
+import CompanyRepository from "../../companies/repositories/CompanyRepository";
+import {
+  formatLocalTime,
+  luxonWeekdayToDayOfWeek,
+  toCompanyDateTime,
+} from "../../../utils/timezone";
 
 class AvailabilityService {
   private readonly availabilityRepository = AvailabilityRepository;
 
   private readonly userRepository = UserRepository;
+  private readonly companyRepository = CompanyRepository;
 
   /**
    * ==========================================================
@@ -344,10 +351,20 @@ class AvailabilityService {
     /**
      * O agendamento não pode atravessar dias.
      */
+    const company = await this.companyRepository.findById(companyId);
+
+    if (!company) {
+      throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    const localStart = toCompanyDateTime(dateStart, company.timezone);
+
+    const localEnd = toCompanyDateTime(dateEnd, company.timezone);
+
     if (
-      dateStart.getFullYear() !== dateEnd.getFullYear() ||
-      dateStart.getMonth() !== dateEnd.getMonth() ||
-      dateStart.getDate() !== dateEnd.getDate()
+      !localStart.isValid ||
+      !localEnd.isValid ||
+      localStart.toISODate() !== localEnd.toISODate()
     ) {
       throw new AppError(
         HttpMessages.EMPLOYEE_NOT_AVAILABLE,
@@ -355,13 +372,9 @@ class AvailabilityService {
       );
     }
 
-    const day = dateStart.getDay() as DayOfWeek;
-
-    const pad = (value: number) => value.toString().padStart(2, "0");
-
-    const start = `${pad(dateStart.getHours())}:${pad(dateStart.getMinutes())}`;
-
-    const end = `${pad(dateEnd.getHours())}:${pad(dateEnd.getMinutes())}`;
+    const day = luxonWeekdayToDayOfWeek(localStart.weekday);
+    const start = formatLocalTime(localStart);
+    const end = formatLocalTime(localEnd);
 
     const availability = await this.availabilityRepository.findByEmployeeAndDay(
       companyId,

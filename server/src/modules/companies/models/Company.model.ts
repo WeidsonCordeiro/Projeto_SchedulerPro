@@ -13,6 +13,10 @@
  */
 
 import { HydratedDocument, Schema, model, Types } from "mongoose";
+import {
+  DEFAULT_TIMEZONE,
+  isValidIanaTimezone,
+} from "../../../utils/timezone";
 
 /**
  * ==========================================================
@@ -56,8 +60,12 @@ const CompanySchema = new Schema<ICompany>(
     timezone: {
       type: String,
       required: true,
-      default: "Europe/Lisbon",
+      default: DEFAULT_TIMEZONE,
       trim: true,
+      validate: {
+        validator: (value: string) => isValidIanaTimezone(value),
+        message: "Timezone IANA inválido.",
+      },
     },
 
     isActive: {

@@ -13,6 +13,7 @@ export const HttpMessages = {
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
   PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",
+  TIMEZONE_INVALID: "Timezone IANA inválido.",
 
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
