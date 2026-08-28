@@ -16,6 +16,7 @@ import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
 import { UpdateCompanyDto } from "../dto/UpdateCompany.dto";
+import { isValidIanaTimezone } from "../../../utils/timezone";
 
 class CompanyService {
   /**
@@ -57,6 +58,9 @@ class CompanyService {
    * ==========================================================
    */
   public async update(id: string, data: UpdateCompanyDto) {
+    if (data.timezone !== undefined && !isValidIanaTimezone(data.timezone)) {
+      throw new AppError(HttpMessages.TIMEZONE_INVALID, HttpStatus.BAD_REQUEST);
+    }
     const company = await CompanyRepository.findById(id);
 
     if (!company) {

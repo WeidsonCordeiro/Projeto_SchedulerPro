@@ -40,6 +40,11 @@ export const RolePermissions: Record<Role, Permission[]> = {
     Permission.APPOINTMENT_READ,
     Permission.APPOINTMENT_UPDATE,
     Permission.APPOINTMENT_DELETE,
+
+    Permission.AVAILABILITY_CREATE,
+    Permission.AVAILABILITY_READ,
+    Permission.AVAILABILITY_UPDATE,
+    Permission.AVAILABILITY_DELETE,
   ],
 
   [Role.ADMIN]: [
@@ -61,6 +66,10 @@ export const RolePermissions: Record<Role, Permission[]> = {
     Permission.APPOINTMENT_CREATE,
     Permission.APPOINTMENT_READ,
     Permission.APPOINTMENT_UPDATE,
+
+    Permission.AVAILABILITY_CREATE,
+    Permission.AVAILABILITY_READ,
+    Permission.AVAILABILITY_UPDATE,
   ],
 
   [Role.MANAGER]: [
@@ -73,6 +82,9 @@ export const RolePermissions: Record<Role, Permission[]> = {
     Permission.APPOINTMENT_CREATE,
     Permission.APPOINTMENT_READ,
     Permission.APPOINTMENT_UPDATE,
+
+    Permission.AVAILABILITY_READ,
+    Permission.AVAILABILITY_UPDATE,
   ],
 
   [Role.EMPLOYEE]: [
@@ -80,6 +92,7 @@ export const RolePermissions: Record<Role, Permission[]> = {
     Permission.SERVICE_READ,
     Permission.APPOINTMENT_READ,
     Permission.APPOINTMENT_UPDATE,
+    Permission.AVAILABILITY_READ,
   ],
 
   [Role.CLIENT]: [Permission.APPOINTMENT_READ],

@@ -18,6 +18,7 @@
  */
 
 import { body } from "express-validator";
+import { isValidIanaTimezone } from "../../../utils/timezone";
 
 export const registerValidator = [
   body("name")
@@ -35,4 +36,10 @@ export const registerValidator = [
     .bail()
     .custom((value, { req }) => value === req.body.password)
     .withMessage("As senhas não conferem."),
+  body("company.timezone")
+    .optional()
+    .isString()
+    .withMessage("O timezone deve ser um texto.")
+    .custom((value) => isValidIanaTimezone(value))
+    .withMessage("Timezone IANA inválido."),
 ];

@@ -9,24 +9,14 @@
  *
  * Toda informação da aplicação pertence a uma empresa.
  *
- * Este model será utilizado por:
- *
- * • Usuários
- * • Funcionários
- * • Clientes
- * • Serviços
- * • Agenda
- * • Financeiro
- *
- * Neste momento armazenamos apenas as informações
- * necessárias para o funcionamento da autenticação.
- *
- * Novos campos serão adicionados conforme os módulos
- * forem sendo implementados.
- *
  * ==========================================================
  */
+
 import { HydratedDocument, Schema, model, Types } from "mongoose";
+import {
+  DEFAULT_TIMEZONE,
+  isValidIanaTimezone,
+} from "../../../utils/timezone";
 
 /**
  * ==========================================================
@@ -35,6 +25,7 @@ import { HydratedDocument, Schema, model, Types } from "mongoose";
  */
 export interface ICompany {
   name: string;
+  timezone: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +47,27 @@ const CompanySchema = new Schema<ICompany>(
       unique: true,
     },
 
+    /**
+     * Timezone utilizado pela empresa.
+     *
+     * Utiliza o padrão IANA Time Zone.
+     *
+     * Exemplos:
+     * Europe/Lisbon
+     * America/Sao_Paulo
+     * Europe/London
+     */
+    timezone: {
+      type: String,
+      required: true,
+      default: DEFAULT_TIMEZONE,
+      trim: true,
+      validate: {
+        validator: (value: string) => isValidIanaTimezone(value),
+        message: "Timezone IANA inválido.",
+      },
+    },
+
     isActive: {
       type: Boolean,
       default: true,
@@ -70,7 +82,7 @@ const CompanySchema = new Schema<ICompany>(
     timestamps: true,
     versionKey: false,
     collection: "companies",
-  }
+  },
 );
 
 /**
@@ -90,9 +102,6 @@ CompanySchema.index({
 /**
  * ==========================================================
  * Remove informações internas antes de enviar ao cliente.
- *
- * __v
- *
  * ==========================================================
  */
 

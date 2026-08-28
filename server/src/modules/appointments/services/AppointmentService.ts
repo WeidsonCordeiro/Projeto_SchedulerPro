@@ -28,6 +28,7 @@ import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
+import AvailabilityService from "../../availability/services/AvailabilityService";
 
 class AppointmentService {
   private readonly appointmentRepository = AppointmentRepository;
@@ -106,6 +107,8 @@ class AppointmentService {
     const startAt = new Date(dto.startAt);
 
     const endAt = new Date(startAt.getTime() + service.duration * 60 * 1000);
+
+    await AvailabilityService.ensureEmployeeAvailable(companyId, dto.employeeId, startAt, endAt);
 
     /**
      * ----------------------------------------------------------
@@ -318,6 +321,8 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     const endAt = new Date(startAt.getTime() + service!.duration * 60 * 1000);
+
+    await AvailabilityService.ensureEmployeeAvailable(companyId, employeeId, startAt, endAt);
 
     /**
      * ----------------------------------------------------------

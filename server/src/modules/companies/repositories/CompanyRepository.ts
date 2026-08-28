@@ -115,7 +115,7 @@ class CompanyRepository {
    */
   public async softDelete(id: string): Promise<void> {
     await Company.findByIdAndUpdate(id, {
-      deletedAt: "",
+      deletedAt: new Date(),
     });
   }
 }

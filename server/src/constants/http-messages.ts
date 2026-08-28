@@ -13,6 +13,7 @@ export const HttpMessages = {
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
   PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",
+  TIMEZONE_INVALID: "Timezone IANA inválido.",
 
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
@@ -96,4 +97,15 @@ export const HttpMessages = {
   STATUS_TRANSITION_NOT_ALLOWED:
     "Não é possível alterar o status deste agendamento.",
   STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
+
+  /*Disponibilidade de funcionários*/
+  AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",
+  AVAILABILITY_UPDATED:
+    "Disponibilidade do funcionário atualizada com sucesso.",
+  AVAILABILITY_DELETED: "Disponibilidade do funcionário removida com sucesso.",
+  AVAILABILITY_FOUND: "Disponibilidade do funcionário encontrada.",
+  AVAILABILITIES_FOUND: "Disponibilidades do funcionário encontradas.",
+  AVAILABILITY_NOT_FOUND: "Disponibilidade do funcionário não encontrada.",
+
+  EMPLOYEE_NOT_AVAILABLE: "O funcionário não está disponível neste horário.",
 } as const;
