@@ -1,0 +1,23 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { appointmentRepository, clientRepository, serviceRepository, userRepository, availabilityService } = vi.hoisted(() => ({ appointmentRepository: { findById: vi.fn(), create: vi.fn(), update: vi.fn(), updateStatus: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(), softDelete: vi.fn() }, clientRepository: { findById: vi.fn() }, serviceRepository: { findById: vi.fn() }, userRepository: { findById: vi.fn() }, availabilityService: { ensureEmployeeAvailable: vi.fn() } }));
+vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({ default: appointmentRepository }));
+vi.mock("../../../src/modules/Clients/repositories/ClientRepository", () => ({ default: clientRepository }));
+vi.mock("../../../src/modules/services/repositories/ServiceRepository", () => ({ default: serviceRepository }));
+vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
+vi.mock("../../../src/modules/availability/services/AvailabilityService", () => ({ default: availabilityService }));
+import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
+import { AppointmentStatus } from "../../../src/constants/appointment-status";
+import { AppError } from "../../../src/errors/AppError";
+
+const companyId = "507f1f77bcf86cd799439011"; const clientId = "507f1f77bcf86cd799439012"; const serviceId = "507f1f77bcf86cd799439013"; const employeeId = "507f1f77bcf86cd799439014";
+const entity = (extra = {}) => ({ _id: { toString: () => "507f1f77bcf86cd799439015" }, companyId: { toString: () => companyId }, clientId: { toString: () => clientId }, serviceId: { toString: () => serviceId }, employeeId: { toString: () => employeeId }, startAt: new Date("2026-08-30T17:00:00Z"), endAt: new Date("2026-08-30T17:30:00Z"), status: AppointmentStatus.SCHEDULED, notes: null, createdAt: new Date(), updatedAt: new Date(), ...extra });
+beforeEach(() => { vi.clearAllMocks(); clientRepository.findById.mockResolvedValue({ companyId: { toString: () => companyId }, isActive: true }); serviceRepository.findById.mockResolvedValue({ companyId: { toString: () => companyId }, isActive: true, duration: 30 }); userRepository.findById.mockResolvedValue({ companyId: { toString: () => companyId }, isActive: true }); appointmentRepository.hasEmployeeConflict.mockResolvedValue(false); appointmentRepository.hasClientConflict.mockResolvedValue(false); appointmentRepository.create.mockResolvedValue(entity()); appointmentRepository.updateStatus.mockResolvedValue(entity({ status: AppointmentStatus.CONFIRMED })); });
+
+describe("AppointmentService", () => {
+  it("cria appointment e valida disponibilidade", async () => { await AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId); expect(availabilityService.ensureEmployeeAvailable).toHaveBeenCalled(); });
+  it("rejeita conflito de funcionário e cliente", async () => { availabilityService.ensureEmployeeAvailable.mockResolvedValue(undefined); appointmentRepository.hasEmployeeConflict.mockResolvedValue(true); await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId)).rejects.toBeInstanceOf(AppError); appointmentRepository.hasEmployeeConflict.mockResolvedValue(false); appointmentRepository.hasClientConflict.mockResolvedValue(true); await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId)).rejects.toBeInstanceOf(AppError); });
+  it("propaga indisponibilidade do funcionário", async () => { availabilityService.ensureEmployeeAvailable.mockRejectedValue(new AppError("indisponível", 409)); await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId)).rejects.toThrow("indisponível"); });
+  it("permite transição válida e rejeita inválida", async () => { const id = "507f1f77bcf86cd799439015"; appointmentRepository.findById.mockResolvedValue(entity()); await expect(AppointmentService.confirm(id, companyId)).resolves.toBeTruthy(); appointmentRepository.findById.mockResolvedValue(entity({ status: AppointmentStatus.COMPLETED })); await expect(AppointmentService.confirm(id, companyId)).rejects.toBeInstanceOf(AppError); });
+  it("impede acesso a appointment de outra empresa", async () => { appointmentRepository.findById.mockResolvedValue(entity({ companyId: { toString: () => "507f1f77bcf86cd799439099" } })); await expect(AppointmentService.findById("507f1f77bcf86cd799439015", companyId)).rejects.toBeInstanceOf(AppError); });
+});
