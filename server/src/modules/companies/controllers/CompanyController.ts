@@ -22,8 +22,8 @@ class CompanyController {
    * Lista todas as empresas.
    * ==========================================================
    */
-  public async findAll(_: Request, res: Response) {
-    const companies = await CompanyService.findAll();
+  public async findAll(req: Request, res: Response) {
+    const companies = await CompanyService.findAll(req.user!.companyId);
 
     return ResponseHandler.success(
       res,
@@ -38,7 +38,7 @@ class CompanyController {
    * ==========================================================
    */
   public async findById(req: Request, res: Response) {
-    const company = await CompanyService.findById(String(req.params.id));
+    const company = await CompanyService.findById(String(req.params.id), req.user!.companyId);
 
     return ResponseHandler.success(res, company, HttpMessages.COMPANY_FOUND);
   }
@@ -51,7 +51,8 @@ class CompanyController {
   public async update(req: Request, res: Response) {
     const company = await CompanyService.update(
       String(req.params.id),
-      req.body
+      req.body,
+      req.user!.companyId,
     );
 
     return ResponseHandler.success(res, company, HttpMessages.COMPANY_UPDATED);
@@ -63,7 +64,7 @@ class CompanyController {
    * ==========================================================
    */
   public async delete(req: Request, res: Response) {
-    await CompanyService.delete(String(req.params.id));
+    await CompanyService.delete(String(req.params.id), req.user!.companyId);
 
     return ResponseHandler.success(res, null, HttpMessages.COMPANY_REMOVED);
   }
@@ -74,7 +75,7 @@ class CompanyController {
    * ==========================================================
    */
   public async activate(req: Request, res: Response) {
-    const company = await CompanyService.activate(String(req.params.id));
+    const company = await CompanyService.activate(String(req.params.id), req.user!.companyId);
 
     return ResponseHandler.success(
       res,
@@ -89,7 +90,7 @@ class CompanyController {
    * ==========================================================
    */
   public async deactivate(req: Request, res: Response) {
-    const company = await CompanyService.deactivate(String(req.params.id));
+    const company = await CompanyService.deactivate(String(req.params.id), req.user!.companyId);
 
     return ResponseHandler.success(
       res,
