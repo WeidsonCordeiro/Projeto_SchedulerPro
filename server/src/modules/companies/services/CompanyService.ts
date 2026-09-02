@@ -17,14 +17,28 @@ import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
 import { UpdateCompanyDto } from "../dto/UpdateCompany.dto";
 import { isValidIanaTimezone } from "../../../utils/timezone";
+import { Types } from "mongoose";
 
 class CompanyService {
+  private ensureValidId(id: string): void {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+  }
+
+  private ensureTenant(id: string, companyId: string): void {
+    this.ensureValidId(id);
+    if (id !== companyId) {
+      throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+  }
   /**
    * ==========================================================
    * Procura uma empresa pelo ID.
    * ==========================================================
    */
-  public async findById(id: string) {
+  public async findById(id: string, companyId: string) {
+    this.ensureTenant(id, companyId);
     const company = await CompanyRepository.findById(id);
 
     if (!company) {
@@ -39,8 +53,8 @@ class CompanyService {
    * Procura todas as empresas.
    * ==========================================================
    */
-  public async findAll() {
-    const companies = await CompanyRepository.findAll();
+  public async findAll(companyId: string) {
+    const companies = await CompanyRepository.findAll(companyId);
 
     return CompanyMapper.toResponseList(companies);
   }
@@ -57,7 +71,8 @@ class CompanyService {
    * Atualiza uma empresa.
    * ==========================================================
    */
-  public async update(id: string, data: UpdateCompanyDto) {
+  public async update(id: string, data: UpdateCompanyDto, companyId: string) {
+    this.ensureTenant(id, companyId);
     if (data.timezone !== undefined && !isValidIanaTimezone(data.timezone)) {
       throw new AppError(HttpMessages.TIMEZONE_INVALID, HttpStatus.BAD_REQUEST);
     }
@@ -77,7 +92,8 @@ class CompanyService {
    * Remove uma empresa.
    * ==========================================================
    */
-  public async delete(id: string): Promise<void> {
+  public async delete(id: string, companyId: string): Promise<void> {
+    this.ensureTenant(id, companyId);
     const company = await CompanyRepository.findById(id);
 
     if (!company) {
@@ -92,7 +108,8 @@ class CompanyService {
    * Ativa uma empresa.
    * ==========================================================
    */
-  public async activate(id: string) {
+  public async activate(id: string, companyId: string) {
+    this.ensureTenant(id, companyId);
     const company = await CompanyRepository.findById(id);
 
     if (!company) {
@@ -109,7 +126,8 @@ class CompanyService {
    * Desativa uma empresa.
    * ==========================================================
    */
-  public async deactivate(id: string) {
+  public async deactivate(id: string, companyId: string) {
+    this.ensureTenant(id, companyId);
     const company = await CompanyRepository.findById(id);
 
     if (!company) {
