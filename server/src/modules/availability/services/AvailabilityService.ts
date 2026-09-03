@@ -20,10 +20,7 @@ import UserRepository from "../../users/repositories/UserRepository";
 import { CreateAvailabilityDto } from "../dto/CreateAvailability.dto";
 import { UpdateAvailabilityDto } from "../dto/UpdateAvailability.dto";
 
-import {
-  DayOfWeek,
-  EmployeeAvailability,
-} from "../models/EmployeeAvailability.model";
+import { EmployeeAvailability } from "../models/EmployeeAvailability.model";
 
 import { Role } from "../../../constants/roles";
 

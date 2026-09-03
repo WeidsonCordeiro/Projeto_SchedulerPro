@@ -39,7 +39,7 @@ router.use("/availability", availabilityRoutes);
  * ==========================================================
  * Para verificar se a API está viva.
  */
-router.get("/health", (req, res) => {
+router.get("/health", (_req, res) => {
   return ResponseHandler.success(
     res,
 

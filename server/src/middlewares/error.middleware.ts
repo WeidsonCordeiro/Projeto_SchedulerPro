@@ -20,13 +20,12 @@ import { AppError } from "../errors/AppError";
 import { ResponseHandler } from "../utils/response";
 import { logger } from "../config/logger";
 import { HttpStatus } from "../constants/http-status";
-import { http } from "winston";
 
 export function errorMiddleware(
   error: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): Response | void {
   /**
    * Log completo da requisição.
