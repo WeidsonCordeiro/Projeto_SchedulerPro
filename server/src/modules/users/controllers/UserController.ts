@@ -48,7 +48,11 @@ class UserController {
    * ==========================================================
    */
   public async create(req: Request, res: Response) {
-    const user = await UserService.create(req.body, req.user!.companyId);
+    const user = await UserService.create(
+      req.body,
+      req.user!.companyId,
+      req.user!.role,
+    );
 
     return ResponseHandler.success(res, user, HttpMessages.USER_CREATED);
   }
@@ -62,7 +66,9 @@ class UserController {
     const user = await UserService.update(
       String(req.params.id),
       req.body,
-      req.user!.companyId
+      req.user!.companyId,
+      req.user!.userId,
+      req.user!.role,
     );
     return ResponseHandler.success(res, user, HttpMessages.USER_UPDATED);
   }
