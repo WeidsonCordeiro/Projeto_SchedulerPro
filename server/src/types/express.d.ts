@@ -23,6 +23,7 @@ declare global {
         companyId: string;
         role: Role;
       };
+      requestId?: string;
     }
   }
 }

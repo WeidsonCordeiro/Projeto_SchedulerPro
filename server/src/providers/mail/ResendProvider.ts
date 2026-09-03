@@ -11,7 +11,6 @@
 
 import { Resend } from "resend";
 
-import Logger from "../logger";
 import EmailProvider from "./EmailProvider";
 import { SendMailDto } from "./types";
 import { env } from "../../config/env";

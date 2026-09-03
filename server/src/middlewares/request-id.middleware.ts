@@ -13,7 +13,7 @@
 
 import { Request, Response, NextFunction } from "express";
 
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 
 export function requestIdMiddleware(
   req: Request,
@@ -21,6 +21,6 @@ export function requestIdMiddleware(
 
   next: NextFunction
 ): void {
-  req.requestId = uuidv4();
+  req.requestId = randomUUID();
   next();
 }
