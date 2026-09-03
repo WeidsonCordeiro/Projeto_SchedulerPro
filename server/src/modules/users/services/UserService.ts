@@ -25,7 +25,7 @@ import { welcomeTemplate } from "../../../providers/mail/templates/welcome.templ
 import CompanyRepository from "../../companies/repositories/CompanyRepository";
 import Logger from "../../../providers/logger";
 import { env } from "../../../config/env";
-import { Role } from "../../../constants/roles";
+import { Role, canAssignRole } from "../../../constants/roles";
 import JwtProvider from "../../../providers/security/JwtProvider";
 import { TokenType } from "../../../constants/token-type";
 
@@ -41,7 +41,8 @@ class UserService {
    * Cria um novo utilizador.
    * ==========================================================
    */
-  public async create(dto: CreateUserDto, companyId: string) {
+  public async create(dto: CreateUserDto, companyId: string, actorRole: Role) {
+    this.validateRoleAssignment(actorRole, dto.role);
     const exists = await this.userRepository.existsByEmail(dto.email);
 
     if (exists) {
@@ -162,7 +163,13 @@ class UserService {
    * Atualizar um utilizador.
    * ==========================================================
    */
-  public async update(id: string, dto: UpdateUserDto, companyId: string) {
+  public async update(
+    id: string,
+    dto: UpdateUserDto,
+    companyId: string,
+    actorUserId: string,
+    actorRole: Role,
+  ) {
     const user = await this.userRepository.findById(id);
     if (!user) {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
@@ -173,8 +180,26 @@ class UserService {
         HttpStatus.FORBIDDEN,
       );
     }
+    if (dto.role !== undefined) {
+      if (actorUserId === id && dto.role !== actorRole) {
+        throw new AppError(
+          HttpMessages.USER_NOT_PREVILEGES,
+          HttpStatus.FORBIDDEN,
+        );
+      }
+      this.validateRoleAssignment(actorRole, dto.role);
+    }
     const updatedUser = await this.userRepository.update(id, dto);
     return UserMapper.toResponse(updatedUser!);
+  }
+
+  private validateRoleAssignment(actorRole: Role, targetRole: Role): void {
+    if (!canAssignRole(actorRole, targetRole)) {
+      throw new AppError(
+        HttpMessages.USER_NOT_PREVILEGES,
+        HttpStatus.FORBIDDEN,
+      );
+    }
   }
 
   /**

@@ -44,3 +44,8 @@ export const RoleHierarchy: Record<Role, number> = {
   [Role.EMPLOYEE]: 40,
   [Role.CLIENT]: 10,
 };
+
+export function canAssignRole(actorRole: Role, targetRole: Role): boolean {
+  if (actorRole === Role.CLIENT) return false;
+  return RoleHierarchy[actorRole] >= RoleHierarchy[targetRole];
+}
