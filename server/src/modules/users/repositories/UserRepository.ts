@@ -13,7 +13,7 @@
 
 import { Types } from "mongoose";
 import User from "../models/User.model";
-import { CreateUserDTO, UpdateUserDTO } from "../types";
+import { CreateUserData, UpdateUserData } from "../types";
 import { UserDocument } from "../models/User.model";
 import { ClientSession } from "mongoose";
 
@@ -53,7 +53,7 @@ class UserRepository {
    * Cria usuário.
    */
   public async create(
-    data: CreateUserDTO,
+    data: CreateUserData,
     session?: ClientSession,
   ): Promise<UserDocument> {
     const [user] = await User.create([data], { session });
@@ -64,7 +64,7 @@ class UserRepository {
   /**
    * Atualiza usuário.
    */
-  public async update(id: string, data: UpdateUserDTO) {
+  public async update(id: string, data: UpdateUserData) {
     return User.findByIdAndUpdate(id, data, {
       new: true,
       runValidators: true,

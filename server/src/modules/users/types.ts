@@ -20,7 +20,7 @@ import { Role } from "../../constants/roles";
 /**
  * Dados necessários para criar um usuário.
  */
-export interface CreateUserDTO {
+export interface CreateUserData {
   name: string;
   email: string;
   passwordHash: string;
@@ -34,4 +34,4 @@ export interface CreateUserDTO {
 /**
  * Dados permitidos para atualização.
  */
-export type UpdateUserDTO = Partial<CreateUserDTO>;
+export type UpdateUserData = Partial<CreateUserData>;
