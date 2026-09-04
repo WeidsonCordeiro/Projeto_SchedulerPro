@@ -18,6 +18,7 @@ import { updateUserValidator } from "../validators/update-user.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { changePasswordValidator } from "../validators/change-password.validator";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
 
 const router = Router();
 
@@ -40,6 +41,7 @@ router.post(
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_READ),
   UserController.findById,
@@ -48,6 +50,7 @@ router.get(
 router.put(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
   updateUserValidator,
@@ -58,6 +61,7 @@ router.put(
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_DELETE),
   UserController.delete,
@@ -66,6 +70,7 @@ router.delete(
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
   UserController.activate,
@@ -74,6 +79,7 @@ router.patch(
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
   UserController.deactivate,

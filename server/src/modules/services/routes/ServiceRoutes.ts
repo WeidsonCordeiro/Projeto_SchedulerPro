@@ -20,6 +20,7 @@ import { Permission } from "../../../constants/permissions";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { createServiceValidator } from "../validators/create-service.validator";
 import { updateServiceValidator } from "../validators/update-service.validator";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
 
 const router = Router();
 
@@ -39,6 +40,7 @@ router.get(
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.SERVICE_READ),
   ServiceController.findById,
 );
@@ -67,6 +69,7 @@ router.post(
 router.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.SERVICE_UPDATE),
   updateServiceValidator,
   validateRequest,
@@ -82,6 +85,7 @@ router.patch(
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.SERVICE_DELETE),
   ServiceController.delete,
 );
@@ -95,6 +99,7 @@ router.delete(
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.SERVICE_UPDATE),
   ServiceController.activate,
 );
@@ -108,6 +113,7 @@ router.patch(
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.SERVICE_UPDATE),
   ServiceController.deactivate,
 );

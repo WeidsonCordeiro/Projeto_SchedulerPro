@@ -19,6 +19,7 @@ import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
 import { createAppointmentValidator } from "../validators/create-appointment.validator";
 import { updateAppointmentValidator } from "../validators/update-appointment.validator";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
 
 const appointmentRoutes = Router();
 
@@ -58,6 +59,7 @@ appointmentRoutes.get(
 appointmentRoutes.patch(
   "/:id/confirm",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.confirm,
 );
@@ -70,6 +72,7 @@ appointmentRoutes.patch(
 appointmentRoutes.patch(
   "/:id/complete",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.complete,
 );
@@ -82,6 +85,7 @@ appointmentRoutes.patch(
 appointmentRoutes.patch(
   "/:id/cancel",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.cancel,
 );
@@ -94,6 +98,7 @@ appointmentRoutes.patch(
 appointmentRoutes.patch(
   "/:id/no-show",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.markAsNoShow,
 );
@@ -107,6 +112,7 @@ appointmentRoutes.patch(
 appointmentRoutes.get(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_READ),
   AppointmentController.findById,
 );
@@ -120,6 +126,7 @@ appointmentRoutes.get(
 appointmentRoutes.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   updateAppointmentValidator,
   validateRequest,
@@ -137,6 +144,7 @@ appointmentRoutes.patch(
 appointmentRoutes.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_DELETE),
   AppointmentController.delete,
 );
