@@ -27,6 +27,7 @@ import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
 import { createClientValidator } from "../validators/create-client.validator";
 import { updateClientValidator } from "../validators/update-client.validator";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
 
 const router = Router();
 
@@ -64,6 +65,7 @@ router.get(
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_READ),
   ClientController.findById,
 );
@@ -76,6 +78,7 @@ router.get(
 router.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   updateClientValidator,
   validateRequest,
@@ -90,6 +93,7 @@ router.patch(
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.deactivate,
 );
@@ -102,6 +106,7 @@ router.patch(
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.activate,
 );
@@ -116,6 +121,7 @@ router.patch(
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_DELETE),
   ClientController.delete,
 );
