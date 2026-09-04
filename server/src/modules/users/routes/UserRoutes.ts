@@ -19,6 +19,7 @@ import { validateRequest } from "../../../middlewares/validation.middleware";
 import { changePasswordValidator } from "../validators/change-password.validator";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import { createUserValidator } from "../validators/create-user.validator";
 
 const router = Router();
 
@@ -35,6 +36,8 @@ router.post(
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_CREATE),
+  createUserValidator,
+  validateRequest,
   UserController.create,
 );
 
