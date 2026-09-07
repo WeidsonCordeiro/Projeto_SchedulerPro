@@ -1,5 +1,5 @@
 import { DateTime, IANAZone } from "luxon";
-import { DayOfWeek } from "../modules/availability/models/EmployeeAvailability.model";
+import type { DayOfWeek } from "../modules/availability/models/EmployeeAvailability.model";
 
 export const DEFAULT_TIMEZONE = "Europe/Lisbon";
 
