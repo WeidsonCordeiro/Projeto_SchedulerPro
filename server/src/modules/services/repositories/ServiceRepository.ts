@@ -87,7 +87,7 @@ class ServiceRepository {
    * ==========================================================
    */
   public async softDelete(id: string): Promise<void> {
-    await Service.findByIdAndUpdate(id, {
+    await Service.findOneAndUpdate({ _id: id, deletedAt: null }, {
       deletedAt: new Date(),
     });
   }

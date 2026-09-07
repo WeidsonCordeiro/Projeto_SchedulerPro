@@ -72,7 +72,7 @@ class AppointmentRepository {
     id: string | Types.ObjectId,
     data: UpdateAppointmentData,
   ): Promise<AppointmentDocument | null> {
-    return Appointment.findByIdAndUpdate(id, data, {
+    return Appointment.findOneAndUpdate({ _id: id, deletedAt: null }, data, {
       new: true,
       runValidators: true,
     });
@@ -88,8 +88,8 @@ class AppointmentRepository {
     id: string | Types.ObjectId,
     status: AppointmentStatus,
   ): Promise<AppointmentDocument | null> {
-    return Appointment.findByIdAndUpdate(
-      id,
+    return Appointment.findOneAndUpdate(
+      { _id: id, deletedAt: null },
       { status },
       {
         new: true,
@@ -191,7 +191,7 @@ class AppointmentRepository {
 * ==========================================================
   */
   public async softDelete(id: string | Types.ObjectId): Promise<void> {
-    await Appointment.findByIdAndUpdate(id, {
+    await Appointment.findOneAndUpdate({ _id: id, deletedAt: null }, {
       deletedAt: new Date(),
     });
   }
