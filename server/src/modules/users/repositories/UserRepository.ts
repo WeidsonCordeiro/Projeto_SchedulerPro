@@ -22,7 +22,7 @@ class UserRepository {
    * Busca por ID.
    */
   public async findById(id: string | Types.ObjectId) {
-    return User.findById(id);
+    return User.findOne({ _id: id, deletedAt: null });
   }
 
   /**
@@ -65,7 +65,7 @@ class UserRepository {
    * Atualiza usuário.
    */
   public async update(id: string, data: UpdateUserData) {
-    return User.findByIdAndUpdate(id, data, {
+    return User.findOneAndUpdate({ _id: id, deletedAt: null }, data, {
       new: true,
       runValidators: true,
     });
@@ -75,7 +75,7 @@ class UserRepository {
    * Soft Delete.
    */
   public async softDelete(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       deletedAt: new Date(),
     });
   }
@@ -84,7 +84,7 @@ class UserRepository {
    * Atualiza data do último login.
    */
   public async updateLastLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       lastLogin: new Date(),
     });
   }
@@ -93,7 +93,7 @@ class UserRepository {
    * Reseta tentativas de login.
    */
   public async resetFailedLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       failedLoginAttempts: 0,
       lockUntil: null,
     });
@@ -103,7 +103,7 @@ class UserRepository {
    * Incrementa tentativas de login.
    */
   public async incrementFailedLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       $inc: {
         failedLoginAttempts: 1,
       },
@@ -114,7 +114,7 @@ class UserRepository {
    * Bloqueia usuário.
    */
   public async lockUser(id: string, until: Date): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       lockUntil: until,
     });
   }
@@ -139,7 +139,11 @@ class UserRepository {
    * ==========================================================
    */
   public async activate(id: string) {
-    return User.findByIdAndUpdate(id, { isActive: true }, { new: true });
+    return User.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { isActive: true },
+      { new: true },
+    );
   }
 
   /**
@@ -148,7 +152,11 @@ class UserRepository {
    * ==========================================================
    */
   public async deactivate(id: string) {
-    return User.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    return User.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { isActive: false },
+      { new: true },
+    );
   }
 
   /**
@@ -157,7 +165,7 @@ class UserRepository {
    * ==========================================================
    */
   public async updatePassword(id: string, passwordHash: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       passwordHash,
       mustChangePassword: false,
       passwordChangedAt: new Date(),
@@ -171,7 +179,7 @@ class UserRepository {
   public async findByIdWithPassword(
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
-    return User.findById(id).select("+passwordHash");
+    return User.findOne({ _id: id, deletedAt: null }).select("+passwordHash");
   }
 
   /**
@@ -182,7 +190,7 @@ class UserRepository {
   public async findByIdForAccessControl(
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
-    return User.findById(id).select(
+    return User.findOne({ _id: id, deletedAt: null }).select(
       "_id mustChangePassword isActive deletedAt",
     );
   }
@@ -192,7 +200,7 @@ class UserRepository {
    * ==========================================================
    */
   public async verifyEmail(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       emailVerified: true,
     });
   }
