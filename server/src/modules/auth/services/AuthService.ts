@@ -330,6 +330,7 @@ class AuthService {
       role: user.role,
       companyId: user.companyId.toString(),
       isActive: user.isActive,
+      mustChangePassword: user.mustChangePassword,
     };
   }
 
