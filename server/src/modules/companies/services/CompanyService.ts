@@ -82,7 +82,11 @@ class CompanyService {
       throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const updatedCompany = await CompanyRepository.update(id, data);
+    const updateData: UpdateCompanyDto = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.timezone !== undefined) updateData.timezone = data.timezone;
+
+    const updatedCompany = await CompanyRepository.update(id, updateData);
 
     return CompanyMapper.toResponse(updatedCompany!);
   }

@@ -19,6 +19,16 @@ vi.mock("../../../src/middlewares/permission.middleware", () => ({
     next(),
 }));
 
+vi.mock("../../../src/middlewares/require-password-change.middleware", () => ({
+  default: {
+    requirePasswordChangeCompleted: (
+      _req: express.Request,
+      _res: express.Response,
+      next: express.NextFunction,
+    ) => next(),
+  },
+}));
+
 vi.mock("../../../src/modules/services/controllers/ServiceController", () => ({
   default: {
     findAll: (_req: express.Request, res: express.Response) => res.json([]),

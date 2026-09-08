@@ -71,7 +71,13 @@ class ClientService {
    * ==========================================================
    */
   public async update(id: string, dto: UpdateClientDto, companyId: string) {
-    const client = await this.clientRepository.update(id, companyId, dto);
+    const updateData: UpdateClientDto = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.phone !== undefined) updateData.phone = dto.phone;
+    if (dto.notes !== undefined) updateData.notes = dto.notes;
+
+    const client = await this.clientRepository.update(id, companyId, updateData);
 
     if (!client) {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);

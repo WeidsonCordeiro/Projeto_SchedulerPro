@@ -191,7 +191,7 @@ class UserRepository {
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
     return User.findOne({ _id: id, deletedAt: null }).select(
-      "_id mustChangePassword isActive deletedAt",
+      "_id companyId role mustChangePassword isActive lockUntil deletedAt",
     );
   }
   /**
