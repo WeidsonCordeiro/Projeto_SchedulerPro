@@ -42,7 +42,7 @@ export function hasPermission(permission: Permission) {
 
     const permissions = RolePermissions[req.user.role];
 
-    if (!permissions.includes(permission)) {
+    if (!permissions || !permissions.includes(permission)) {
       throw new AppError(
         HttpMessages.USER_NOT_PREVILEGES,
         HttpStatus.FORBIDDEN

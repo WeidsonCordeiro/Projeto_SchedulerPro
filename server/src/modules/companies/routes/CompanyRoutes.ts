@@ -17,6 +17,8 @@ import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import { updateCompanyValidator } from "../validators/update-company.validator";
+import { validateRequest } from "../../../middlewares/validation.middleware";
 
 const router = Router();
 
@@ -43,6 +45,8 @@ router.patch(
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_UPDATE),
+  updateCompanyValidator,
+  validateRequest,
   CompanyController.update,
 );
 

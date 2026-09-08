@@ -71,6 +71,17 @@ describe("UserService.create/update", () => {
     expect(userRepository.update).toHaveBeenCalledWith(userId, { name: "Atualizado", role: Role.MANAGER });
   });
 
+  it("ignora campos administrativos enviados no update", async () => {
+    await UserService.update(userId, {
+      name: "Seguro",
+      role: Role.MANAGER,
+      companyId: "507f1f77bcf86cd799439099",
+      isActive: false,
+      deletedAt: new Date(),
+    } as never, companyId, "other-user", Role.ADMIN);
+    expect(userRepository.update).toHaveBeenCalledWith(userId, { name: "Seguro", role: Role.MANAGER });
+  });
+
   it.each([
     ["inexistente", null, companyId, { statusCode: HttpStatus.NOT_FOUND }],
     ["outra company", { ...user, companyId: { toString: () => "507f1f77bcf86cd799439099" } }, companyId, { statusCode: HttpStatus.FORBIDDEN }],

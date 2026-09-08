@@ -106,7 +106,13 @@ class ServiceService {
       );
     }
 
-    const updatedService = await this.serviceRepository.update(id, dto);
+    const updateData: UpdateServiceDto = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.duration !== undefined) updateData.duration = dto.duration;
+    if (dto.price !== undefined) updateData.price = dto.price;
+
+    const updatedService = await this.serviceRepository.update(id, updateData);
 
     if (!updatedService) {
       throw new AppError(HttpMessages.SERVICE_NOT_FOUND, HttpStatus.NOT_FOUND);

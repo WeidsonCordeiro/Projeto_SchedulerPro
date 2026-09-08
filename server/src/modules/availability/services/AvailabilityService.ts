@@ -294,10 +294,13 @@ class AvailabilityService {
       }
     }
 
-    const updated = await this.availabilityRepository.update(id, {
-      ...dto,
+    const updateData: UpdateAvailabilityDto = {
       ...availabilityData,
-    });
+    };
+    if (dto.employeeId !== undefined) updateData.employeeId = dto.employeeId;
+    if (dto.dayOfWeek !== undefined) updateData.dayOfWeek = dto.dayOfWeek;
+
+    const updated = await this.availabilityRepository.update(id, updateData);
 
     if (!updated) {
       throw new AppError(

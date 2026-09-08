@@ -26,7 +26,7 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
     findById: vi.fn(), findByCompanyId: vi.fn(), create: vi.fn(), update: vi.fn(),
     updateStatus: vi.fn(), softDelete: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(),
   },
-  userRepository: { findById: vi.fn() },
+  userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn() },
   clientRepository: { findById: vi.fn() },
   serviceRepository: { findById: vi.fn() },
   companyRepository: { findById: vi.fn() },
@@ -82,6 +82,7 @@ beforeEach(() => {
   authUser.value = { userId: "actor", companyId: ids.companyA, role: Role.OWNER };
 
   userRepository.findById.mockResolvedValue(employeeA);
+  userRepository.findByIdForAccessControl.mockResolvedValue({ mustChangePassword: false, isActive: true, lockUntil: null });
   clientRepository.findById.mockResolvedValue(clientA);
   serviceRepository.findById.mockResolvedValue(serviceA);
   companyRepository.findById.mockResolvedValue(companyA);
@@ -115,7 +116,15 @@ describe("Availability HTTP integration", () => {
     expect((await request(app).get("/api/availability")).status).toBe(200);
     expect((await request(app).get(`/api/availability/employee/${ids.employee}`)).status).toBe(200);
     expect((await request(app).get(`/api/availability/${ids.availability}`)).status).toBe(200);
-    expect((await request(app).patch(`/api/availability/${ids.availability}`).send({ morningEnd: "11:30" })).status).toBe(200);
+    expect((await request(app).patch(`/api/availability/${ids.availability}`).send({
+      morningEnd: "11:30",
+      companyId: ids.companyB,
+      deletedAt: new Date().toISOString(),
+    })).status).toBe(200);
+    expect(availabilityRepository.update).toHaveBeenCalledWith(
+      ids.availability,
+      expect.not.objectContaining({ companyId: ids.companyB, deletedAt: expect.anything() }),
+    );
     expect((await request(app).delete(`/api/availability/${ids.availability}`)).status).toBe(200);
     expect(availabilityRepository.softDelete).toHaveBeenCalledWith(ids.availability);
   });
@@ -161,6 +170,12 @@ describe("Availability HTTP integration", () => {
     expect((await request(app).post("/api/availability").send(validAvailability)).status).toBe(403);
     expect((await request(app).delete(`/api/availability/${ids.availability}`)).status).toBe(403);
     expect((await request(app).get("/api/availability")).status).toBe(403);
+  });
+
+  it("bloqueia operações normais quando mustChangePassword está ativo", async () => {
+    userRepository.findByIdForAccessControl.mockResolvedValue({ mustChangePassword: true, isActive: true, lockUntil: null });
+    expect((await request(app).get("/api/availability")).status).toBe(403);
+    expect((await request(app).get("/api/appointments")).status).toBe(403);
   });
 });
 

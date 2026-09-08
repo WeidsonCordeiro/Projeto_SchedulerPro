@@ -7,12 +7,14 @@ import { Permission } from "../../../constants/permissions";
 import { createAvailabilityValidator } from "../validators/create-availability.validator";
 import { updateAvailabilityValidator } from "../validators/update-availability.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 
 const routes = Router();
 
 routes.post(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.AVAILABILITY_CREATE),
   createAvailabilityValidator,
   validateRequest,
@@ -22,6 +24,7 @@ routes.post(
 routes.get(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.AVAILABILITY_READ),
   AvailabilityController.findAll,
 );
@@ -29,6 +32,7 @@ routes.get(
 routes.get(
   "/employee/:employeeId",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("employeeId"),
   hasPermission(Permission.AVAILABILITY_READ),
   AvailabilityController.findByEmployeeId,
@@ -37,6 +41,7 @@ routes.get(
 routes.get(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.AVAILABILITY_READ),
   AvailabilityController.findById,
@@ -45,6 +50,7 @@ routes.get(
 routes.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.AVAILABILITY_UPDATE),
   updateAvailabilityValidator,
@@ -55,6 +61,7 @@ routes.patch(
 routes.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.AVAILABILITY_DELETE),
   AvailabilityController.delete,

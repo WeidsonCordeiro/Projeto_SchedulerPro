@@ -28,6 +28,7 @@ import { Permission } from "../../../constants/permissions";
 import { createClientValidator } from "../validators/create-client.validator";
 import { updateClientValidator } from "../validators/update-client.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 
 const router = Router();
 
@@ -39,6 +40,7 @@ const router = Router();
 router.post(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.CLIENT_CREATE),
   createClientValidator,
   validateRequest,
@@ -53,6 +55,7 @@ router.post(
 router.get(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.CLIENT_READ),
   ClientController.findAll,
 );
@@ -65,6 +68,7 @@ router.get(
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_READ),
   ClientController.findById,
@@ -78,6 +82,7 @@ router.get(
 router.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   updateClientValidator,
@@ -93,6 +98,7 @@ router.patch(
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.deactivate,
@@ -106,6 +112,7 @@ router.patch(
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.activate,
@@ -121,6 +128,7 @@ router.patch(
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_DELETE),
   ClientController.delete,

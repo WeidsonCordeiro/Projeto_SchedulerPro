@@ -189,7 +189,13 @@ class UserService {
       }
       this.validateRoleAssignment(actorRole, dto.role);
     }
-    const updatedUser = await this.userRepository.update(id, dto);
+    const updateData: UpdateUserDto = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.role !== undefined) updateData.role = dto.role;
+    if (dto.avatar !== undefined) updateData.avatar = dto.avatar;
+
+    const updatedUser = await this.userRepository.update(id, updateData);
     return UserMapper.toResponse(updatedUser!);
   }
 
