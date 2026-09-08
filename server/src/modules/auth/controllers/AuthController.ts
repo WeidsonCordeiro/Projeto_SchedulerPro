@@ -39,7 +39,10 @@ class AuthController {
 
     CookieProvider.setRefreshToken(res, result.tokens.refreshToken);
 
-    return ResponseHandler.success(res, result.user);
+    return ResponseHandler.success(res, {
+      ...result.user,
+      mustChangePassword: result.mustChangePassword,
+    }, HttpMessages.CREATED, HttpStatus.CREATED);
   }
 
   /**
@@ -92,7 +95,10 @@ class AuthController {
 
     CookieProvider.setRefreshToken(res, result.tokens.refreshToken);
 
-    return ResponseHandler.success(res, result.user, HttpMessages.SUCCESS);
+    return ResponseHandler.success(res, {
+      ...result.user,
+      mustChangePassword: result.mustChangePassword,
+    }, HttpMessages.SUCCESS);
   }
 
   /**

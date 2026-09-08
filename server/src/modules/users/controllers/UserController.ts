@@ -15,6 +15,7 @@ import { Request, Response } from "express";
 import UserService from "../services/UserService";
 import { ResponseHandler } from "../../../utils/response";
 import { HttpMessages } from "../../../constants/http-messages";
+import { HttpStatus } from "../../../constants/http-status";
 
 class UserController {
   /**
@@ -54,7 +55,12 @@ class UserController {
       req.user!.role,
     );
 
-    return ResponseHandler.success(res, user, HttpMessages.USER_CREATED);
+    return ResponseHandler.success(
+      res,
+      user,
+      HttpMessages.USER_CREATED,
+      HttpStatus.CREATED,
+    );
   }
 
   /**

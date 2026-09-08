@@ -9,13 +9,26 @@ async function validate(timezone?: unknown) {
     email: "owner@example.com",
     password: "password123",
     confirmPassword: "password123",
-    company: timezone === undefined ? {} : { timezone },
+    company: timezone === undefined ? { name: "Empresa Teste" } : { name: "Empresa Teste", timezone },
   } } as Request;
   await Promise.all(registerValidator.map((validator) => validator.run(req)));
   return validationResult(req).array();
 }
 
 describe("registerValidator - timezone da empresa", () => {
+  it("rejeita registro sem nome da empresa", async () => {
+    const req = { body: {
+      name: "Owner Teste",
+      email: "owner@example.com",
+      password: "password123",
+      confirmPassword: "password123",
+      company: {},
+    } } as Request;
+    await Promise.all(registerValidator.map((validator) => validator.run(req)));
+
+    expect(validationResult(req).array()).not.toHaveLength(0);
+  });
+
   it("aceita registro sem timezone para aplicar o default no serviço/schema", async () => {
     expect(await validate()).toHaveLength(0);
   });
