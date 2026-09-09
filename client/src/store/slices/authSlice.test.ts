@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import authReducer, {
   clearCredentials,
+  clearMustChangePassword,
   initialState,
   setCredentials,
   setLoading,
@@ -44,6 +45,18 @@ describe("authSlice", () => {
 
     expect(state.user?.id).toBe(session.id);
     expect(state.mustChangePassword).toBe(true);
+    expect(state.isAuthenticated).toBe(true);
+  });
+
+  it("clears the password change requirement after the password is changed", () => {
+    const requiringChange = authReducer(
+      initialState,
+      setCredentials(sessionRequiringChange),
+    );
+    const state = authReducer(requiringChange, clearMustChangePassword());
+
+    expect(state.mustChangePassword).toBe(false);
+    expect(state.user?.id).toBe(session.id);
     expect(state.isAuthenticated).toBe(true);
   });
 
