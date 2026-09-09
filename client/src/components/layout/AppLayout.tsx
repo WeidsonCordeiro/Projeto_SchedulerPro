@@ -1,55 +1,52 @@
-import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import authApi from "../../api/endpoints/auth.api";
-import { useAppDispatch, useAppSelector } from "../../store";
-import { clearCredentials, setLoading } from "../../store/slices/authSlice";
+import { useState } from "react";
+import { Outlet } from "react-router-dom";
+import Navbar from "./Navbar";
+import Sidebar from "./Sidebar";
 
-export default function AppLayout({ children }: { children: ReactNode }) {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const { isAuthenticated, user, isLoading } = useAppSelector((state) => state.auth);
+export default function AppLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  async function handleLogout() {
-    dispatch(setLoading(true));
-    try {
-      await authApi.logout();
-    } catch {
-      // Erro recuperável no backend não deve deixar a UI fingindo autenticada.
-    } finally {
-      dispatch(clearCredentials());
-      navigate("/login", { replace: true });
-    }
-  }
+  const openSidebar = () => setSidebarOpen(true);
+  const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div className="container-fluid">
-          <span className="navbar-brand mb-0 h1">SchedulerPro</span>
-          {isAuthenticated && user && (
-            <div className="d-flex align-items-center gap-3">
-              <span className="navbar-text text-light">{user.name}</span>
-              <button
-                type="button"
-                className="btn btn-outline-light btn-sm"
-                onClick={handleLogout}
-                disabled={isLoading}
-              >
-                {isLoading && (
-                  <span
-                    className="spinner-border spinner-border-sm me-1"
-                    role="status"
-                    aria-hidden="true"
-                  />
-                )}
-                Sair
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
+    <div className="app-shell d-flex flex-column vh-100">
+      <Navbar onToggleSidebar={openSidebar} />
 
-      <main className="container py-4">{children}</main>
-    </>
+      <div className="app-body d-flex flex-grow-1 overflow-hidden">
+        <aside
+          id="app-sidebar"
+          data-testid="sidebar"
+          className={`app-sidebar d-flex flex-column flex-shrink-0 bg-light border-end ${sidebarOpen ? "open" : ""}`}
+        >
+          <div className="d-flex justify-content-between align-items-center border-bottom p-2 d-lg-none">
+            <span className="fw-semibold">Menu</span>
+            <button
+              type="button"
+              className="btn-close"
+              aria-label="Fechar menu"
+              onClick={closeSidebar}
+            />
+          </div>
+          <div className="p-2 flex-grow-1">
+            <Sidebar onNavigate={closeSidebar} />
+          </div>
+        </aside>
+
+        <main className="flex-grow-1 overflow-auto p-3 p-md-4">
+          <Outlet />
+        </main>
+      </div>
+
+      {sidebarOpen && (
+        <button
+          type="button"
+          data-testid="sidebar-backdrop"
+          className="app-sidebar-backdrop"
+          aria-label="Fechar menu"
+          onClick={closeSidebar}
+        />
+      )}
+    </div>
   );
 }
