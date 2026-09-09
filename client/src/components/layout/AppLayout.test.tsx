@@ -15,6 +15,16 @@ vi.mock("../../api/endpoints/auth.api", () => ({
   },
 }));
 
+vi.mock("../../api/endpoints/clients.api", () => ({
+  default: {
+    getClients: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
 function makeStore(authenticated = false) {
   return configureStore({
     reducer: { auth: authReducer },
