@@ -2,11 +2,21 @@ import { render, screen } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import AppRoutes from "./AppRoutes";
 import authReducer from "../store/slices/authSlice";
 import type { AuthState } from "../store/slices/authSlice";
 import { user } from "../test/fixtures";
+
+vi.mock("../api/endpoints/clients.api", () => ({
+  default: {
+    getClients: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
 
 function renderAt(path: string, auth: Partial<AuthState>) {
   const store = configureStore({
