@@ -33,6 +33,10 @@ const authSlice = createSlice({
     setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
     },
+    clearMustChangePassword(state) {
+      state.mustChangePassword = false;
+      state.isLoading = false;
+    },
     clearCredentials(state) {
       state.user = null;
       state.mustChangePassword = false;
@@ -43,6 +47,11 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, setLoading, clearCredentials } = authSlice.actions;
+export const {
+  setCredentials,
+  setLoading,
+  clearMustChangePassword,
+  clearCredentials,
+} = authSlice.actions;
 
 export default authSlice.reducer;

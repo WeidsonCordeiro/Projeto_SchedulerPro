@@ -27,6 +27,12 @@ export interface ResetPasswordPayload {
   password: string;
 }
 
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
 export const authApi = {
   async register(payload: RegisterPayload) {
     const { data } = await apiClient.post<ApiResponse<AuthSession>>(
@@ -72,6 +78,14 @@ export const authApi = {
   async resetPassword(payload: ResetPasswordPayload) {
     const { data } = await apiClient.post<ApiResponse<null>>(
       "/auth/reset-password",
+      payload,
+    );
+    return data;
+  },
+
+  async changePassword(payload: ChangePasswordPayload) {
+    const { data } = await apiClient.patch<ApiResponse<null>>(
+      "/users/me/password",
       payload,
     );
     return data;

@@ -5,6 +5,7 @@ vi.mock("../apiClient", () => ({
   apiClient: {
     get: vi.fn(),
     post: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
@@ -55,6 +56,22 @@ describe("authApi", () => {
     await authApi.logout();
 
     expect(apiClient.post).toHaveBeenCalledWith("/auth/logout");
+  });
+
+  it("patches /users/me/password with the password payload", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { success: true, message: "ok" } });
+
+    await authApi.changePassword({
+      currentPassword: "current123",
+      newPassword: "newpassword123",
+      confirmPassword: "newpassword123",
+    });
+
+    expect(apiClient.patch).toHaveBeenCalledWith("/users/me/password", {
+      currentPassword: "current123",
+      newPassword: "newpassword123",
+      confirmPassword: "newpassword123",
+    });
   });
 
   it("posts /auth/forgot-password with email", async () => {
