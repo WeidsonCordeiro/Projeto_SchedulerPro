@@ -20,11 +20,12 @@ export interface ApiFailure {
 export function getApiError(error: unknown): ApiFailure {
   if (axios.isAxiosError<ApiResponse>(error)) {
     const status = error.response?.status;
-    const message = error.response?.data?.message ?? error.message;
 
     if (!error.response) {
-      return { kind: "network", message };
+      return { kind: "network", message: error.message };
     }
+
+    const message = error.response.data?.message ?? "";
 
     if (status === 400) {
       return {
@@ -58,4 +59,21 @@ export function getApiError(error: unknown): ApiFailure {
     kind: "unknown",
     message: error instanceof Error ? error.message : "Erro desconhecido.",
   };
+}
+
+const FRIENDLY_MESSAGES: Record<ApiErrorKind, string> = {
+  network: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+  validation: "Dados inválidos. Verifique as informações e tente novamente.",
+  auth: "Não foi possível autenticar. Verifique suas credenciais.",
+  not_found: "Recurso não encontrado.",
+  conflict: "Já existe um registro com os mesmos dados.",
+  server: "Erro interno do servidor. Tente novamente mais tarde.",
+  unknown: "Ocorreu um erro inesperado. Tente novamente.",
+};
+
+export function getFriendlyErrorMessage(failure: ApiFailure): string {
+  if (failure.kind === "network") {
+    return FRIENDLY_MESSAGES.network;
+  }
+  return failure.message?.trim() ? failure.message : FRIENDLY_MESSAGES[failure.kind];
 }

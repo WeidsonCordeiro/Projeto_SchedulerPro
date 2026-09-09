@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
-import { getApiError } from "./errors";
+import { getApiError, getFriendlyErrorMessage } from "./errors";
 
 function httpError(status: number, body?: unknown) {
   return new AxiosError(
@@ -57,5 +57,26 @@ describe("getApiError", () => {
 
   it("classifies non-axios errors as unknown", () => {
     expect(getApiError(new Error("boom"))).toMatchObject({ kind: "unknown", message: "boom" });
+  });
+});
+
+describe("getFriendlyErrorMessage", () => {
+  it("uses the backend message when present", () => {
+    const failure = getApiError(httpError(400, { message: "Email inválido." }));
+    expect(getFriendlyErrorMessage(failure)).toBe("Email inválido.");
+  });
+
+  it("hides network failure details behind a friendly message", () => {
+    const failure = getApiError(new AxiosError("Network Error", "ERR_NETWORK"));
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+    );
+  });
+
+  it("falls back for messages without detail", () => {
+    const failure = getApiError(httpError(500));
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      "Erro interno do servidor. Tente novamente mais tarde.",
+    );
   });
 });
