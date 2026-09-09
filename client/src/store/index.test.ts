@@ -1,31 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { store } from "./index";
 import { clearCredentials, setCredentials } from "./slices/authSlice";
-import type { AuthUser } from "../types/auth";
-
-const user: AuthUser = {
-  id: "507f1f77bcf86cd799439011",
-  name: "Owner Teste",
-  email: "owner@example.com",
-  role: "ADMIN",
-  companyId: "507f1f77bcf86cd799439012",
-  isActive: true,
-};
+import { session } from "../test/fixtures";
 
 describe("store", () => {
   it("initializes with the auth reducer", () => {
     expect(store.getState().auth).toEqual({
       user: null,
+      mustChangePassword: false,
       isAuthenticated: false,
+      isInitializing: true,
       isLoading: false,
     });
   });
 
   it("applies dispatched actions to the auth state", () => {
-    store.dispatch(setCredentials(user));
+    store.dispatch(setCredentials(session));
 
     expect(store.getState().auth.isAuthenticated).toBe(true);
     expect(store.getState().auth.user?.email).toBe("owner@example.com");
+    expect(store.getState().auth.isInitializing).toBe(false);
 
     store.dispatch(clearCredentials());
 
