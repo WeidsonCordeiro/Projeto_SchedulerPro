@@ -40,11 +40,11 @@ describe("App", () => {
       </Provider>,
     );
 
-    expect(screen.getByRole("navigation")).toBeInTheDocument();
-    expect(screen.getByText("SchedulerPro")).toBeInTheDocument();
     expect(
       await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
+    expect(screen.getAllByRole("navigation").length).toBeGreaterThan(0);
+    expect(screen.getByText("SchedulerPro")).toBeInTheDocument();
     expect(store.getState().auth.isAuthenticated).toBe(true);
     expect(store.getState().auth.user?.email).toBe("owner@example.com");
   });

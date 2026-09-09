@@ -122,4 +122,21 @@ describe("AppRoutes", () => {
 
     expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
   });
+
+  it.each([
+    ["/clients", "Clientes"],
+    ["/services", "Serviços"],
+    ["/employees", "Funcionários"],
+    ["/availability", "Disponibilidade"],
+    ["/appointments", "Agendamentos"],
+    ["/company", "Empresa"],
+  ])("renders the %s module page for an authenticated user", (path, title) => {
+    renderAt(path, {
+      user,
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+  });
 });
