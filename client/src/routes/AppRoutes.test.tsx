@@ -38,6 +38,16 @@ vi.mock("../api/endpoints/employees.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/availability.api", () => ({
+  default: {
+    getEmployeeAvailabilities: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
 function renderAt(path: string, auth: Partial<AuthState>) {
   const store = configureStore({
     reducer: { auth: authReducer },
