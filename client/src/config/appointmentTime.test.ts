@@ -4,6 +4,8 @@ import {
   formatAppointmentDate,
   formatAppointmentEndTime,
   formatAppointmentTime,
+  formatMonthYear,
+  formatWeekdayDate,
   toIsoUtc,
   toLocalDateTimeInputValue,
 } from "./appointmentTime";
@@ -93,5 +95,28 @@ describe("appointmentTime (Europe/Lisbon: UTC+0 inverno, UTC+1 verão)", () => {
 
   it("returns an empty end time when the start is invalid", () => {
     expect(formatAppointmentEndTime("", 30)).toBe("");
+  });
+});
+
+describe("appointmentTime (calendário da agenda inteligente)", () => {
+  it("formats the selected weekday/date in Portuguese", () => {
+    expect(formatWeekdayDate("2026-09-15")).toBe("Terça-feira, 15 de setembro");
+  });
+
+  it("formats the month/year header in Portuguese", () => {
+    expect(formatMonthYear(2026, 9)).toBe("Setembro 2026");
+    expect(formatMonthYear(2026, 1)).toBe("Janeiro 2026");
+  });
+
+  it("respects an explicit timezone for the weekday header", () => {
+    expect(formatWeekdayDate("2026-07-15", "America/Sao_Paulo")).toBe(
+      "Quarta-feira, 15 de julho",
+    );
+  });
+
+  it("returns an empty string for invalid inputs", () => {
+    expect(formatWeekdayDate("")).toBe("");
+    expect(formatWeekdayDate("not-a-date")).toBe("");
+    expect(formatMonthYear(0, 0)).toBe("");
   });
 });
