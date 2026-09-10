@@ -55,6 +55,14 @@ describe("getApiError", () => {
     });
   });
 
+  it("classifies unrecognized statuses as unknown errors", () => {
+    expect(getApiError(httpError(418, { message: "Teapot" }))).toMatchObject({
+      kind: "unknown",
+      status: 418,
+      message: "Teapot",
+    });
+  });
+
   it("classifies non-axios errors as unknown", () => {
     expect(getApiError(new Error("boom"))).toMatchObject({ kind: "unknown", message: "boom" });
   });

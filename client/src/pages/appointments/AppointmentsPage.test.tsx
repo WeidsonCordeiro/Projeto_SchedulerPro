@@ -1,19 +1,22 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AppointmentsPage from "./AppointmentsPage";
 import appointmentsApi from "../../api/endpoints/appointments.api";
+import availabilityApi from "../../api/endpoints/availability.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
 import authReducer from "../../store/slices/authSlice";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
+import type { ApiResponse } from "../../types/api";
 import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import type { Employee } from "../../types/employee";
+import type { Availability } from "../../types/availability";
 import type { Role } from "../../types/auth";
 
 vi.mock("../../api/endpoints/appointments.api", () => ({
@@ -27,6 +30,12 @@ vi.mock("../../api/endpoints/appointments.api", () => ({
     cancelAppointment: vi.fn(),
     markAppointmentAsNoShow: vi.fn(),
     deleteAppointment: vi.fn(),
+  },
+}));
+
+vi.mock("../../api/endpoints/availability.api", () => ({
+  default: {
+    getEmployeeAvailabilities: vi.fn(),
   },
 }));
 
@@ -149,10 +158,39 @@ function mockRelatedData() {
   });
 }
 
+function makeAvailability(dayOfWeek: number): Availability {
+  return {
+    id: `av-${dayOfWeek}`,
+    companyId: "company1",
+    employeeId: "employee1",
+    dayOfWeek: dayOfWeek as Availability["dayOfWeek"],
+    morningStart: "09:00",
+    morningEnd: "12:00",
+    afternoonStart: "14:00",
+    afternoonEnd: "18:00",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+const weekAvailability = [0, 1, 2, 3, 4, 5, 6].map(makeAvailability);
+
 describe("AppointmentsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockRelatedData();
+    vi.mocked(availabilityApi.getEmployeeAvailabilities).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: weekAvailability,
+    } satisfies ApiResponse<Availability[]>);
+    // Fixa o relógio para tornar o mês exibido pelo calendário determinístico.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-10T12:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("shows a loading spinner while the list loads", () => {
@@ -194,6 +232,30 @@ describe("AppointmentsPage", () => {
       data: [makeAppointment()],
     });
     vi.mocked(employeesApi.getEmployees).mockRejectedValue(
+      httpError(500, { message: "Erro interno do servidor." }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Não foi possível carregar alguns nomes.",
+    );
+    expect(
+      within(screen.getByRole("table")).getAllByText("—").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("keeps the table visible when client and service name lists fail to load", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+    vi.mocked(clientsApi.getClients).mockRejectedValue(
+      httpError(500, { message: "Erro interno do servidor." }),
+    );
+    vi.mocked(servicesApi.getServices).mockRejectedValue(
       httpError(500, { message: "Erro interno do servidor." }),
     );
 
@@ -286,9 +348,9 @@ describe("AppointmentsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
       target: { value: "employee1" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Data e hora"), {
-      target: { value: "2026-07-15T10:00" },
-    });
+    await screen.findByRole("button", { name: "2026-09-15" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "10:00" }));
     fireEvent.click(
       within(dialog).getByRole("button", { name: /criar agendamento/i }),
     );
@@ -300,7 +362,7 @@ describe("AppointmentsPage", () => {
       clientId: "client1",
       serviceId: "service1",
       employeeId: "employee1",
-      startAt: "2026-07-15T09:00:00.000Z",
+      startAt: "2026-09-15T09:00:00.000Z",
     });
     expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -333,9 +395,9 @@ describe("AppointmentsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
       target: { value: "employee1" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Data e hora"), {
-      target: { value: "2026-07-15T10:00" },
-    });
+    await screen.findByRole("button", { name: "2026-09-15" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "10:00" }));
     fireEvent.click(
       within(dialog).getByRole("button", { name: /criar agendamento/i }),
     );
@@ -345,9 +407,12 @@ describe("AppointmentsPage", () => {
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(
-      within(screen.getByRole("dialog")).getByLabelText("Data e hora"),
-    ).toHaveValue("2026-07-15T10:00");
-    expect(screen.queryByText("Agendado criado com sucesso.")).not.toBeInTheDocument();
+      within(screen.getByRole("dialog")).getByRole("button", { name: "2026-09-15" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "10:00" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByText("Agendamento criado com sucesso.")).not.toBeInTheDocument();
   });
 
   it("edits an appointment with the pre-filled form", async () => {
@@ -368,13 +433,18 @@ describe("AppointmentsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /editar/i }));
 
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Data e hora")).toHaveValue(
-      "2026-07-15T10:00",
+    // O calendário abre no mês do agendamento (Julho/2026) com o dia/horário
+    // atuais já selecionados.
+    await screen.findByRole("button", { name: "2026-07-15" });
+    expect(within(dialog).getByRole("button", { name: "2026-07-15" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(within(dialog).getByRole("button", { name: "10:00" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
     );
 
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
     fireEvent.click(within(dialog).getByRole("button", { name: /salvar/i }));
 
     expect(

@@ -396,8 +396,10 @@ export default function AppointmentsPage() {
           clients={clients}
           services={services}
           employees={employees}
+          appointments={appointments}
           onClose={handleFormClose}
           onSaved={handleSaved}
+          onConflict={() => void loadAppointments()}
         />
       )}
 

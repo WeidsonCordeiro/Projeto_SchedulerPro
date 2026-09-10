@@ -100,3 +100,40 @@ export function formatAppointmentEndTime(
   }
   return start.plus({ minutes: durationMinutes }).toFormat("HH:mm");
 }
+
+function capitalize(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase("pt") + text.slice(1) : text;
+}
+
+/**
+ * Dia selecionado no calendário da agenda inteligente, no horário local da
+ * empresa, em português: "Terça-feira, 15 de setembro".
+ *
+ * dateKey é o calendário local do dia ("AAAA-MM-DD"). Retorna "" se inválido.
+ */
+export function formatWeekdayDate(
+  dateKey: string,
+  timezone: string = APPOINTMENT_TIMEZONE,
+): string {
+  const date = DateTime.fromISO(dateKey, { zone: timezone, locale: "pt" });
+  if (!date.isValid) {
+    return "";
+  }
+  return capitalize(date.toFormat("cccc, d 'de' LLLL"));
+}
+
+/**
+ * Cabeçalho do calendário da agenda inteligente: "Setembro 2026".
+ * month é 1-based (1 = janeiro). Retorna "" se inválido.
+ */
+export function formatMonthYear(
+  year: number,
+  month: number,
+  timezone: string = APPOINTMENT_TIMEZONE,
+): string {
+  const date = DateTime.fromObject({ year, month, day: 1 }, { zone: timezone, locale: "pt" });
+  if (!date.isValid) {
+    return "";
+  }
+  return capitalize(date.toFormat("LLLL yyyy"));
+}
