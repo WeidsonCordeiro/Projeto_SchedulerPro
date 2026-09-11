@@ -102,7 +102,7 @@ function renderAt(path: string, auth: Partial<AuthState>) {
 }
 
 describe("AppRoutes", () => {
-  it("renders the home page for an authenticated user", () => {
+  it("renders the home page for an authenticated user", async () => {
     renderAt("/", {
       user,
       isAuthenticated: true,
@@ -110,7 +110,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
   });
 
@@ -130,7 +130,7 @@ describe("AppRoutes", () => {
     expect(screen.queryByRole("heading", { name: /entrar/i })).not.toBeInTheDocument();
   });
 
-  it("does not keep an authenticated user on /login", () => {
+  it("does not keep an authenticated user on /login", async () => {
     renderAt("/login", {
       user,
       isAuthenticated: true,
@@ -138,7 +138,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
   });
 
@@ -168,7 +168,7 @@ describe("AppRoutes", () => {
     ).toBeInTheDocument();
   });
 
-  it("blocks a normal user from /change-password", () => {
+  it("blocks a normal user from /change-password", async () => {
     renderAt("/change-password", {
       user,
       isAuthenticated: true,
@@ -176,7 +176,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
   });
 
