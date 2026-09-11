@@ -39,6 +39,12 @@ interface AppointmentFormProps {
   onSaved: (appointment: Appointment) => void;
   /** Chamado quando o backend retorna 409 (conflito/race) para recarregar a lista. */
   onConflict?: () => void;
+  /**
+   * Timezone da empresa (IANA). Quando omitido, usa o mesmo padrão do backend
+   * (Europe/Lisbon). O componente é puro: quem resolve o timezone real é a
+   * página, a partir da empresa carregada na sessão (Redux).
+   */
+  timezone?: string;
 }
 
 function validate(
@@ -97,9 +103,9 @@ export default function AppointmentForm({
   onClose,
   onSaved,
   onConflict,
+  timezone = APPOINTMENT_TIMEZONE,
 }: AppointmentFormProps) {
   const isEdit = Boolean(appointment);
-  const timezone = APPOINTMENT_TIMEZONE;
 
   const [clientId, setClientId] = useState(appointment?.clientId ?? "");
   const [serviceId, setServiceId] = useState(appointment?.serviceId ?? "");

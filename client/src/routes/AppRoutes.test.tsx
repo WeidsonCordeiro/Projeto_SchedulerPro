@@ -58,6 +58,25 @@ vi.mock("../api/endpoints/appointments.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/company.api", () => ({
+  default: {
+    getCompany: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        {
+          id: "507f1f77bcf86cd799439012",
+          name: "salao do centro",
+          timezone: "Europe/Lisbon",
+          isActive: true,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    }),
+  },
+}));
+
 function renderAt(path: string, auth: Partial<AuthState>) {
   const store = configureStore({
     reducer: { auth: authReducer },
@@ -188,5 +207,44 @@ describe("AppRoutes", () => {
     });
 
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+  });
+
+  it("blocks the CLIENT role from the company page", () => {
+    renderAt("/company", {
+      user: { ...user, role: "CLIENT", id: "client1", name: "Cliente Teste" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(screen.getByRole("heading", { name: "Empresa" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Você não tem permissão para acessar esta página."),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Timezone")).not.toBeInTheDocument();
+  });
+
+  it("blocks MANAGER from the company page", () => {
+    renderAt("/company", {
+      user: { ...user, role: "MANAGER" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByText("Você não tem permissão para acessar esta página."),
+    ).toBeInTheDocument();
+  });
+
+  it("blocks EMPLOYEE from the company page", () => {
+    renderAt("/company", {
+      user: { ...user, role: "EMPLOYEE" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByText("Você não tem permissão para acessar esta página."),
+    ).toBeInTheDocument();
   });
 });

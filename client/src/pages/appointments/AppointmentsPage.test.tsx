@@ -9,6 +9,7 @@ import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
 import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import type { ApiResponse } from "../../types/api";
@@ -117,9 +118,9 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
   };
 }
 
-function makeStore(role: Role | null = "OWNER") {
+function makeStore(role: Role | null = "OWNER", timezone?: string) {
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
         user: role ? { ...user, role } : null,
@@ -128,13 +129,25 @@ function makeStore(role: Role | null = "OWNER") {
         isInitializing: false,
         isLoading: false,
       },
+      company: timezone
+        ? {
+            company: {
+              id: "company1",
+              name: "salao do centro",
+              timezone,
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          }
+        : { company: null },
     },
   });
 }
 
-function renderPage(role: Role | null = "OWNER") {
+function renderPage(role: Role | null = "OWNER", timezone?: string) {
   return render(
-    <Provider store={makeStore(role)}>
+    <Provider store={makeStore(role, timezone)}>
       <AppointmentsPage />
     </Provider>,
   );
@@ -318,6 +331,21 @@ describe("AppointmentsPage", () => {
     expect(within(table).getByText("Ana Lima")).toBeInTheDocument();
     expect(within(table).getByText("Primeira visita")).toBeInTheDocument();
     expect(screen.getByText("Agendado")).toBeInTheDocument();
+  });
+
+  it("renders appointment times in the company timezone from the session", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+
+    renderPage("OWNER", "America/Sao_Paulo");
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("15/07/2026")).toBeInTheDocument();
+    expect(within(table).getByText("06:00")).toBeInTheDocument();
+    expect(within(table).getByText("até 06:30")).toBeInTheDocument();
   });
 
   it("creates an appointment through the form and reloads the list", async () => {
