@@ -117,6 +117,7 @@ export default function ServiceForm({
     } catch (error) {
       const failure = getApiError(error);
       setErrorMessage(getFriendlyErrorMessage(failure));
+    } finally {
       setIsSubmitting(false);
     }
   }
