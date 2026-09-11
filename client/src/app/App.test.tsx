@@ -24,6 +24,46 @@ vi.mock("../api/endpoints/company.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/appointments.api", () => ({
+  default: {
+    getAppointments: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../api/endpoints/clients.api", () => ({
+  default: {
+    getClients: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../api/endpoints/services.api", () => ({
+  default: {
+    getServices: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../api/endpoints/employees.api", () => ({
+  default: {
+    getEmployees: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
 function makeStore() {
   return configureStore({
     reducer: { auth: authReducer, company: companyReducer },
