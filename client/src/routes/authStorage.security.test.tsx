@@ -74,8 +74,8 @@ describe("auth storage security", () => {
     expect(tokenLike).toEqual([]);
   });
 
-  it("exposes only the auth domain in the root store", () => {
-    expect(Object.keys(appStore.getState())).toEqual(["auth"]);
+  it("exposes only the auth and company domains in the root store", () => {
+    expect(Object.keys(appStore.getState())).toEqual(["auth", "company"]);
     expect("jwt" in appStore.getState()).toBe(false);
     expect("accessToken" in appStore.getState()).toBe(false);
   });

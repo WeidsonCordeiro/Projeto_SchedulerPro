@@ -20,6 +20,7 @@ import {
   formatAppointmentTime,
 } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
@@ -42,6 +43,7 @@ function canLoadNames(role: string | undefined | null): boolean {
 
 export default function AppointmentsPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
+  const timezone = useAppSelector(selectCompanyTimezone);
   const actorRole = currentUser?.role ?? null;
   const { canList, canCreate, canUpdate, canStatus, canDelete } =
     getAppointmentAbilities(actorRole);
@@ -322,11 +324,11 @@ export default function AppointmentsPage() {
 
                 return (
                   <tr key={appointment.id}>
-                    <td>{formatAppointmentDate(appointment.startAt)}</td>
+                    <td>{formatAppointmentDate(appointment.startAt, timezone)}</td>
                     <td>
-                      {formatAppointmentTime(appointment.startAt)}
+                      {formatAppointmentTime(appointment.startAt, timezone)}
                       <div className="small text-muted">
-                        até {formatAppointmentTime(appointment.endAt)}
+                        até {formatAppointmentTime(appointment.endAt, timezone)}
                       </div>
                     </td>
                     <td>{nameFor(clientNames, appointment.clientId)}</td>
@@ -400,6 +402,7 @@ export default function AppointmentsPage() {
           onClose={handleFormClose}
           onSaved={handleSaved}
           onConflict={() => void loadAppointments()}
+          timezone={timezone}
         />
       )}
 

@@ -4,9 +4,11 @@ import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import authApi from "../api/endpoints/auth.api";
+import companyApi from "../api/endpoints/company.api";
 import { httpError } from "../test/http";
 import { session } from "../test/fixtures";
 import authReducer from "../store/slices/authSlice";
+import companyReducer from "../store/slices/companySlice";
 
 vi.mock("../api/endpoints/auth.api", () => ({
   default: {
@@ -16,8 +18,16 @@ vi.mock("../api/endpoints/auth.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/company.api", () => ({
+  default: {
+    getCompany: vi.fn(),
+  },
+}));
+
 function makeStore() {
-  return configureStore({ reducer: { auth: authReducer } });
+  return configureStore({
+    reducer: { auth: authReducer, company: companyReducer },
+  });
 }
 
 describe("App", () => {
@@ -30,6 +40,20 @@ describe("App", () => {
       success: true,
       message: "ok",
       data: session,
+    });
+    vi.mocked(companyApi.getCompany).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        {
+          id: "507f1f77bcf86cd799439012",
+          name: "salao do centro",
+          timezone: "Europe/Lisbon",
+          isActive: true,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
     });
 
     const store = makeStore();
@@ -47,6 +71,7 @@ describe("App", () => {
     expect(screen.getByText("SchedulerPro")).toBeInTheDocument();
     expect(store.getState().auth.isAuthenticated).toBe(true);
     expect(store.getState().auth.user?.email).toBe("owner@example.com");
+    expect(store.getState().company.company?.name).toBe("salao do centro");
   });
 
   it("keeps the session anonymous when /auth/me returns 401", async () => {

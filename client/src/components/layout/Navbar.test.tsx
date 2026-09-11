@@ -8,6 +8,7 @@ import authApi from "../../api/endpoints/auth.api";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
 
 vi.mock("../../api/endpoints/auth.api", () => ({
   default: {
@@ -17,7 +18,7 @@ vi.mock("../../api/endpoints/auth.api", () => ({
 
 function makeStore(authenticated = false) {
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
         user: authenticated ? user : null,
@@ -25,6 +26,18 @@ function makeStore(authenticated = false) {
         isAuthenticated: authenticated,
         isInitializing: false,
         isLoading: false,
+      },
+      company: {
+        company: authenticated
+          ? {
+              id: "507f1f77bcf86cd799439012",
+              name: "salao do centro",
+              timezone: "Europe/Lisbon",
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            }
+          : null,
       },
     },
   });
@@ -84,6 +97,7 @@ describe("Navbar", () => {
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(authApi.logout).toHaveBeenCalledTimes(1);
     expect(store.getState().auth.isAuthenticated).toBe(false);
+    expect(store.getState().company.company).toBeNull();
   });
 
   it("clears local state even when logout fails", async () => {
@@ -98,5 +112,6 @@ describe("Navbar", () => {
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(store.getState().auth.user).toBeNull();
+    expect(store.getState().company.company).toBeNull();
   });
 });
