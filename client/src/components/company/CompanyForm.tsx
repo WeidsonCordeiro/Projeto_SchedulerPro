@@ -79,7 +79,6 @@ export default function CompanyForm({ company, onSaved }: CompanyFormProps) {
     } catch (error) {
       const failure = getApiError(error);
       setErrorMessage(getFriendlyErrorMessage(failure));
-      setIsSubmitting(false);
     } finally {
       setIsSubmitting(false);
     }

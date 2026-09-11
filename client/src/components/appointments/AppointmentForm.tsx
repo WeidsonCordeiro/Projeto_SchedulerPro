@@ -298,12 +298,13 @@ export default function AppointmentForm({
     } catch (error) {
       const failure = getApiError(error);
       setErrorMessage(getFriendlyErrorMessage(failure));
-      setIsSubmitting(false);
       if (failure.kind === "conflict") {
         // Race condition/ocupação paralela: recarregar a lista para que o
         // slot conflitante deixe de aparecer e outro possa ser escolhido.
         onConflict?.();
       }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 

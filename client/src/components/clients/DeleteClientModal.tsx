@@ -31,6 +31,7 @@ export default function DeleteClientModal({
     } catch (error) {
       const failure = getApiError(error);
       setErrorMessage(getFriendlyErrorMessage(failure));
+    } finally {
       setIsDeleting(false);
     }
   }
