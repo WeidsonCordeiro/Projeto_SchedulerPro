@@ -48,6 +48,16 @@ vi.mock("../api/endpoints/availability.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/availabilityExceptions.api", () => ({
+  default: {
+    getAvailabilityExceptions: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
 vi.mock("../api/endpoints/appointments.api", () => ({
   default: {
     getAppointments: vi.fn().mockResolvedValue({

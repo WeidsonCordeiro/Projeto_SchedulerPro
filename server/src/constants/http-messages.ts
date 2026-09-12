@@ -107,5 +107,18 @@ export const HttpMessages = {
   AVAILABILITIES_FOUND: "Disponibilidades do funcionário encontradas.",
   AVAILABILITY_NOT_FOUND: "Disponibilidade do funcionário não encontrada.",
 
+  /*Exceções de disponibilidade (bloqueios/férias/feriados)*/
+  AVAILABILITY_EXCEPTION_CREATED:
+    "Exceção de disponibilidade criada com sucesso.",
+  AVAILABILITY_EXCEPTION_UPDATED:
+    "Exceção de disponibilidade atualizada com sucesso.",
+  AVAILABILITY_EXCEPTION_DELETED:
+    "Exceção de disponibilidade removida com sucesso.",
+  AVAILABILITY_EXCEPTION_FOUND: "Exceção de disponibilidade encontrada.",
+  AVAILABILITY_EXCEPTIONS_FOUND:
+    "Exceções de disponibilidade encontradas.",
+  AVAILABILITY_EXCEPTION_NOT_FOUND:
+    "Exceção de disponibilidade não encontrada.",
+
   EMPLOYEE_NOT_AVAILABLE: "O funcionário não está disponível neste horário.",
 } as const;

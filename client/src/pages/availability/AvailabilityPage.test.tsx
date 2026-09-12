@@ -4,11 +4,13 @@ import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AvailabilityPage from "./AvailabilityPage";
 import availabilityApi from "../../api/endpoints/availability.api";
+import availabilityExceptionsApi from "../../api/endpoints/availabilityExceptions.api";
 import employeesApi from "../../api/endpoints/employees.api";
 import authReducer from "../../store/slices/authSlice";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import type { Availability } from "../../types/availability";
+import type { AvailabilityException } from "../../types/availabilityException";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
 
@@ -20,6 +22,16 @@ vi.mock("../../api/endpoints/availability.api", () => ({
     createAvailability: vi.fn(),
     updateAvailability: vi.fn(),
     deleteAvailability: vi.fn(),
+  },
+}));
+
+vi.mock("../../api/endpoints/availabilityExceptions.api", () => ({
+  default: {
+    getAvailabilityExceptions: vi.fn(),
+    getAvailabilityException: vi.fn(),
+    createAvailabilityException: vi.fn(),
+    updateAvailabilityException: vi.fn(),
+    deleteAvailabilityException: vi.fn(),
   },
 }));
 
@@ -99,10 +111,19 @@ function mockAvailability(list: Availability[]) {
   });
 }
 
+function mockExceptions(list: AvailabilityException[]) {
+  vi.mocked(availabilityExceptionsApi.getAvailabilityExceptions).mockResolvedValue({
+    success: true,
+    message: "ok",
+    data: list,
+  });
+}
+
 describe("AvailabilityPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockEmployees([]);
+    mockExceptions([]);
   });
 
   it("shows a loading spinner while availability loads", () => {
@@ -513,5 +534,71 @@ expect(
       ...Object.keys(window.sessionStorage),
     ];
     expect(storageKeys).toEqual([]);
+  });
+
+  it("loads and renders the exceptions of the selected employee", async () => {
+    mockEmployees([]);
+    mockAvailability([]);
+    mockExceptions([
+      {
+        id: "exc1",
+        companyId: user.companyId,
+        employeeId: user.id,
+        date: "2026-09-15",
+        allDay: true,
+        startTime: null,
+        endTime: null,
+        type: "VACATION",
+        reason: "Férias",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    renderPage();
+
+    expect(
+      await screen.findByText("Exceções de disponibilidade"),
+    ).toBeInTheDocument();
+    expect(
+      availabilityExceptionsApi.getAvailabilityExceptions,
+    ).toHaveBeenCalledWith(user.id);
+    expect(await screen.findByText("15/09/2026")).toBeInTheDocument();
+    expect(
+      screen.getByText("Férias", { selector: ".badge" }),
+    ).toBeInTheDocument();
+  });
+
+  it("reloads exceptions when the selected employee changes", async () => {
+    mockEmployees([
+      makeEmployee({ id: user.id, name: "Owner Teste", role: "OWNER" }),
+      makeEmployee({ id: "abc999", name: "Bruno Lima" }),
+    ]);
+    mockAvailability([]);
+
+    renderPage();
+
+    const select = await screen.findByLabelText("Funcionário");
+    fireEvent.change(select, { target: { value: "abc999" } });
+
+    expect(
+      await screen.findByText("Exceções de disponibilidade"),
+    ).toBeInTheDocument();
+    expect(
+      availabilityExceptionsApi.getAvailabilityExceptions,
+    ).toHaveBeenLastCalledWith("abc999");
+  });
+
+  it("hides the new-exception button for EMPLOYEE", async () => {
+    mockAvailability([]);
+
+    renderPage(makeStore("EMPLOYEE"));
+
+    expect(
+      await screen.findByText("Exceções de disponibilidade"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Nova exceção" }),
+    ).not.toBeInTheDocument();
   });
 });

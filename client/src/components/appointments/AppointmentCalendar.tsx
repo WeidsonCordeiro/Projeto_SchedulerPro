@@ -5,6 +5,7 @@ import { hasAvailabilityOnDay } from "../../config/appointmentSlots";
 import { formatMonthYear } from "../../config/appointmentTime";
 import { APPOINTMENT_TIMEZONE } from "../../config/appointmentTime";
 import type { Availability } from "../../types/availability";
+import type { AvailabilityException } from "../../types/availabilityException";
 
 /**
  * Janela de navegação do calendário: hoje ± 12 meses, garantindo que a edição
@@ -16,6 +17,8 @@ const MONTH_NAVIGATION_RANGE = 12;
 
 interface AppointmentCalendarProps {
   availability: Availability[];
+  /** Exceções de disponibilidade do funcionário (bloqueios/férias/feriados). */
+  exceptions?: AvailabilityException[];
   selectedDate: string | null;
   onSelectDay: (dateKey: string) => void;
   timezone?: string;
@@ -23,6 +26,7 @@ interface AppointmentCalendarProps {
 
 export default function AppointmentCalendar({
   availability,
+  exceptions = [],
   selectedDate,
   onSelectDay,
   timezone = APPOINTMENT_TIMEZONE,
@@ -110,7 +114,7 @@ export default function AppointmentCalendar({
             {cells.slice(weekIndex * 7, weekIndex * 7 + 7).map((cell) => {
               const isAvailable =
                 cell.isCurrentMonth &&
-                hasAvailabilityOnDay(availability, cell.date, timezone);
+                hasAvailabilityOnDay(availability, cell.date, timezone, exceptions);
               const isSelected = cell.date === selectedDate;
               return (
                 <div className="col" key={cell.date}>

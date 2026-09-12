@@ -14,6 +14,7 @@ import { Types } from "mongoose";
 
 import AvailabilityRepository from "../repositories/AvailabilityRepository";
 import AvailabilityMapper from "../mappers/AvailabilityMapper";
+import AvailabilityExceptionRepository from "../repositories/AvailabilityExceptionRepository";
 
 import UserRepository from "../../users/repositories/UserRepository";
 
@@ -39,6 +40,9 @@ class AvailabilityService {
 
   private readonly userRepository = UserRepository;
   private readonly companyRepository = CompanyRepository;
+
+  private readonly availabilityExceptionRepository =
+    AvailabilityExceptionRepository;
 
   /**
    * ==========================================================
@@ -376,6 +380,14 @@ class AvailabilityService {
     const start = formatLocalTime(localStart);
     const end = formatLocalTime(localEnd);
 
+    const localDate = localStart.toISODate() ?? "";
+
+    /**
+     * Exceções de disponibilidade têm prioridade sobre a
+     * disponibilidade semanal recorrente.
+     */
+    await this.ensureNoException(companyId, employeeId, localDate, start, end);
+
     const availability = await this.availabilityRepository.findByEmployeeAndDay(
       companyId,
       employeeId,
@@ -418,6 +430,54 @@ class AvailabilityService {
         HttpMessages.EMPLOYEE_NOT_AVAILABLE,
         HttpStatus.CONFLICT,
       );
+    }
+  }
+
+  /**
+   * ==========================================================
+   * Verifica se o intervalo do agendamento entra em qualquer
+   * exceção (bloqueio/férias/feriado) do funcionário.
+   *
+   * A data e os horários da exceção representam o tempo LOCAL
+   * da empresa. Um slot é bloqueado se QUALQUER parte dele
+   * sobrepor um período excepcional:
+   *
+   *   exceção.inicio < slot.fim && exceção.fim > slot.inicio
+   *
+   * Exceções de dia inteiro bloqueiam todo o dia.
+   * ==========================================================
+   */
+  private async ensureNoException(
+    companyId: string,
+    employeeId: string | Types.ObjectId,
+    localDate: string,
+    start: string,
+    end: string,
+  ): Promise<void> {
+    const exceptions =
+      await this.availabilityExceptionRepository.findByEmployeeAndDate(
+        companyId,
+        employeeId,
+        localDate,
+      );
+
+    for (const exception of exceptions) {
+      if (exception.allDay) {
+        throw new AppError(
+          HttpMessages.EMPLOYEE_NOT_AVAILABLE,
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      const exStart = exception.startTime ?? null;
+      const exEnd = exception.endTime ?? null;
+
+      if (exStart && exEnd && exStart < end && exEnd > start) {
+        throw new AppError(
+          HttpMessages.EMPLOYEE_NOT_AVAILABLE,
+          HttpStatus.CONFLICT,
+        );
+      }
     }
   }
 }

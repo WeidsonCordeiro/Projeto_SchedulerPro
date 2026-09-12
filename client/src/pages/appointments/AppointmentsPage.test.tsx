@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AppointmentsPage from "./AppointmentsPage";
 import appointmentsApi from "../../api/endpoints/appointments.api";
 import availabilityApi from "../../api/endpoints/availability.api";
+import availabilityExceptionsApi from "../../api/endpoints/availabilityExceptions.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
@@ -37,6 +38,12 @@ vi.mock("../../api/endpoints/appointments.api", () => ({
 vi.mock("../../api/endpoints/availability.api", () => ({
   default: {
     getEmployeeAvailabilities: vi.fn(),
+  },
+}));
+
+vi.mock("../../api/endpoints/availabilityExceptions.api", () => ({
+  default: {
+    getAvailabilityExceptions: vi.fn(),
   },
 }));
 
@@ -197,6 +204,11 @@ describe("AppointmentsPage", () => {
       message: "ok",
       data: weekAvailability,
     } satisfies ApiResponse<Availability[]>);
+    vi.mocked(availabilityExceptionsApi.getAvailabilityExceptions).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    });
     // Fixa o relógio para tornar o mês exibido pelo calendário determinístico.
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-09-10T12:00:00.000Z"));

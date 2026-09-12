@@ -4,6 +4,7 @@ import employeesApi from "../../api/endpoints/employees.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AvailabilityDayEditor from "../../components/availability/AvailabilityDayEditor";
 import DeleteAvailabilityDayModal from "../../components/availability/DeleteAvailabilityDayModal";
+import AvailabilityExceptionsSection from "../../components/availability/AvailabilityExceptionsSection";
 import { getAvailabilityAbilities } from "../../config/availabilityPermissions";
 import {
   EMPTY_DAY_DRAFT,
@@ -374,6 +375,18 @@ export default function AvailabilityPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!isLoading && !loadError && (
+        <div className="mt-4">
+          <AvailabilityExceptionsSection
+            employeeId={selectedEmployeeId}
+            canCreate={canCreate}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            onSuccess={setSuccessMessage}
+          />
         </div>
       )}
 
