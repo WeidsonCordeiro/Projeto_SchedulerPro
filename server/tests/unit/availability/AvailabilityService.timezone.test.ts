@@ -1,14 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { availabilityRepository, userRepository, companyRepository } = vi.hoisted(() => ({
+const { availabilityRepository, userRepository, companyRepository, availabilityExceptionRepository } = vi.hoisted(() => ({
   availabilityRepository: { findByEmployeeAndDay: vi.fn() },
   userRepository: { findById: vi.fn() },
   companyRepository: { findById: vi.fn() },
+  availabilityExceptionRepository: { findByEmployeeAndDate: vi.fn() },
 }));
 
 vi.mock("../../../src/modules/availability/repositories/AvailabilityRepository", () => ({ default: availabilityRepository }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
 vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
+vi.mock("../../../src/modules/availability/repositories/AvailabilityExceptionRepository", () => ({ default: availabilityExceptionRepository }));
 
 import AvailabilityService from "../../../src/modules/availability/services/AvailabilityService";
 import { AppError } from "../../../src/errors/AppError";
@@ -27,6 +29,7 @@ beforeEach(() => {
   userRepository.findById.mockResolvedValue(employee);
   companyRepository.findById.mockResolvedValue({ timezone: "Europe/Lisbon" });
   availabilityRepository.findByEmployeeAndDay.mockResolvedValue(availability());
+  availabilityExceptionRepository.findByEmployeeAndDate.mockResolvedValue([]);
 });
 
 describe("AvailabilityService.ensureEmployeeAvailable por timezone", () => {

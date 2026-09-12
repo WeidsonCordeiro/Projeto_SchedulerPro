@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import availabilityApi from "../../api/endpoints/availability.api";
+import availabilityExceptionApi from "../../api/endpoints/availabilityExceptions.api";
 import appointmentsApi from "../../api/endpoints/appointments.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentCalendar from "./AppointmentCalendar";
@@ -16,6 +17,7 @@ import {
 import { getAvailableSlots } from "../../config/appointmentSlots";
 import type { Appointment } from "../../types/appointment";
 import type { Availability } from "../../types/availability";
+import type { AvailabilityException } from "../../types/availabilityException";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import type { Employee } from "../../types/employee";
@@ -120,6 +122,7 @@ export default function AppointmentForm({
 
   // Agenda inteligente
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [exceptions, setExceptions] = useState<AvailabilityException[]>([]);
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(
@@ -167,6 +170,7 @@ export default function AppointmentForm({
       availability,
       durationMinutes: selectedService.duration,
       appointments,
+      exceptions,
       excludeAppointmentId: appointment?.id,
     });
   }, [
@@ -174,6 +178,7 @@ export default function AppointmentForm({
     selectedDate,
     selectedService,
     availability,
+    exceptions,
     appointments,
     appointment?.id,
     timezone,
@@ -198,12 +203,17 @@ export default function AppointmentForm({
     setIsLoadingAvailability(true);
     setAvailabilityError(null);
     try {
-      const response = await availabilityApi.getEmployeeAvailabilities(employeeIdToLoad);
-      setAvailability(response.data ?? []);
+      const [availabilityResponse, exceptionsResponse] = await Promise.all([
+        availabilityApi.getEmployeeAvailabilities(employeeIdToLoad),
+        availabilityExceptionApi.getAvailabilityExceptions(employeeIdToLoad),
+      ]);
+      setAvailability(availabilityResponse.data ?? []);
+      setExceptions(exceptionsResponse.data ?? []);
     } catch (error) {
       const failure = getApiError(error);
       setAvailabilityError(getFriendlyErrorMessage(failure));
       setAvailability([]);
+      setExceptions([]);
     } finally {
       setIsLoadingAvailability(false);
     }
@@ -212,6 +222,7 @@ export default function AppointmentForm({
   useEffect(() => {
     if (!employeeId) {
       setAvailability([]);
+      setExceptions([]);
       setAvailabilityError(null);
       return;
     }
@@ -254,6 +265,7 @@ export default function AppointmentForm({
         availability,
         durationMinutes: service.duration,
         appointments,
+        exceptions,
         excludeAppointmentId: appointment?.id,
       });
       if (!slots.some((slot) => slot.start === selectedSlotStart)) {
@@ -462,6 +474,7 @@ export default function AppointmentForm({
                       <AppointmentCalendar
                         key={employeeId}
                         availability={availability}
+                        exceptions={exceptions}
                         selectedDate={selectedDate}
                         onSelectDay={handleSelectDay}
                       />

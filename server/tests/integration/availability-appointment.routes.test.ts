@@ -16,7 +16,7 @@ const ids = {
   appointment: "507f1f77bcf86cd799439021",
 };
 
-const { authUser, availabilityRepository, appointmentRepository, userRepository, clientRepository, serviceRepository, companyRepository } = vi.hoisted(() => ({
+const { authUser, availabilityRepository, appointmentRepository, userRepository, clientRepository, serviceRepository, companyRepository, availabilityExceptionRepository } = vi.hoisted(() => ({
   authUser: { value: { userId: "actor", companyId: "507f1f77bcf86cd799439011", role: "OWNER" } },
   availabilityRepository: {
     findById: vi.fn(), findByCompanyId: vi.fn(), findByEmployeeId: vi.fn(),
@@ -30,6 +30,7 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
   clientRepository: { findById: vi.fn() },
   serviceRepository: { findById: vi.fn() },
   companyRepository: { findById: vi.fn() },
+  availabilityExceptionRepository: { findByEmployeeAndDate: vi.fn() },
 }));
 
 vi.mock("../../src/middlewares/auth.middleware", () => ({
@@ -46,6 +47,7 @@ vi.mock("../../src/modules/users/repositories/UserRepository", () => ({ default:
 vi.mock("../../src/modules/Clients/repositories/ClientRepository", () => ({ default: clientRepository }));
 vi.mock("../../src/modules/services/repositories/ServiceRepository", () => ({ default: serviceRepository }));
 vi.mock("../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
+vi.mock("../../src/modules/availability/repositories/AvailabilityExceptionRepository", () => ({ default: availabilityExceptionRepository }));
 
 import app from "../../src/app";
 import { Role } from "../../src/constants/roles";
@@ -93,6 +95,8 @@ beforeEach(() => {
   availabilityRepository.findByEmployeeAndDay.mockResolvedValue(availabilityA);
   availabilityRepository.create.mockImplementation(async (data: any) => ({ ...availabilityA, ...data }));
   availabilityRepository.update.mockImplementation(async (_id: string, data: any) => ({ ...availabilityA, ...data }));
+
+  availabilityExceptionRepository.findByEmployeeAndDate.mockResolvedValue([]);
 
   appointmentRepository.findById.mockResolvedValue(appointmentA());
   appointmentRepository.findByCompanyId.mockResolvedValue([appointmentA()]);

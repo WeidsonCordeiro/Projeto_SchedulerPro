@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AppointmentForm from "./AppointmentForm";
 import appointmentsApi from "../../api/endpoints/appointments.api";
 import availabilityApi from "../../api/endpoints/availability.api";
+import availabilityExceptionsApi from "../../api/endpoints/availabilityExceptions.api";
 import { httpError } from "../../test/http";
 import type { ApiResponse } from "../../types/api";
 import type { Appointment } from "../../types/appointment";
@@ -21,6 +22,12 @@ vi.mock("../../api/endpoints/appointments.api", () => ({
 vi.mock("../../api/endpoints/availability.api", () => ({
   default: {
     getEmployeeAvailabilities: vi.fn(),
+  },
+}));
+
+vi.mock("../../api/endpoints/availabilityExceptions.api", () => ({
+  default: {
+    getAvailabilityExceptions: vi.fn(),
   },
 }));
 
@@ -155,6 +162,9 @@ describe("AppointmentForm", () => {
     vi.clearAllMocks();
     vi.mocked(availabilityApi.getEmployeeAvailabilities).mockResolvedValue(
       availabilityResponse(weekAvailability),
+    );
+    vi.mocked(availabilityExceptionsApi.getAvailabilityExceptions).mockResolvedValue(
+      { success: true, message: "", data: [] },
     );
   });
 

@@ -2,6 +2,7 @@ import { DateTime } from "luxon";
 import { APPOINTMENT_TIMEZONE } from "./appointmentTime";
 import type { Appointment } from "../types/appointment";
 import type { Availability, DayOfWeek } from "../types/availability";
+import type { AvailabilityException } from "../types/availabilityException";
 
 /**
  * Gerador de horários livres (slots) para a agenda inteligente de
@@ -15,6 +16,10 @@ import type { Availability, DayOfWeek } from "../types/availability";
  * - AvailabilityService.ensureEmployeeAvailable: o appointment precisa caber
  *   inteiro dentro do período da manhã OU inteiro dentro do período da tarde,
  *   comparando os horários locais como strings "HH:mm";
+ * - AvailabilityService.ensureNoException: uma exceção (bloqueio/férias/
+ *   feriado) de dia inteiro invalida o dia; uma exceção parcial bloqueia
+ *   qualquer slot que sobreponha o período (início < fim do slot && fim >
+ *   início do slot);
  * - AppointmentRepository.hasEmployeeConflict: apenas os status
  *   "scheduled"/"confirmed" bloqueiam, pelo critério de sobreposição de
  *   instantes (start < outro.end && end > outro.start);
@@ -62,15 +67,60 @@ function isCompletePeriod(start: string | null, end: string | null): boolean {
 }
 
 /**
+ * Exceções que bloqueiam o dia inteiro na data informada (dateKey do
+ * calendário local da empresa).
+ */
+export function hasAllDayException(
+  exceptions: AvailabilityException[],
+  dateKey: string,
+): boolean {
+  return exceptions.some(
+    (exception) => exception.date === dateKey && exception.allDay,
+  );
+}
+
+/**
+ * Indica se um slot local ("HH:mm" até "HH:mm") entra em alguma exceção do
+ * funcionário na data informada, espelhando AvailabilityService.ensureNoException:
+ *
+ *   exceção.inicio < slot.fim && exceção.fim > slot.inicio
+ *
+ * Exceções de dia inteiro são verificadas por hasAllDayException.
+ */
+export function exceptionBlocksSlot(
+  exceptions: AvailabilityException[],
+  dateKey: string,
+  localStart: string,
+  localEnd: string,
+): boolean {
+  return exceptions.some((exception) => {
+    if (exception.date !== dateKey || exception.allDay) {
+      return false;
+    }
+    const start = exception.startTime;
+    const end = exception.endTime;
+    if (!start || !end) {
+      return false;
+    }
+    return start < localEnd && end > localStart;
+  });
+}
+
+/**
  * Indica se o funcionário trabalha no dia (dateKey do calendário local da
  * empresa), ou seja, se existe um registro de disponibilidade com pelo menos
- * um período completo (manhã ou tarde) para o dia da semana correspondente.
+ * um período completo (manhã ou tarde) para o dia da semana correspondente e
+ * não há exceção de dia inteiro bloqueando a data.
  */
 export function hasAvailabilityOnDay(
   availability: Availability[],
   dateKey: string,
   timezone: string = APPOINTMENT_TIMEZONE,
+  exceptions: AvailabilityException[] = [],
 ): boolean {
+  if (hasAllDayException(exceptions, dateKey)) {
+    return false;
+  }
   const dayOfWeek = dayOfWeekOf(dateKey, timezone);
   if (dayOfWeek === null) {
     return false;
@@ -95,6 +145,8 @@ export interface GetAvailableSlotsParams {
   durationMinutes: number;
   /** Agendamentos da empresa usados para calcular conflitos de funcionário. */
   appointments?: Appointment[];
+  /** Exceções de disponibilidade do funcionário (bloqueios/férias/feriados). */
+  exceptions?: AvailabilityException[];
   /** Em edição, ignora o próprio agendamento como conflito (backend também). */
   excludeAppointmentId?: string;
   timezone?: string;
@@ -119,6 +171,7 @@ export function getAvailableSlots({
   availability,
   durationMinutes,
   appointments = [],
+  exceptions = [],
   excludeAppointmentId,
   timezone = APPOINTMENT_TIMEZONE,
 }: GetAvailableSlotsParams): AvailableSlot[] {
@@ -132,6 +185,13 @@ export function getAvailableSlots({
   }
   const record = availability.find((entry) => entry.dayOfWeek === dayOfWeek);
   if (!record) {
+    return [];
+  }
+
+  /**
+   * Exceção de dia inteiro invalida o dia por completo.
+   */
+  if (hasAllDayException(exceptions, dateKey)) {
     return [];
   }
 
@@ -187,6 +247,13 @@ export function getAvailableSlots({
       // idêntica ao string-compare de AvailabilityService).
       if (slotStartTime < periodStart || slotEndTime > periodEndTime) {
         break;
+      }
+
+      // Exceção parcial (bloqueio/férias/feriado) invalida o slot.
+      if (exceptionBlocksSlot(exceptions, dateKey, slotStartTime, slotEndTime)) {
+        cursor = slotEnd;
+        generated += 1;
+        continue;
       }
 
       const startIso = slotStart.toISO();
