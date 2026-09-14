@@ -58,13 +58,13 @@ const employeeA = { _id: ref(ids.employee), companyId: ref(ids.companyA), role: 
 
 const exceptionA = (extra: Record<string, unknown> = {}) => ({
   _id: ref(ids.exception), companyId: ref(ids.companyA), employeeId: ref(ids.employee),
-  date: "2026-08-30", allDay: false, startTime: "10:00", endTime: "11:00",
+  date: "2027-08-29", allDay: false, startTime: "10:00", endTime: "11:00",
   type: "BLOCK", reason: null, createdAt: new Date(), updatedAt: new Date(), ...extra,
 });
 
 const validException = {
   employeeId: ids.employee,
-  date: "2026-08-30",
+  date: "2027-08-29",
   startTime: "10:00",
   endTime: "11:00",
   type: "BLOCK",
@@ -98,7 +98,7 @@ describe("AvailabilityException HTTP integration", () => {
     expect(created.status).toBe(201);
     expect(created.body.data.startTime).toBe("10:00");
     expect(availabilityExceptionRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ employeeId: expect.anything(), date: "2026-08-30", startTime: "10:00", endTime: "11:00" }),
+      expect.objectContaining({ employeeId: expect.anything(), date: "2027-08-29", startTime: "10:00", endTime: "11:00" }),
     );
 
     expect((await request(app).get("/api/availability-exceptions")).status).toBe(200);
@@ -226,7 +226,7 @@ describe("AvailabilityException HTTP integration", () => {
     availabilityExceptionRepository.findByEmployeeAndDate.mockResolvedValue([exceptionA()]);
     const response = await request(app).post("/api/appointments").send({
       clientId: ids.employee, serviceId: ids.employee, employeeId: ids.employee,
-      startAt: "2026-08-30T08:30:00.000Z", notes: "Consulta",
+      startAt: "2027-08-29T08:30:00.000Z", notes: "Consulta",
     });
     expect(response.status).toBe(409);
     expect(appointmentRepository.create).not.toHaveBeenCalled();
@@ -236,8 +236,40 @@ describe("AvailabilityException HTTP integration", () => {
     availabilityExceptionRepository.findByEmployeeAndDate.mockResolvedValue([exceptionA({ allDay: true, startTime: null, endTime: null })]);
     const response = await request(app).post("/api/appointments").send({
       clientId: ids.employee, serviceId: ids.employee, employeeId: ids.employee,
-      startAt: "2026-08-30T09:00:00.000Z", notes: "Consulta",
+      startAt: "2027-08-29T09:00:00.000Z", notes: "Consulta",
     });
     expect(response.status).toBe(409);
+  });
+
+  it("rejeita exceção que conflita com agendamento ativo", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(true);
+    const response = await request(app).post("/api/availability-exceptions").send(validException);
+    expect(response.status).toBe(409);
+    expect(availabilityExceptionRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita exceção de dia inteiro que conflita com agendamento ativo", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(true);
+    const response = await request(app).post("/api/availability-exceptions").send({ ...validException, allDay: true });
+    expect(response.status).toBe(409);
+    expect(availabilityExceptionRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita atualização de exceção que conflita com agendamento ativo", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(true);
+    const response = await request(app).patch(`/api/availability-exceptions/${ids.exception}`).send({ endTime: "12:00" });
+    expect(response.status).toBe(409);
+    expect(availabilityExceptionRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("permite exceção sem agendamento ativo e informa o intervalo UTC consultado", async () => {
+    const response = await request(app).post("/api/availability-exceptions").send(validException);
+    expect(response.status).toBe(201);
+    expect(appointmentRepository.hasEmployeeConflict).toHaveBeenCalledWith(
+      ids.companyA,
+      ids.employee,
+      new Date("2027-08-29T09:00:00.000Z"),
+      new Date("2027-08-29T10:00:00.000Z"),
+    );
   });
 });

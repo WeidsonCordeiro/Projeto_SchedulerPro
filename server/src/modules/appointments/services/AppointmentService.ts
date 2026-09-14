@@ -42,7 +42,11 @@ class AppointmentService {
 * Cria um novo agendamento.
 * ==========================================================
   */
-  public async create(dto: CreateAppointmentDto, companyId: string) {
+  public async create(
+    dto: CreateAppointmentDto,
+    companyId: string,
+    now: Date = new Date(),
+  ) {
     /**
 
   * ---
@@ -108,6 +112,18 @@ class AppointmentService {
 
     const endAt = new Date(startAt.getTime() + service.duration * 60 * 1000);
 
+    /**
+     * ----------------------------------------------------------
+     * Não permite criar agendamentos no passado.
+     * ----------------------------------------------------------
+     */
+    if (startAt.getTime() <= now.getTime()) {
+      throw new AppError(
+        HttpMessages.APPOINTMENT_START_IN_PAST,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     await AvailabilityService.ensureEmployeeAvailable(companyId, dto.employeeId, startAt, endAt);
 
     /**
@@ -169,11 +185,35 @@ class AppointmentService {
 * Lista todos os agendamentos da empresa.
 * ==========================================================
   */
-  public async findAll(companyId: string) {
+  public async findAll(companyId: string, now: Date = new Date()) {
+    /**
+     * ----------------------------------------------------------
+     * Agendamento "scheduled" cujo início já passou é
+     * automaticamente cancelado antes da consulta.
+     * ----------------------------------------------------------
+     */
+    await this.expireOverdueScheduled(companyId, now);
+
     const appointments =
       await this.appointmentRepository.findByCompanyId(companyId);
 
     return appointments.map(AppointmentMapper.toResponse);
+  }
+
+  /**
+   * ==========================================================
+   * Cancela agendamentos com status "scheduled" e início no
+   * passado.
+   *
+   * Apenas o status "scheduled" é afetado; os demais
+   * permanecem inalterados.
+   * ==========================================================
+   */
+  public async expireOverdueScheduled(
+    companyId: string,
+    now: Date = new Date(),
+  ): Promise<number> {
+    return this.appointmentRepository.cancelOverdueScheduled(companyId, now);
   }
 
   /**
@@ -202,6 +242,7 @@ class AppointmentService {
     id: string,
     dto: UpdateAppointmentDto,
     companyId: string,
+    now: Date = new Date(),
   ) {
     const appointment = await this.appointmentRepository.findById(id);
 
@@ -304,6 +345,18 @@ class AppointmentService {
      */
     if (dto.startAt) {
       startAt = new Date(dto.startAt);
+
+      /**
+       * ----------------------------------------------------------
+       * Não permite mover um agendamento para o passado.
+       * ----------------------------------------------------------
+       */
+      if (startAt.getTime() <= now.getTime()) {
+        throw new AppError(
+          HttpMessages.APPOINTMENT_START_IN_PAST,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     /**

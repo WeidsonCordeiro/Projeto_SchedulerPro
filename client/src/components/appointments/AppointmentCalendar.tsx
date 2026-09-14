@@ -22,6 +22,14 @@ interface AppointmentCalendarProps {
   selectedDate: string | null;
   onSelectDay: (dateKey: string) => void;
   timezone?: string;
+  /**
+   * Data mínima navegável/selecionável ("AAAA-MM-DD"), usada no fluxo de
+   * criação para não oferecer/abrir dias passados. Quando informada, o
+   * calendário não navega para meses anteriores ao mês desta data e desabilita
+   * os dias anteriores a ela (sem mexer no comportamento de edição, que não
+   * informa esta prop e continua permitindo abrir agendamentos antigos).
+   */
+  minDate?: string;
 }
 
 export default function AppointmentCalendar({
@@ -30,6 +38,7 @@ export default function AppointmentCalendar({
   selectedDate,
   onSelectDay,
   timezone = APPOINTMENT_TIMEZONE,
+  minDate,
 }: AppointmentCalendarProps) {
   const today = useMemo(
     () => DateTime.now().setZone(timezone).startOf("month"),
@@ -40,13 +49,31 @@ export default function AppointmentCalendar({
     const selectedMonth = selectedDate
       ? DateTime.fromISO(selectedDate, { zone: timezone }).startOf("month")
       : null;
-    const min = today.minus({ months: MONTH_NAVIGATION_RANGE });
+
+    // No fluxo de criação (minDate informado), o mês mínimo é o mês da data
+    // mínima (hoje): não se navega para meses anteriores.
+    const minDateMonth = minDate
+      ? DateTime.fromISO(minDate, { zone: timezone }).startOf("month")
+      : null;
+    const minByRange = today.minus({ months: MONTH_NAVIGATION_RANGE });
+
+    // Edição de agendamento antigo: só alarga o mínimo para ATRÁS quando o mês
+    // selecionado é anterior ao mínimo de navegação (não se mexe no fluxo de
+    // criação, que usa minDate).
+    const minCandidates = [minByRange];
+    if (selectedMonth && selectedMonth < minByRange) {
+      minCandidates.push(selectedMonth);
+    }
+    if (minDateMonth) {
+      minCandidates.push(minDateMonth);
+    }
+
     const max = today.plus({ months: MONTH_NAVIGATION_RANGE });
     return {
-      min: selectedMonth && selectedMonth < min ? selectedMonth : min,
+      min: DateTime.max(...minCandidates) ?? minByRange,
       max: selectedMonth && selectedMonth > max ? selectedMonth : max,
     };
-  }, [today, selectedDate, timezone]);
+  }, [today, selectedDate, minDate, timezone]);
 
   const [viewMonth, setViewMonth] = useState<DateTime>(() => {
     const initial = selectedDate

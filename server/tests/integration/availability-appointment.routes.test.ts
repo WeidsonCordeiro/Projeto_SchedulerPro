@@ -25,6 +25,7 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
   appointmentRepository: {
     findById: vi.fn(), findByCompanyId: vi.fn(), create: vi.fn(), update: vi.fn(),
     updateStatus: vi.fn(), softDelete: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(),
+    cancelOverdueScheduled: vi.fn(),
   },
   userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn() },
   clientRepository: { findById: vi.fn() },
@@ -66,7 +67,7 @@ const availabilityA = {
 const appointmentA = (extra: Record<string, unknown> = {}) => ({
   _id: ref(ids.appointment), companyId: ref(ids.companyA), clientId: ref(ids.client),
   serviceId: ref(ids.service), employeeId: ref(ids.employee),
-  startAt: new Date("2026-08-30T08:00:00.000Z"), endAt: new Date("2026-08-30T08:30:00.000Z"),
+  startAt: new Date("2027-08-29T08:00:00.000Z"), endAt: new Date("2027-08-29T08:30:00.000Z"),
   status: AppointmentStatus.SCHEDULED, notes: null, createdAt: new Date(), updatedAt: new Date(), ...extra,
 });
 
@@ -76,7 +77,7 @@ const validAvailability = {
 };
 const validAppointment = {
   clientId: ids.client, serviceId: ids.service, employeeId: ids.employee,
-  startAt: "2026-08-30T08:00:00.000Z", notes: "Consulta",
+  startAt: "2027-08-29T08:00:00.000Z", notes: "Consulta",
 };
 
 beforeEach(() => {
@@ -102,6 +103,7 @@ beforeEach(() => {
   appointmentRepository.findByCompanyId.mockResolvedValue([appointmentA()]);
   appointmentRepository.hasEmployeeConflict.mockResolvedValue(false);
   appointmentRepository.hasClientConflict.mockResolvedValue(false);
+  appointmentRepository.cancelOverdueScheduled.mockResolvedValue(0);
   appointmentRepository.create.mockImplementation(async (data: any) => ({ ...appointmentA(), ...data }));
   appointmentRepository.update.mockImplementation(async (_id: string, data: any) => ({ ...appointmentA(), ...data }));
   appointmentRepository.updateStatus.mockImplementation(async (_id: string, status: AppointmentStatus) => appointmentA({ status }));
@@ -255,9 +257,9 @@ describe("Appointment HTTP integration", () => {
     availabilityRepository.findByEmployeeAndDay.mockResolvedValue({ ...availabilityA, morningStart: "10:00" });
     expect((await request(app).post("/api/appointments").send(validAppointment)).status).toBe(409);
     availabilityRepository.findByEmployeeAndDay.mockResolvedValue(availabilityA);
-    const late = { ...validAppointment, startAt: "2026-08-30T11:45:00.000Z" };
+    const late = { ...validAppointment, startAt: "2027-08-29T11:45:00.000Z" };
     expect((await request(app).post("/api/appointments").send(late)).status).toBe(409);
-    const differentDay = { ...validAppointment, startAt: "2026-08-31T08:00:00.000Z" };
+    const differentDay = { ...validAppointment, startAt: "2027-08-30T08:00:00.000Z" };
     availabilityRepository.findByEmployeeAndDay.mockResolvedValueOnce(null);
     expect((await request(app).post("/api/appointments").send(differentDay)).status).toBe(409);
   });
@@ -269,7 +271,7 @@ describe("Appointment HTTP integration", () => {
     appointmentRepository.hasClientConflict.mockResolvedValue(true);
     expect((await request(app).post("/api/appointments").send(validAppointment)).status).toBe(409);
     appointmentRepository.hasClientConflict.mockResolvedValue(false);
-    expect((await request(app).post("/api/appointments").send({ ...validAppointment, startAt: "2026-08-30T09:30:00.000Z" })).status).toBe(201);
+    expect((await request(app).post("/api/appointments").send({ ...validAppointment, startAt: "2027-08-29T09:30:00.000Z" })).status).toBe(201);
   });
 
   it("trata scheduled/confirmed como conflitantes e permite cancelado conforme repository", async () => {
@@ -279,6 +281,25 @@ describe("Appointment HTTP integration", () => {
     appointmentRepository.hasClientConflict.mockResolvedValue(false);
     expect((await request(app).post("/api/appointments").send(validAppointment)).status).toBe(201);
     expect(appointmentRepository.hasEmployeeConflict).toHaveBeenCalled();
+  });
+
+  it("rejeita appointment no passado com 400", async () => {
+    const response = await request(app).post("/api/appointments").send({ ...validAppointment, startAt: "2020-01-15T10:00:00.000Z" });
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain("passou");
+    expect(appointmentRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("não permite mover appointment para o passado na atualização", async () => {
+    const response = await request(app).patch(`/api/appointments/${ids.appointment}`).send({ startAt: "2020-01-15T10:00:00.000Z" });
+    expect(response.status).toBe(400);
+    expect(appointmentRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("cancela scheduled vencidos antes de listar appointments", async () => {
+    const response = await request(app).get("/api/appointments");
+    expect(response.status).toBe(200);
+    expect(appointmentRepository.cancelOverdueScheduled).toHaveBeenCalledWith(ids.companyA, expect.any(Date));
   });
 
   it("cobre transições válidas e inválidas de status", async () => {

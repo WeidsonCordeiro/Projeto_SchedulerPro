@@ -183,6 +183,32 @@ class AppointmentRepository {
   }
 
   /**
+   * ==========================================================
+   * Cancela agendamentos com status "scheduled" cujo início
+   * já passou.
+   *
+   * Apenas o status "scheduled" é afetado; os demais
+   * (confirmed, completed, cancelled, no-show) permanecem.
+   * ==========================================================
+   */
+  public async cancelOverdueScheduled(
+    companyId: string | Types.ObjectId,
+    now: Date,
+  ): Promise<number> {
+    const result = await Appointment.updateMany(
+      {
+        companyId,
+        deletedAt: null,
+        status: AppointmentStatus.SCHEDULED,
+        startAt: { $lt: now },
+      },
+      { $set: { status: AppointmentStatus.CANCELLED } },
+    );
+
+    return result.modifiedCount ?? 0;
+  }
+
+  /**
 
 * ==========================================================
 * Remove um agendamento.

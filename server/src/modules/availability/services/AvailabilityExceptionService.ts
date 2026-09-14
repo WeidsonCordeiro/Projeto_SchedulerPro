@@ -18,6 +18,8 @@ import { Types } from "mongoose";
 import AvailabilityExceptionRepository from "../repositories/AvailabilityExceptionRepository";
 import AvailabilityExceptionMapper from "../mappers/AvailabilityExceptionMapper";
 import UserRepository from "../../users/repositories/UserRepository";
+import AppointmentRepository from "../../appointments/repositories/AppointmentRepository";
+import CompanyRepository from "../../companies/repositories/CompanyRepository";
 
 import { CreateAvailabilityExceptionDto } from "../dto/CreateAvailabilityException.dto";
 import { UpdateAvailabilityExceptionDto } from "../dto/UpdateAvailabilityException.dto";
@@ -48,6 +50,78 @@ class AvailabilityExceptionService {
     AvailabilityExceptionRepository;
 
   private readonly userRepository = UserRepository;
+
+  private readonly appointmentRepository = AppointmentRepository;
+
+  private readonly companyRepository = CompanyRepository;
+
+  /**
+   * ==========================================================
+   * Uma exceção de disponibilidade não pode sobrepor um
+   * agendamento ativo (scheduled ou confirmed) do funcionário.
+   *
+   * A data e os horários da exceção representam o tempo LOCAL
+   * da empresa; os instantes são convertidos para UTC usando
+   * o fuso da empresa antes da consulta de conflito.
+   *
+   * Sobreposição parcial segue a mesma regra dos agendamentos:
+   *   exceção.inicio < appointment.fim && exceção.fim > appointment.inicio
+   *
+   * Exceções de dia inteiro conflitam com qualquer agendamento
+   * ativo no dia.
+   * ==========================================================
+   */
+  private async validateNoActiveAppointment(params: {
+    companyId: string;
+    employeeId: string;
+    date: string;
+    allDay: boolean;
+    startTime: string | null;
+    endTime: string | null;
+  }): Promise<void> {
+    const { companyId, employeeId, date, allDay, startTime, endTime } = params;
+
+    const company = await this.companyRepository.findById(companyId);
+
+    if (!company) {
+      throw new AppError(
+        HttpMessages.COMPANY_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const timezone = company.timezone ?? "UTC";
+
+    const localDate = DateTime.fromISO(date, { zone: timezone });
+
+    let start: DateTime;
+    let end: DateTime;
+
+    if (allDay) {
+      start = localDate.startOf("day");
+      end = localDate.plus({ days: 1 }).startOf("day");
+    } else {
+      const [startHour, startMinute] = (startTime as string).split(":").map(Number);
+      const [endHour, endMinute] = (endTime as string).split(":").map(Number);
+
+      start = localDate.set({ hour: startHour, minute: startMinute, second: 0, millisecond: 0 });
+      end = localDate.set({ hour: endHour, minute: endMinute, second: 0, millisecond: 0 });
+    }
+
+    const hasConflict = await this.appointmentRepository.hasEmployeeConflict(
+      companyId,
+      employeeId,
+      start.toUTC().toJSDate(),
+      end.toUTC().toJSDate(),
+    );
+
+    if (hasConflict) {
+      throw new AppError(
+        HttpMessages.EXCEPTION_APPOINTMENT_CONFLICT,
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
 
   /**
    * ==========================================================
@@ -187,6 +261,15 @@ class AvailabilityExceptionService {
       reason: dto.reason,
     });
 
+    await this.validateNoActiveAppointment({
+      companyId,
+      employeeId: dto.employeeId,
+      date: fields.date,
+      allDay: fields.allDay,
+      startTime: fields.startTime,
+      endTime: fields.endTime,
+    });
+
     const exception = await this.availabilityExceptionRepository.create({
       companyId: new Types.ObjectId(companyId),
       employeeId: new Types.ObjectId(dto.employeeId),
@@ -276,6 +359,20 @@ class AvailabilityExceptionService {
       endTime: dto.endTime !== undefined ? dto.endTime : current.endTime,
       type: dto.type ?? current.type,
       reason: dto.reason !== undefined ? dto.reason : current.reason,
+    });
+
+    /**
+     * Valida o estado final pretendido. A própria exceção
+     * sendo editada não é um agendamento, portanto nenhum
+     * agendamento é excluído dessa verificação.
+     */
+    await this.validateNoActiveAppointment({
+      companyId,
+      employeeId,
+      date: fields.date,
+      allDay: fields.allDay,
+      startTime: fields.startTime,
+      endTime: fields.endTime,
     });
 
     const updated = await this.availabilityExceptionRepository.update(id, {

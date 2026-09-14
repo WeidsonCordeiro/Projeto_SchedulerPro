@@ -97,6 +97,7 @@ export const HttpMessages = {
   STATUS_TRANSITION_NOT_ALLOWED:
     "Não é possível alterar o status deste agendamento.",
   STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
+  APPOINTMENT_START_IN_PAST: "Não é possível agendar em um horário que já passou.",
 
   /*Disponibilidade de funcionários*/
   AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",
@@ -119,6 +120,8 @@ export const HttpMessages = {
     "Exceções de disponibilidade encontradas.",
   AVAILABILITY_EXCEPTION_NOT_FOUND:
     "Exceção de disponibilidade não encontrada.",
+  EXCEPTION_APPOINTMENT_CONFLICT:
+    "Não é possível aplicar esta exceção porque existe um agendamento ativo nesse período.",
 
   EMPLOYEE_NOT_AVAILABLE: "O funcionário não está disponível neste horário.",
 } as const;
