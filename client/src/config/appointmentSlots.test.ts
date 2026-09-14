@@ -258,6 +258,7 @@ describe("appointmentSlots", () => {
       employeeId: "employee1",
       availability: [makeAvailability({ dayOfWeek: 3 })],
       durationMinutes: 30,
+      now: "2026-01-01T00:00:00.000Z",
     });
 
     expect(slots[0].localTime).toBe("09:00");
@@ -271,6 +272,7 @@ describe("appointmentSlots", () => {
       employeeId: "employee1",
       availability: [makeAvailability({ dayOfWeek: 4 })],
       durationMinutes: 30,
+      now: "2026-01-01T00:00:00.000Z",
     });
 
     expect(slots[0].localTime).toBe("09:00");
@@ -283,6 +285,7 @@ describe("appointmentSlots", () => {
       employeeId: "employee1",
       availability: [makeAvailability({ dayOfWeek: 0 })],
       durationMinutes: 30,
+      now: "2026-01-01T00:00:00.000Z",
     });
 
     expect(slots[0].localTime).toBe("09:00");
@@ -297,6 +300,7 @@ describe("appointmentSlots", () => {
       availability: [makeAvailability({ dayOfWeek: 3 })],
       durationMinutes: 30,
       timezone: "America/Sao_Paulo",
+      now: "2026-01-01T00:00:00.000Z",
     });
 
     expect(slots[0].localTime).toBe("09:00");

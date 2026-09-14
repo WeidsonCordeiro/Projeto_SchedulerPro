@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { availabilityExceptionRepository, userRepository } = vi.hoisted(() => ({
+const { availabilityExceptionRepository, userRepository, appointmentRepository, companyRepository } = vi.hoisted(() => ({
   availabilityExceptionRepository: {
     findById: vi.fn(), findByCompanyId: vi.fn(), findByEmployeeId: vi.fn(),
     findByEmployeeAndDate: vi.fn(), create: vi.fn(), update: vi.fn(), softDelete: vi.fn(),
   },
   userRepository: { findById: vi.fn() },
+  appointmentRepository: { hasEmployeeConflict: vi.fn() },
+  companyRepository: { findById: vi.fn() },
 }));
 
 vi.mock("../../../src/modules/availability/repositories/AvailabilityExceptionRepository", () => ({ default: availabilityExceptionRepository }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
+vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({ default: appointmentRepository }));
+vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
 
 import AvailabilityExceptionService from "../../../src/modules/availability/services/AvailabilityExceptionService";
 import { AppError } from "../../../src/errors/AppError";
@@ -31,6 +35,8 @@ const doc = (extra: Record<string, unknown> = {}) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   userRepository.findById.mockResolvedValue(employee);
+  companyRepository.findById.mockResolvedValue({ timezone: "Europe/Lisbon" });
+  appointmentRepository.hasEmployeeConflict.mockResolvedValue(false);
   availabilityExceptionRepository.findById.mockResolvedValue(doc());
   availabilityExceptionRepository.findByCompanyId.mockResolvedValue([doc()]);
   availabilityExceptionRepository.findByEmployeeId.mockResolvedValue([doc()]);
@@ -92,6 +98,43 @@ describe("AvailabilityExceptionService.create", () => {
 
   it("rejeita tipo inválido", async () => {
     await expect(AvailabilityExceptionService.create({ ...partial, type: "X" as never }, companyId)).rejects.toBeInstanceOf(AppError);
+  });
+
+  it("rejeita criação quando há agendamento ativo no período", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(true);
+    await expect(AvailabilityExceptionService.create(partial, companyId)).rejects.toMatchObject({ statusCode: HttpStatus.CONFLICT });
+    expect(availabilityExceptionRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("rejeita criação de dia inteiro quando há agendamento ativo no dia", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(true);
+    await expect(AvailabilityExceptionService.create({ ...partial, allDay: true, startTime: "10:00", endTime: "11:00" }, companyId)).rejects.toMatchObject({ statusCode: HttpStatus.CONFLICT });
+    expect(availabilityExceptionRepository.create).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Europe/Lisbon", "2026-08-30", "10:00", "11:00", "2026-08-30T09:00:00.000Z", "2026-08-30T10:00:00.000Z"],
+    ["America/Sao_Paulo", "2026-08-30", "10:00", "11:00", "2026-08-30T13:00:00.000Z", "2026-08-30T14:00:00.000Z"],
+    ["Europe/Lisbon", "2026-03-29", "10:00", "11:00", "2026-03-29T09:00:00.000Z", "2026-03-29T10:00:00.000Z"],
+  ])("converte horário local (%s) para UTC antes de verificar conflito", async (timezone, date, startTime, endTime, expectedStart, expectedEnd) => {
+    companyRepository.findById.mockResolvedValue({ timezone });
+    await AvailabilityExceptionService.create({ ...partial, date, startTime, endTime }, companyId);
+    expect(appointmentRepository.hasEmployeeConflict).toHaveBeenCalledWith(
+      companyId,
+      employeeId,
+      new Date(expectedStart),
+      new Date(expectedEnd),
+    );
+  });
+
+  it("converte dia inteiro para o intervalo UTC completo do dia local", async () => {
+    await AvailabilityExceptionService.create({ ...partial, allDay: true }, companyId);
+    expect(appointmentRepository.hasEmployeeConflict).toHaveBeenCalledWith(
+      companyId,
+      employeeId,
+      new Date("2026-08-29T23:00:00.000Z"),
+      new Date("2026-08-30T23:00:00.000Z"),
+    );
   });
 });
 
@@ -158,6 +201,22 @@ describe("AvailabilityExceptionService.update", () => {
   it("propaga falha quando o registro é removido no meio da atualização", async () => {
     availabilityExceptionRepository.update.mockResolvedValue(null);
     await expect(AvailabilityExceptionService.update(id, { reason: "x" }, companyId)).rejects.toMatchObject({ statusCode: HttpStatus.NOT_FOUND });
+  });
+
+  it("rejeita atualização que conflita com agendamento ativo no estado final", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(true);
+    await expect(AvailabilityExceptionService.update(id, { endTime: "12:00" }, companyId)).rejects.toMatchObject({ statusCode: HttpStatus.CONFLICT });
+    expect(availabilityExceptionRepository.update).not.toHaveBeenCalled();
+  });
+
+  it("valida o estado final pretendido na atualização", async () => {
+    await AvailabilityExceptionService.update(id, { endTime: "12:00" }, companyId);
+    expect(appointmentRepository.hasEmployeeConflict).toHaveBeenCalledWith(
+      companyId,
+      employeeId,
+      new Date("2026-08-30T09:00:00.000Z"),
+      new Date("2026-08-30T11:00:00.000Z"),
+    );
   });
 });
 

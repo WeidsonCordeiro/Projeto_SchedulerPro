@@ -150,6 +150,13 @@ export interface GetAvailableSlotsParams {
   /** Em edição, ignora o próprio agendamento como conflito (backend também). */
   excludeAppointmentId?: string;
   timezone?: string;
+  /**
+   * Instante de referência ("agora") em ISO 8601. Quando informado, dias
+   * anteriores ao dia corrente (fuso local da empresa) não oferecem slots e,
+   * no próprio dia corrente, slots que já começaram são omitidos (o horário
+   * inteiro deve estar no futuro). Padrão: DateTime.now().
+   */
+  now?: string;
 }
 
 function overlaps(
@@ -174,10 +181,39 @@ export function getAvailableSlots({
   exceptions = [],
   excludeAppointmentId,
   timezone = APPOINTMENT_TIMEZONE,
+  now,
 }: GetAvailableSlotsParams): AvailableSlot[] {
   if (durationMinutes <= 0) {
     return [];
   }
+
+  const nowMs = now
+    ? DateTime.fromISO(now).toMillis()
+    : DateTime.now().toMillis();
+  if (Number.isNaN(nowMs)) {
+    return [];
+  }
+
+  // Dias passados (no fuso local da empresa) não geram horários: um
+  // agendamento nunca pode começar em um dia que já passou (regra de datas).
+  // Esse filtro só age quando o chamador fornece um instante de referência
+  // ("now") — no fluxo de edição/visualização de um agendamento antigo o
+  // chamador simplesmente omite "now" e o comportamento histórico é mantido
+  // (dias/slots do passado continuam calculados de forma pura).
+  const todayKey = now
+    ? DateTime.fromMillis(nowMs, { zone: timezone }).toISODate()
+    : null;
+
+  const dateIsInThePast = todayKey !== null && dateKey < todayKey;
+  if (dateIsInThePast) {
+    return [];
+  }
+
+  // No dia corrente (somente quando "now" é explicitamente informado), um slot
+  // só é oferecido se o horário inteiro ainda está no futuro: o início do slot
+  // precisa ser estritamente posterior a "agora".
+  const isToday =
+    now !== undefined && todayKey !== null && dateKey === todayKey;
 
   const dayOfWeek = dayOfWeekOf(dateKey, timezone);
   if (dayOfWeek === null) {
@@ -247,6 +283,15 @@ export function getAvailableSlots({
       // idêntica ao string-compare de AvailabilityService).
       if (slotStartTime < periodStart || slotEndTime > periodEndTime) {
         break;
+      }
+
+      // No dia de hoje, slots que já começaram não são mais oferecidos: o
+      // horário inteiro precisa estar no futuro (o início já passou), como o
+      // backend rejeita "passado" com APPOINTMENT_START_IN_PAST.
+      if (isToday && slotStart.toMillis() <= nowMs) {
+        cursor = slotEnd;
+        generated += 1;
+        continue;
       }
 
       // Exceção parcial (bloqueio/férias/feriado) invalida o slot.
