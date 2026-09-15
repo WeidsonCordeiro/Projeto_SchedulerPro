@@ -38,6 +38,24 @@ describe("appointmentsApi", () => {
     expect(apiClient.get).toHaveBeenCalledWith("/appointments");
   });
 
+  it("gets /appointments with period params when provided", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { success: true, message: "ok", data: [] },
+    });
+
+    await appointmentsApi.getAppointments({
+      startAt: "2026-08-01T00:00:00.000Z",
+      endAt: "2026-09-01T00:00:00.000Z",
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith("/appointments", {
+      params: {
+        startAt: "2026-08-01T00:00:00.000Z",
+        endAt: "2026-09-01T00:00:00.000Z",
+      },
+    });
+  });
+
   it("gets /appointments/:id", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
       data: { success: true, message: "ok", data: createdAppointment },

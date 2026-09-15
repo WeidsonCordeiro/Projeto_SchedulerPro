@@ -570,4 +570,85 @@ describe("AppointmentForm", () => {
     );
     await waitFor(() => expect(onConflict).toHaveBeenCalledTimes(1));
   });
+
+  it("pre-fills date/time and employee from calendar quick-create", async () => {
+    vi.mocked(availabilityApi.getEmployeeAvailabilities).mockResolvedValue(
+      availabilityResponse(weekAvailability),
+    );
+    vi.mocked(availabilityExceptionsApi.getAvailabilityExceptions).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    });
+
+    renderForm({
+      initialDate: "2026-09-15",
+      initialTime: "10:30",
+      initialEmployeeId: "employee1",
+      services,
+      employees,
+    });
+
+    const dialog = getDialog();
+    await screen.findByRole("button", { name: "2026-09-15" });
+
+    // Seleciona cliente e serviço para que os horários fiquem visíveis.
+    fireEvent.change(within(dialog).getByLabelText("Cliente"), {
+      target: { value: "client1" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Serviço"), {
+      target: { value: "service1" },
+    });
+
+    // O funcionário veio pré-selecionado do clique no calendário.
+    expect(within(dialog).getByLabelText("Funcionário")).toHaveValue("employee1");
+    // O dia/horário vieram pré-preenchidos.
+    expect(
+      within(dialog).getByRole("button", { name: "2026-09-15" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(dialog).getByRole("button", { name: "10:30" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /criar agendamento/i }));
+
+    await waitFor(() => expect(appointmentsApi.createAppointment).toHaveBeenCalled());
+    expect(vi.mocked(appointmentsApi.createAppointment).mock.calls[0][0].startAt).toBe(
+      "2026-09-15T09:30:00.000Z",
+    );
+  });
+
+  it("defaults to 09:00 when only a date is prefilled", async () => {
+    vi.mocked(availabilityApi.getEmployeeAvailabilities).mockResolvedValue(
+      availabilityResponse(weekAvailability),
+    );
+    vi.mocked(availabilityExceptionsApi.getAvailabilityExceptions).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    });
+
+    renderForm({
+      initialDate: "2026-09-15",
+      initialEmployeeId: "employee1",
+      services,
+      employees,
+    });
+
+    const dialog = getDialog();
+    await screen.findByRole("button", { name: "2026-09-15" });
+
+    fireEvent.change(within(dialog).getByLabelText("Cliente"), {
+      target: { value: "client1" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("Serviço"), {
+      target: { value: "service1" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: /criar agendamento/i }));
+
+    await waitFor(() => expect(appointmentsApi.createAppointment).toHaveBeenCalled());
+    expect(vi.mocked(appointmentsApi.createAppointment).mock.calls[0][0].startAt).toBe(
+      "2026-09-15T08:00:00.000Z", // 09:00 em Europe/Lisbon
+    );
+  });
 });

@@ -326,4 +326,24 @@ describe("Appointment HTTP integration", () => {
     expect((await request(app).delete(`/api/appointments/${ids.appointment}`)).status).toBe(403);
     expect((await request(app).get("/api/appointments")).status).toBe(200);
   });
+
+  it("aceita filtros startAt e endAt válidos e repassa ao repositório", async () => {
+    appointmentRepository.findByCompanyId.mockResolvedValue([appointmentA()]);
+    const response = await request(app).get("/api/appointments?startAt=2027-08-01T00:00:00.000Z&endAt=2027-09-01T00:00:00.000Z");
+    expect(response.status).toBe(200);
+    expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(
+      ids.companyA,
+      { startAt: new Date("2027-08-01T00:00:00.000Z"), endAt: new Date("2027-09-01T00:00:00.000Z") },
+    );
+  });
+
+  it("rejeita startAt inválido", async () => {
+    const response = await request(app).get("/api/appointments?startAt=not-a-date");
+    expect(response.status).toBe(400);
+  });
+
+  it("rejeita endAt anterior a startAt", async () => {
+    const response = await request(app).get("/api/appointments?startAt=2027-09-01T00:00:00.000Z&endAt=2027-08-01T00:00:00.000Z");
+    expect(response.status).toBe(400);
+  });
 });

@@ -7,6 +7,15 @@ import type {
 } from "../../types/appointment";
 
 /**
+ * Parâmetros opcionais de consulta para filtrar agendamentos por período.
+ * startAt e endAt são instantes ISO 8601 em UTC.
+ */
+export interface GetAppointmentsParams {
+  startAt?: string;
+  endAt?: string;
+}
+
+/**
  * API de agendamentos espelhando as rotas reais do backend
  * (server/src/modules/appointments/routes/AppointmentRoutes.ts).
  *
@@ -16,10 +25,10 @@ import type {
  * status muda apenas pelos endpoints dedicados abaixo).
  */
 export const appointmentsApi = {
-  async getAppointments() {
-    const { data } = await apiClient.get<ApiResponse<Appointment[]>>(
-      "/appointments",
-    );
+  async getAppointments(params?: GetAppointmentsParams) {
+    const { data } = params
+      ? await apiClient.get<ApiResponse<Appointment[]>>("/appointments", { params })
+      : await apiClient.get<ApiResponse<Appointment[]>>("/appointments");
     return data;
   },
 

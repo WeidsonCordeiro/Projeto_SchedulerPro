@@ -46,3 +46,52 @@ body {
     cursor: pointer;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Calendário da Agenda                                               */
+/* ------------------------------------------------------------------ */
+
+.month-calendar .calendar-day-cell {
+  transition: background-color 0.12s ease;
+}
+
+.month-calendar .calendar-day-cell:hover {
+  background-color: rgba(13, 110, 253, 0.04);
+}
+
+.month-calendar .calendar-item {
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.week-calendar,
+.day-calendar {
+  min-height: 200px;
+}
+
+/* Responsivo: simplifica grade em telas pequenas */
+@media (max-width: 767.98px) {
+  .month-calendar .calendar-day-cell {
+    min-height: 64px !important;
+  }
+  .week-calendar .btn-group {
+    flex-wrap: wrap;
+  }
+}
+
+/* Zebra sutil em linhas de hora (alternância) */
+.week-calendar .border-bottom:nth-child(even),
+.day-calendar .border-bottom:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+/* Bloco de agendamento: efeito hover */
+.week-calendar .position-absolute:hover > div,
+.day-calendar .position-absolute:hover > div {
+  filter: brightness(1.1);
+}
+
+/* Indicador de "mais agendamentos" no mês */
+.month-calendar .text-muted.small.text-center {
+  font-size: 0.7rem;
+}

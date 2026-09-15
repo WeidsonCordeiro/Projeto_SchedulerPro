@@ -19,6 +19,7 @@ import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
 import { createAppointmentValidator } from "../validators/create-appointment.validator";
 import { updateAppointmentValidator } from "../validators/update-appointment.validator";
+import { listAppointmentsValidator } from "../validators/list-appointments.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 
@@ -51,6 +52,8 @@ appointmentRoutes.get(
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.APPOINTMENT_READ),
+  listAppointmentsValidator,
+  validateRequest,
   AppointmentController.findAll,
 );
 

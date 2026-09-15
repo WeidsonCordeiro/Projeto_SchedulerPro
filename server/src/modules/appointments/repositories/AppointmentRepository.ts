@@ -17,9 +17,24 @@ import Appointment, { AppointmentDocument } from "../models/Appointment.model";
 import { CreateAppointmentData, UpdateAppointmentData } from "../index";
 import { AppointmentStatus } from "../../../constants/appointment-status";
 
+/**
+ * Janela opcional de consulta por período. Quando informada, apenas os
+ * agendamentos que SObrepõem a janela são devolvidos:
+ *
+ *   agendamento.startAt < janela.endAt && agendamento.endAt > janela.startAt
+ *
+ * As datas são instantes UTC (mesmo contrato de startAt/endAt dos
+ * agendamentos). A janela é calculada pelo frontend no timezone da empresa
+ * e convertida para UTC antes da chamada.
+ */
+export interface AppointmentListRange {
+  startAt?: Date;
+  endAt?: Date;
+}
+
 class AppointmentRepository {
   /**
-
+ 
 * ==========================================================
 * Busca um agendamento pelo ID.
 * ==========================================================
@@ -34,18 +49,28 @@ class AppointmentRepository {
   }
 
   /**
-
+ 
 * ==========================================================
 * Busca todos os agendamentos de uma empresa.
 * ==========================================================
   */
   public async findByCompanyId(
     companyId: string | Types.ObjectId,
+    range?: AppointmentListRange,
   ): Promise<AppointmentDocument[]> {
-    return Appointment.find({
+    const query: Record<string, unknown> = {
       companyId,
       deletedAt: null,
-    }).sort({
+    };
+
+    if (range?.startAt) {
+      query.endAt = { $gt: range.startAt };
+    }
+    if (range?.endAt) {
+      query.startAt = { $lt: range.endAt };
+    }
+
+    return Appointment.find(query).sort({
       startAt: 1,
     });
   }

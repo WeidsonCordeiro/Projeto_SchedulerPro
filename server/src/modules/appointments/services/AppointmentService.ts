@@ -30,6 +30,15 @@ import { HttpStatus } from "../../../constants/http-status";
 import { AppointmentStatus } from "../../../constants/appointment-status";
 import AvailabilityService from "../../availability/services/AvailabilityService";
 
+/**
+ * Janela opcional de consulta por período. Repassada ao repositório para
+ * filtrar agendamentos que se sobrepõem à janela.
+ */
+export interface AppointmentListFilter {
+  startAt?: Date;
+  endAt?: Date;
+}
+
 class AppointmentService {
   private readonly appointmentRepository = AppointmentRepository;
   private readonly clientRepository = ClientRepository;
@@ -185,7 +194,11 @@ class AppointmentService {
 * Lista todos os agendamentos da empresa.
 * ==========================================================
   */
-  public async findAll(companyId: string, now: Date = new Date()) {
+  public async findAll(
+    companyId: string,
+    filter: AppointmentListFilter = {},
+    now: Date = new Date(),
+  ) {
     /**
      * ----------------------------------------------------------
      * Agendamento "scheduled" cujo início já passou é
@@ -195,7 +208,7 @@ class AppointmentService {
     await this.expireOverdueScheduled(companyId, now);
 
     const appointments =
-      await this.appointmentRepository.findByCompanyId(companyId);
+      await this.appointmentRepository.findByCompanyId(companyId, filter);
 
     return appointments.map(AppointmentMapper.toResponse);
   }
