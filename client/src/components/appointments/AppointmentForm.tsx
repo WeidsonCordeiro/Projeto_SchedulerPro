@@ -47,6 +47,27 @@ interface AppointmentFormProps {
    * página, a partir da empresa carregada na sessão (Redux).
    */
   timezone?: string;
+  /**
+   * Dia de preenchimento automático ao criar (aaaa-MM-dd). Usado pelo
+   * calendário para pré-preencher a data de um novo agendamento.
+   */
+  initialDate?: string;
+  /**
+   * Hora de preenchimento automático ao criar (HH:mm). Usado pelo
+   * calendário semanal/diário para pré-preencher o horário de um novo agendamento.
+   */
+  initialTime?: string;
+  /**
+   * Funcionário de preenchimento automático ao criar. Usado pelo calendário
+   * para pré-selecionar o funcionário ao clicar em um slot de funcionário.
+   */
+  initialEmployeeId?: string;
+  /**
+   * Exibição somente leitura (agendamento histórico: startAt no passado).
+   * Quando true, nenhum campo pode ser alterado e o formulário não envia
+   * requisições de criação/edição — apenas apresenta os dados.
+   */
+  readOnly?: boolean;
 }
 
 function validate(
@@ -106,15 +127,51 @@ export default function AppointmentForm({
   onSaved,
   onConflict,
   timezone = APPOINTMENT_TIMEZONE,
+  initialDate,
+  initialTime,
+  initialEmployeeId,
+  readOnly = false,
 }: AppointmentFormProps) {
   const isEdit = Boolean(appointment);
+  const readOnlyView = readOnly;
+
+  /** Gera o valor datetime-local para preenchimento a partir de initialDate/Time. */
+  function buildInitialStartAt(): string {
+    if (isEdit) {
+      return toLocalDateTimeInputValue(appointment!.startAt);
+    }
+    if (initialDate && initialTime) {
+      return `${initialDate}T${initialTime}`;
+    }
+    if (initialDate) {
+      return `${initialDate}T09:00`;
+    }
+    return "";
+  }
+
+  function buildInitialSelectedDate(): string | null {
+    if (isEdit) {
+      return toLocalDateTimeInputValue(appointment!.startAt).slice(0, 10);
+    }
+    return initialDate ?? null;
+  }
+
+  function buildInitialSlotStart(): string | null {
+    if (isEdit) {
+      return appointment!.startAt;
+    }
+    if (initialDate && initialTime) {
+      return toIsoUtc(`${initialDate}T${initialTime}`, timezone) || null;
+    }
+    return null;
+  }
 
   const [clientId, setClientId] = useState(appointment?.clientId ?? "");
   const [serviceId, setServiceId] = useState(appointment?.serviceId ?? "");
-  const [employeeId, setEmployeeId] = useState(appointment?.employeeId ?? "");
-  const [startAt, setStartAt] = useState(
-    appointment ? toLocalDateTimeInputValue(appointment.startAt) : "",
+  const [employeeId, setEmployeeId] = useState(
+    appointment?.employeeId ?? initialEmployeeId ?? "",
   );
+  const [startAt, setStartAt] = useState(buildInitialStartAt);
   const [notes, setNotes] = useState(appointment?.notes ?? "");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -126,10 +183,10 @@ export default function AppointmentForm({
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(
-    appointment ? toLocalDateTimeInputValue(appointment.startAt).slice(0, 10) : null,
+    buildInitialSelectedDate,
   );
   const [selectedSlotStart, setSelectedSlotStart] = useState<string | null>(
-    appointment?.startAt ?? null,
+    buildInitialSlotStart,
   );
   const previousEmployeeRef = useRef(employeeId);
 
@@ -220,6 +277,9 @@ export default function AppointmentForm({
   }, []);
 
   useEffect(() => {
+    if (readOnlyView) {
+      return;
+    }
     if (!employeeId) {
       setAvailability([]);
       setExceptions([]);
@@ -235,7 +295,7 @@ export default function AppointmentForm({
     }
     previousEmployeeRef.current = employeeId;
     void loadAvailability(employeeId);
-  }, [employeeId, loadAvailability]);
+  }, [employeeId, loadAvailability, readOnlyView]);
 
   function handleSelectDay(dateKey: string) {
     setSelectedDate(dateKey);
@@ -330,7 +390,11 @@ export default function AppointmentForm({
         <div className="modal-content">
           <div className="modal-header">
             <h2 className="modal-title h5">
-              {isEdit ? "Editar agendamento" : "Novo agendamento"}
+              {isEdit
+                ? readOnlyView
+                  ? "Detalhes do agendamento"
+                  : "Editar agendamento"
+                : "Novo agendamento"}
             </h2>
             <button
               type="button"
@@ -341,6 +405,12 @@ export default function AppointmentForm({
           </div>
 
           <div className="modal-body">
+            {readOnlyView && (
+              <div className="alert alert-secondary py-2" role="alert">
+                Este agendamento já ocorreu e está em modo somente leitura.
+              </div>
+            )}
+
             {errorMessage && (
               <div className="alert alert-danger" role="alert">
                 {errorMessage}
@@ -358,6 +428,7 @@ export default function AppointmentForm({
                     className={`form-select ${fieldErrors.clientId ? "is-invalid" : ""}`}
                     value={clientId}
                     onChange={(event) => setClientId(event.target.value)}
+                    disabled={readOnlyView}
                   >
                     <option value="">Selecione o cliente</option>
                     {clientOptions.map((client) => (
@@ -381,6 +452,7 @@ export default function AppointmentForm({
                     className={`form-select ${fieldErrors.serviceId ? "is-invalid" : ""}`}
                     value={serviceId}
                     onChange={(event) => handleServiceChange(event.target.value)}
+                    disabled={readOnlyView}
                   >
                     <option value="">Selecione o serviço</option>
                     {serviceOptions.map((service) => (
@@ -405,6 +477,7 @@ export default function AppointmentForm({
                   className={`form-select ${fieldErrors.employeeId ? "is-invalid" : ""}`}
                   value={employeeId}
                   onChange={(event) => setEmployeeId(event.target.value)}
+                  disabled={readOnlyView}
                 >
                   <option value="">Selecione o funcionário</option>
                   {employeeOptions.map((employee) => (
@@ -422,101 +495,118 @@ export default function AppointmentForm({
               <div className="mb-3">
                 <span className="form-label d-block">Agenda do funcionário</span>
 
-                {fieldErrors.startAt && (
-                  <div className="alert alert-danger py-2" role="alert">
-                    {fieldErrors.startAt}
-                  </div>
-                )}
-
-                {!employeeId && (
-                  <p className="text-muted mb-0">
-                    Selecione um funcionário para ver a disponibilidade.
-                  </p>
-                )}
-
-                {employeeId && isLoadingAvailability && (
-                  <div className="d-flex align-items-center gap-2 text-muted" role="status">
-                    <span className="spinner-border spinner-border-sm" aria-hidden="true" />
-                    <span className="visually-hidden">Carregando...</span>
-                    <span>Carregando disponibilidade...</span>
-                  </div>
-                )}
-
-                {employeeId && !isLoadingAvailability && availabilityError && (
-                  <div className="alert alert-danger py-2" role="alert">
-                    {availabilityError}
-                    <div className="mt-2">
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger btn-sm"
-                        onClick={() => void loadAvailability(employeeId)}
-                      >
-                        Tentar novamente
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {employeeId &&
-                  !isLoadingAvailability &&
-                  !availabilityError &&
-                  availability.length === 0 && (
-                    <p className="text-muted mb-0">
-                      Este funcionário não possui disponibilidade cadastrada.
+                {readOnlyView && appointment ? (
+                  <>
+                    <p className="mb-1 fw-semibold">
+                      {formatWeekdayDate(
+                        toLocalDateTimeInputValue(appointment.startAt, timezone).slice(0, 10),
+                        timezone,
+                      )}
                     </p>
-                  )}
-
-                {employeeId &&
-                  !isLoadingAvailability &&
-                  !availabilityError &&
-                  availability.length > 0 && (
-                    <>
-                      <AppointmentCalendar
-                        key={employeeId}
-                        availability={availability}
-                        exceptions={exceptions}
-                        selectedDate={selectedDate}
-                        onSelectDay={handleSelectDay}
-                      />
-
-                      <div className="mt-3">
-                        {!serviceId && (
-                          <p className="text-muted mb-0">
-                            Selecione um serviço para visualizar os horários.
-                          </p>
-                        )}
-
-                        {serviceId && !selectedDate && (
-                          <p className="text-muted mb-0">
-                            Selecione um dia para ver os horários.
-                          </p>
-                        )}
-
-                        {serviceId && selectedDate && (
-                          <>
-                            <div className="mb-1">
-                              <span className="fw-semibold">
-                                {formatWeekdayDate(selectedDate, timezone)}
-                              </span>
-                            </div>
-                            <span className="form-label d-block">Horários disponíveis</span>
-                            <AvailableTimeSlots
-                              slots={slotsForDay}
-                              selectedStart={selectedSlotStart}
-                              onSelect={handleSelectSlot}
-                              currentLabel={currentSlotLabel}
-                            />
-                            {endTimePreview && (
-                              <div className="form-text">
-                                O agendamento termina às {endTimePreview} (horário
-                                local da empresa, calculado pelo backend).
-                              </div>
-                            )}
-                          </>
-                        )}
+                    <p className="mb-1">
+                      {formatAppointmentTime(appointment.startAt, timezone)} –{" "}
+                      {formatAppointmentTime(appointment.endAt, timezone)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    {fieldErrors.startAt && (
+                      <div className="alert alert-danger py-2" role="alert">
+                        {fieldErrors.startAt}
                       </div>
-                    </>
-                  )}
+                    )}
+
+                    {!employeeId && (
+                      <p className="text-muted mb-0">
+                        Selecione um funcionário para ver a disponibilidade.
+                      </p>
+                    )}
+
+                    {employeeId && isLoadingAvailability && (
+                      <div className="d-flex align-items-center gap-2 text-muted" role="status">
+                        <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                        <span className="visually-hidden">Carregando...</span>
+                        <span>Carregando disponibilidade...</span>
+                      </div>
+                    )}
+
+                    {employeeId && !isLoadingAvailability && availabilityError && (
+                      <div className="alert alert-danger py-2" role="alert">
+                        {availabilityError}
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => void loadAvailability(employeeId)}
+                          >
+                            Tentar novamente
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {employeeId &&
+                      !isLoadingAvailability &&
+                      !availabilityError &&
+                      availability.length === 0 && (
+                        <p className="text-muted mb-0">
+                          Este funcionário não possui disponibilidade cadastrada.
+                        </p>
+                      )}
+
+                    {employeeId &&
+                      !isLoadingAvailability &&
+                      !availabilityError &&
+                      availability.length > 0 && (
+                        <>
+                          <AppointmentCalendar
+                            key={employeeId}
+                            availability={availability}
+                            exceptions={exceptions}
+                            selectedDate={selectedDate}
+                            onSelectDay={handleSelectDay}
+                          />
+
+                          <div className="mt-3">
+                            {!serviceId && (
+                              <p className="text-muted mb-0">
+                                Selecione um serviço para visualizar os horários.
+                              </p>
+                            )}
+
+                            {serviceId && !selectedDate && (
+                              <p className="text-muted mb-0">
+                                Selecione um dia para ver os horários.
+                              </p>
+                            )}
+
+                            {serviceId && selectedDate && (
+                              <>
+                                <div className="mb-1">
+                                  <span className="fw-semibold">
+                                    {formatWeekdayDate(selectedDate, timezone)}
+                                  </span>
+                                </div>
+                                <span className="form-label d-block">Horários disponíveis</span>
+                                <AvailableTimeSlots
+                                  slots={slotsForDay}
+                                  selectedStart={selectedSlotStart}
+                                  onSelect={handleSelectSlot}
+                                  currentLabel={currentSlotLabel}
+                                />
+                                {endTimePreview && (
+                                  <div className="form-text">
+                                    O agendamento termina às {endTimePreview} (horário
+                                    local da empresa, calculado pelo backend).
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
+                  </>
+                )}
               </div>
 
               <div className="mb-3">
@@ -529,6 +619,7 @@ export default function AppointmentForm({
                   rows={3}
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
+                  disabled={readOnlyView}
                 />
               </div>
 
@@ -539,28 +630,30 @@ export default function AppointmentForm({
                   onClick={handleClose}
                   disabled={isSubmitting}
                 >
-                  Cancelar
+                  {readOnlyView ? "Fechar" : "Cancelar"}
                 </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting && (
-                    <span
-                      className="spinner-border spinner-border-sm me-1"
-                      role="status"
-                      aria-hidden="true"
-                    />
-                  )}
-                  {isSubmitting
-                    ? isEdit
-                      ? "Salvando..."
-                      : "Criando..."
-                    : isEdit
-                      ? "Salvar"
-                      : "Criar agendamento"}
-                </button>
+                {!readOnlyView && (
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting && (
+                      <span
+                        className="spinner-border spinner-border-sm me-1"
+                        role="status"
+                        aria-hidden="true"
+                      />
+                    )}
+                    {isSubmitting
+                      ? isEdit
+                        ? "Salvando..."
+                        : "Criando..."
+                      : isEdit
+                        ? "Salvar"
+                        : "Criar agendamento"}
+                  </button>
+                )}
               </div>
             </form>
           </div>

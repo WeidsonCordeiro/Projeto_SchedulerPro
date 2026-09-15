@@ -51,7 +51,20 @@ class AppointmentController {
   public findAll = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
 
-    const appointments = await this.appointmentService.findAll(companyId);
+    const { startAt, endAt } = req.query as Record<string, string | undefined>;
+    const filter: { startAt?: Date; endAt?: Date } = {};
+
+    if (startAt) {
+      filter.startAt = new Date(startAt);
+    }
+    if (endAt) {
+      filter.endAt = new Date(endAt);
+    }
+
+    const appointments = await this.appointmentService.findAll(
+      companyId,
+      filter,
+    );
 
     return ResponseHandler.success(
       res,
