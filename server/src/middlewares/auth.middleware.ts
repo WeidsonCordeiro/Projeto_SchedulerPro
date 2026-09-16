@@ -27,6 +27,7 @@ import { AppError } from "../errors/AppError";
 import { HttpMessages } from "../constants/http-messages";
 import { HttpStatus } from "../constants/http-status";
 import { TokenType } from "../constants/token-type";
+import { Role } from "../constants/roles";
 
 class AuthMiddleware {
   private readonly jwtProvider = JwtProvider;
@@ -62,10 +63,32 @@ class AuthMiddleware {
       throw new AppError(HttpMessages.USER_BLOCKED, HttpStatus.FORBIDDEN);
     }
 
+    /**
+     * A conta precisa ter o e-mail verificado antes de usar qualquer
+     * acesso autenticado. O login já bloqueia contas não verificadas;
+     * este controle fecha o loop do fluxo público de registro.
+     */
+    if (!user.emailVerified) {
+      throw new AppError(HttpMessages.EMAIL_NOT_VERIFIED, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * FAIL CLOSED: uma conta CLIENT precisa obrigatoriamente ter um
+     * vínculo com um cliente. Contas inconsistentes (sem clientId) são
+     * bloqueadas em vez de obter acesso não escopado.
+     */
+    if (user.role === Role.CLIENT && !user.clientId) {
+      throw new AppError(
+        HttpMessages.CLIENT_LINK_REQUIRED,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     req.user = {
       userId: user._id.toString(),
       companyId: user.companyId.toString(),
       role: user.role,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };
 
     next();

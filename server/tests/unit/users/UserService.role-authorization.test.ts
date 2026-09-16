@@ -67,4 +67,14 @@ describe("UserService - autorização por hierarquia", () => {
     await expect(UserService.update(companyId, { role }, companyId, companyId, Role.ADMIN)).rejects.toMatchObject({ statusCode: HttpStatus.FORBIDDEN });
     expect(userRepository.update).not.toHaveBeenCalled();
   });
+
+  it("bloqueia ADMIN criando CLIENT com 403 (conta órfã)", async () => {
+    await expect(UserService.create({ name: "C", email: "c@c.com", password: "password", confirmPassword: "password", role: Role.CLIENT }, companyId, Role.ADMIN)).rejects.toMatchObject({ statusCode: HttpStatus.FORBIDDEN });
+    expect(userRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("bloqueia ADMIN alterando role para CLIENT com 403 (conta órfã)", async () => {
+    await expect(UserService.update(targetId, { role: Role.CLIENT }, companyId, "507f1f77bcf86cd799439099", Role.ADMIN)).rejects.toMatchObject({ statusCode: HttpStatus.FORBIDDEN });
+    expect(userRepository.update).not.toHaveBeenCalled();
+  });
 });

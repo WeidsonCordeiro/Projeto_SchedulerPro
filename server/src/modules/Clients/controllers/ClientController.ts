@@ -162,6 +162,59 @@ class ClientController {
       HttpStatus.OK,
     );
   };
+
+  /**
+   * ==========================================================
+   * Perfil do cliente autenticado no portal.
+   * ==========================================================
+   */
+  public findMe = async (req: Request, res: Response): Promise<Response> => {
+    const companyId = req.user!.companyId;
+    const clientId = req.user!.clientId;
+
+    if (!clientId) {
+      return ResponseHandler.success(
+        res,
+        null,
+        HttpMessages.CLIENT_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const client = await this.clientService.findMe(clientId, companyId);
+
+    return ResponseHandler.success(
+      res,
+      client,
+      HttpMessages.CLIENT_PROFILE_FOUND,
+      HttpStatus.OK,
+    );
+  };
+
+  /**
+   * ==========================================================
+   * Define as credenciais de acesso do cliente ao portal.
+   * ==========================================================
+   */
+  public setCredentials = async (
+    req: Request,
+    res: Response,
+  ): Promise<Response> => {
+    const companyId = req.user!.companyId;
+
+    const client = await this.clientService.setCredentials(
+      req.params.id as string,
+      companyId,
+      req.body,
+    );
+
+    return ResponseHandler.success(
+      res,
+      client,
+      HttpMessages.CLIENT_CREDENTIALS_SET,
+      HttpStatus.OK,
+    );
+  };
 }
 
 export default new ClientController();

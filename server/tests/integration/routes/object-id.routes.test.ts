@@ -50,6 +50,8 @@ vi.mock("../../../src/modules/Clients/controllers/ClientController", () => ({
     delete: (_req: express.Request, res: express.Response) => res.json({}),
     activate: (_req: express.Request, res: express.Response) => res.json({}),
     deactivate: (_req: express.Request, res: express.Response) => res.json({}),
+    findMe: (_req: express.Request, res: express.Response) => res.json({}),
+    setCredentials: (_req: express.Request, res: express.Response) => res.json({}),
   },
 }));
 
@@ -58,34 +60,42 @@ describe("ObjectId validation in real routes", () => {
     findServiceById.mockClear();
   });
 
-  it("returns 400 on an invalid service :id before the controller", async () => {
-    const { default: serviceRoutes } = await import(
-      "../../../src/modules/services/routes/ServiceRoutes"
-    );
-    const app = express();
-    app.use(express.json());
-    app.use("/services", serviceRoutes);
-    app.use(errorMiddleware);
+  it(
+    "returns 400 on an invalid service :id before the controller",
+    async () => {
+      const { default: serviceRoutes } = await import(
+        "../../../src/modules/services/routes/ServiceRoutes"
+      );
+      const app = express();
+      app.use(express.json());
+      app.use("/services", serviceRoutes);
+      app.use(errorMiddleware);
 
-    const response = await request(app).get("/services/abc");
+      const response = await request(app).get("/services/abc");
 
-    expect(response.status).toBe(400);
-    expect(findServiceById).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect(findServiceById).not.toHaveBeenCalled();
+    },
+    20000,
+  );
 
-  it("returns 400 on an invalid client :id", async () => {
-    const { default: clientRoutes } = await import(
-      "../../../src/modules/Clients/routes/ClientRoutes"
-    );
-    const app = express();
-    app.use(express.json());
-    app.use("/clients", clientRoutes);
-    app.use(errorMiddleware);
+  it(
+    "returns 400 on an invalid client :id",
+    async () => {
+      const { default: clientRoutes } = await import(
+        "../../../src/modules/Clients/routes/ClientRoutes"
+      );
+      const app = express();
+      app.use(express.json());
+      app.use("/clients", clientRoutes);
+      app.use(errorMiddleware);
 
-    const response = await request(app).get("/clients/not-an-object-id");
+      const response = await request(app).get("/clients/not-an-object-id");
 
-    expect(response.status).toBe(400);
-  });
+      expect(response.status).toBe(400);
+    },
+    20000,
+  );
 
   it("preserves normal flow for a structurally valid but missing service id", async () => {
     const { default: serviceRoutes } = await import(

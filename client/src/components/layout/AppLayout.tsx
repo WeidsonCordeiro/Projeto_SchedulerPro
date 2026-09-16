@@ -1,10 +1,23 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+import { useAppSelector } from "../../store";
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const user = useAppSelector((state) => state.auth.user);
+  const location = useLocation();
+
+  const isClient = user?.role === "CLIENT";
+  const isPortalPath = location.pathname.startsWith("/portal");
+
+  if (isClient && !isPortalPath) {
+    return <Navigate to="/portal" replace />;
+  }
+  if (!isClient && isPortalPath) {
+    return <Navigate to="/" replace />;
+  }
 
   const openSidebar = () => setSidebarOpen(true);
   const closeSidebar = () => setSidebarOpen(false);

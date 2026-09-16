@@ -321,10 +321,17 @@ describe("Appointment HTTP integration", () => {
   });
 
   it("aplica autorização real por role no Appointment", async () => {
-    authUser.value = { ...authUser.value, role: Role.CLIENT };
+    authUser.value = { ...authUser.value, role: Role.CLIENT, clientId: ids.client };
     expect((await request(app).post("/api/appointments").send(validAppointment)).status).toBe(403);
     expect((await request(app).delete(`/api/appointments/${ids.appointment}`)).status).toBe(403);
-    expect((await request(app).get("/api/appointments")).status).toBe(200);
+
+    const response = await request(app).get("/api/appointments");
+    expect(response.status).toBe(200);
+    expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(
+      ids.companyA,
+      {},
+      ids.client,
+    );
   });
 
   it("aceita filtros startAt e endAt válidos e repassa ao repositório", async () => {
@@ -334,6 +341,7 @@ describe("Appointment HTTP integration", () => {
     expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(
       ids.companyA,
       { startAt: new Date("2027-08-01T00:00:00.000Z"), endAt: new Date("2027-09-01T00:00:00.000Z") },
+      undefined,
     );
   });
 

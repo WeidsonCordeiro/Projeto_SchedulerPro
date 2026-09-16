@@ -29,9 +29,17 @@ export interface CreateUserData {
   phone?: string | null;
   avatar?: string | null;
   mustChangePassword: boolean;
+  clientId?: Types.ObjectId | null;
+  isActive?: boolean;
+  emailVerified?: boolean;
 }
 
 /**
  * Dados permitidos para atualização.
+ *
+ * deletedAt é aceito somente para operações de restauração
+ * (ver: UserRepository.updateIncludingDeleted).
  */
-export type UpdateUserData = Partial<CreateUserData>;
+export type UpdateUserData = Partial<CreateUserData> & {
+  deletedAt?: Date | null;
+};

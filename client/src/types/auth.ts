@@ -8,6 +8,7 @@ export interface AuthUser {
   role: Role;
   companyId: string;
   isActive: boolean;
+  clientId?: string;
 }
 
 export interface AuthSession extends AuthUser {

@@ -197,18 +197,28 @@ class AppointmentService {
   public async findAll(
     companyId: string,
     filter: AppointmentListFilter = {},
+    clientScope?: string,
     now: Date = new Date(),
   ) {
     /**
      * ----------------------------------------------------------
      * Agendamento "scheduled" cujo início já passou é
      * automaticamente cancelado antes da consulta.
+     *
+     * A expiração é global da empresa e não é disparada em
+     * consultas escopadas a um cliente (portal).
      * ----------------------------------------------------------
      */
-    await this.expireOverdueScheduled(companyId, now);
+    if (!clientScope) {
+      await this.expireOverdueScheduled(companyId, now);
+    }
 
     const appointments =
-      await this.appointmentRepository.findByCompanyId(companyId, filter);
+      await this.appointmentRepository.findByCompanyId(
+        companyId,
+        filter,
+        clientScope,
+      );
 
     return appointments.map(AppointmentMapper.toResponse);
   }
@@ -235,14 +245,58 @@ class AppointmentService {
 * Busca um agendamento pelo ID.
 * ==========================================================
   */
-  public async findById(id: string, companyId: string) {
+  public async findById(id: string, companyId: string, clientScope?: string) {
     const appointment = await this.appointmentRepository.findById(id);
 
     if (!appointment || appointment.companyId.toString() !== companyId) {
       throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
     }
 
+    if (clientScope && appointment.clientId.toString() !== clientScope) {
+      throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
+    }
+
     return AppointmentMapper.toResponse(appointment);
+  }
+
+  /**
+   * ==========================================================
+   * Lista os agendamentos do cliente autenticado no portal.
+   *
+   * Apenas o vínculo da sessão (clientId) é aceite e a
+   * consulta é sempre restrita à empresa da sessão. Os nomes
+   * do serviço e do funcionário são anexados para exibição,
+   * já que o portal não consulta esses recursos diretamente.
+   * ==========================================================
+   */
+  public async findMine(
+    clientId: string,
+    companyId: string,
+    filter: AppointmentListFilter = {},
+  ) {
+    const appointments =
+      await this.appointmentRepository.findByCompanyId(
+        companyId,
+        filter,
+        clientId,
+      );
+
+    return Promise.all(
+      appointments.map(async (appointment) => {
+        const service = appointment.serviceId
+          ? await this.serviceRepository.findById(appointment.serviceId)
+          : null;
+        const employee = appointment.employeeId
+          ? await this.userRepository.findById(appointment.employeeId)
+          : null;
+
+        return {
+          ...AppointmentMapper.toResponse(appointment),
+          serviceName: service?.name ?? null,
+          employeeName: employee?.name ?? null,
+        };
+      }),
+    );
   }
 
   /**

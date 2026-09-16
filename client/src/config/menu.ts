@@ -8,9 +8,24 @@ export interface MenuItem {
 
 export const MENU_ITEMS: MenuItem[] = [
   {
+    label: "Início",
+    path: "/portal",
+    roles: ["CLIENT"],
+  },
+  {
+    label: "Meus agendamentos",
+    path: "/portal/agendamentos",
+    roles: ["CLIENT"],
+  },
+  {
+    label: "Perfil",
+    path: "/portal/perfil",
+    roles: ["CLIENT"],
+  },
+  {
     label: "Dashboard",
     path: "/",
-    roles: ["OWNER", "ADMIN", "MANAGER", "EMPLOYEE", "CLIENT"],
+    roles: ["OWNER", "ADMIN", "MANAGER", "EMPLOYEE"],
   },
   {
     label: "Clientes",
@@ -35,7 +50,7 @@ export const MENU_ITEMS: MenuItem[] = [
   {
     label: "Agendamentos",
     path: "/appointments",
-    roles: ["OWNER", "ADMIN", "MANAGER", "EMPLOYEE", "CLIENT"],
+    roles: ["OWNER", "ADMIN", "MANAGER", "EMPLOYEE"],
   },
   {
     label: "Empresa",

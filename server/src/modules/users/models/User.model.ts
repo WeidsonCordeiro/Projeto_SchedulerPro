@@ -44,6 +44,11 @@ export interface IUser {
   companyId: Types.ObjectId;
 
   /**
+   * Vínculo opcional com um cliente do portal (role CLIENT).
+   */
+  clientId?: Types.ObjectId | null;
+
+  /**
    * Permissões
    */
   role: Role;
@@ -145,6 +150,15 @@ const UserSchema = new Schema<IUser>(
     },
 
     /**
+     * Vínculo com um cliente do portal (role CLIENT).
+     */
+    clientId: {
+      type: Schema.Types.ObjectId,
+      ref: "Client",
+      default: null,
+    },
+
+    /**
      * Status
      */
     isActive: {
@@ -236,6 +250,11 @@ UserSchema.index({
 UserSchema.index({
   companyId: 1,
   isActive: 1,
+});
+
+// Vínculo com cliente do portal
+UserSchema.index({
+  clientId: 1,
 });
 
 /**

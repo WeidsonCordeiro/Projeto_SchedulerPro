@@ -42,6 +42,19 @@ class UserService {
    * ==========================================================
    */
   public async create(dto: CreateUserDto, companyId: string, actorRole: Role) {
+    /**
+     * Contas CLIENT representam acesso ao portal e só existem vinculadas
+     * a um cliente. A criação via /users não possui clientId e geraria
+     * uma conta órfã (FAIL OPEN). O vínculo correto é criado pelo fluxo
+     * de credenciais do cliente (setCredentials).
+     */
+    if (dto.role === Role.CLIENT) {
+      throw new AppError(
+        HttpMessages.CLIENT_ROLE_FORBIDDEN,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     this.validateRoleAssignment(actorRole, dto.role);
     const exists = await this.userRepository.existsByEmail(dto.email);
 
@@ -181,6 +194,16 @@ class UserService {
       );
     }
     if (dto.role !== undefined) {
+      /**
+       * Alterar o role de um usuário para CLIENT também criaria uma conta
+       * órfã sem clientId; o acesso ao portal deve passar por setCredentials.
+       */
+      if (dto.role === Role.CLIENT) {
+        throw new AppError(
+          HttpMessages.CLIENT_ROLE_FORBIDDEN,
+          HttpStatus.FORBIDDEN,
+        );
+      }
       if (actorUserId === id && dto.role !== actorRole) {
         throw new AppError(
           HttpMessages.USER_NOT_PREVILEGES,
