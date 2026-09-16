@@ -15,6 +15,11 @@ vi.mock("../api/endpoints/clients.api", () => ({
       message: "ok",
       data: [],
     }),
+    getClientMe: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: null,
+    }),
   },
 }));
 
@@ -61,6 +66,11 @@ vi.mock("../api/endpoints/availabilityExceptions.api", () => ({
 vi.mock("../api/endpoints/appointments.api", () => ({
   default: {
     getAppointments: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+    getMyAppointments: vi.fn().mockResolvedValue({
       success: true,
       message: "ok",
       data: [],
@@ -219,19 +229,15 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
   });
 
-  it("blocks the CLIENT role from the company page", () => {
+  it("redirects a CLIENT role from /company to /portal", () => {
     renderAt("/company", {
-      user: { ...user, role: "CLIENT", id: "client1", name: "Cliente Teste" },
+      user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
       isAuthenticated: true,
       isInitializing: false,
     });
 
-    expect(screen.getByRole("heading", { name: "Empresa" })).toBeInTheDocument();
-    expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
-    ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Timezone")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /olá, cliente teste/i })).toBeInTheDocument();
+    expect(screen.queryByText("Empresa")).not.toBeInTheDocument();
   });
 
   it("blocks MANAGER from the company page", () => {
@@ -255,6 +261,98 @@ describe("AppRoutes", () => {
 
     expect(
       screen.getByText("Você não tem permissão para acessar esta página."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the register page for guests", () => {
+    renderAt("/register", { isInitializing: false });
+
+    expect(
+      screen.getByRole("heading", { name: /criar conta/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the forgot password page for guests", () => {
+    renderAt("/forgot-password", { isInitializing: false });
+
+    expect(
+      screen.getByRole("heading", { name: /recuperar senha/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the reset password page", () => {
+    renderAt("/reset-password?token=test", { isInitializing: false });
+
+    expect(
+      screen.getByRole("heading", { name: /redefinir senha/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the verify email page", () => {
+    renderAt("/verify-email?token=test", { isInitializing: false });
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("renders the portal home for a CLIENT user", async () => {
+    renderAt("/portal", {
+      user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /olá, cliente teste/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the portal appointments page for a CLIENT user", async () => {
+    renderAt("/portal/agendamentos", {
+      user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /meus agendamentos/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the portal profile page for a CLIENT user", async () => {
+    renderAt("/portal/perfil", {
+      user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /meu perfil/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("redirects a non-CLIENT user from /portal to /", async () => {
+    renderAt("/portal", {
+      user,
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows login form links to register and forgot-password", async () => {
+    renderAt("/login", { isInitializing: false });
+
+    const loginPage = screen.getByRole("heading", { name: /entrar/i });
+    expect(loginPage).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", { name: /criar conta/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /esqueceu a senha/i }),
     ).toBeInTheDocument();
   });
 });

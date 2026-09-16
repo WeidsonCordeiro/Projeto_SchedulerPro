@@ -34,6 +34,46 @@ describe("clientsApi", () => {
     expect(apiClient.get).toHaveBeenCalledWith("/clients/abc123");
   });
 
+  it("gets /clients/me", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+
+    await clientsApi.getClientMe();
+
+    expect(apiClient.get).toHaveBeenCalledWith("/clients/me");
+  });
+
+  it("posts /clients/:id/credentials with the password payload", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { success: true, message: "credenciais definidas", data: null },
+    });
+
+    await clientsApi.setClientCredentials("abc123", {
+      password: "password123",
+      confirmPassword: "password123",
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith("/clients/abc123/credentials", {
+      password: "password123",
+      confirmPassword: "password123",
+    });
+  });
+
+  it("never sends companyId in the credentials payload", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { success: true, message: "credenciais definidas", data: null },
+    });
+
+    await clientsApi.setClientCredentials("abc123", {
+      password: "password123",
+      confirmPassword: "password123",
+    });
+
+    const payload = vi.mocked(apiClient.post).mock.calls[0][1];
+    expect(payload).not.toHaveProperty("companyId");
+  });
+
   it("posts /clients with the create payload", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { success: true, message: "criado", data: null },

@@ -24,9 +24,12 @@ import ClientController from "../controllers/ClientController";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
+import { authorize } from "../../../middlewares/role.middleware";
 import { Permission } from "../../../constants/permissions";
+import { Role } from "../../../constants/roles";
 import { createClientValidator } from "../validators/create-client.validator";
 import { updateClientValidator } from "../validators/update-client.validator";
+import { setClientCredentialsValidator } from "../validators/set-client-credentials.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 
@@ -58,6 +61,37 @@ router.get(
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.CLIENT_READ),
   ClientController.findAll,
+);
+
+/**
+ * ==========================================================
+ * Perfil do cliente autenticado no portal.
+ *
+ * Precisa estar registada antes de "/:id".
+ * ==========================================================
+ */
+router.get(
+  "/me",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  authorize(Role.CLIENT),
+  ClientController.findMe,
+);
+
+/**
+ * ==========================================================
+ * Definir credenciais de acesso do cliente ao portal.
+ * ==========================================================
+ */
+router.post(
+  "/:id/credentials",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
+  hasPermission(Permission.CLIENT_UPDATE),
+  setClientCredentialsValidator,
+  validateRequest,
+  ClientController.setCredentials,
 );
 
 /**

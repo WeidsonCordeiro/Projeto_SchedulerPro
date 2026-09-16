@@ -8,6 +8,7 @@ import authApi from "../../api/endpoints/auth.api";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
+import type { Role } from "../../types/auth";
 
 vi.mock("../../api/endpoints/auth.api", () => ({
   default: {
@@ -25,12 +26,80 @@ vi.mock("../../api/endpoints/clients.api", () => ({
   },
 }));
 
-function makeStore(authenticated = false) {
+vi.mock("../../api/endpoints/appointments.api", () => ({
+  default: {
+    getAppointments: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+    getMyAppointments: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../../api/endpoints/company.api", () => ({
+  default: {
+    getCompany: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../../api/endpoints/services.api", () => ({
+  default: {
+    getServices: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../../api/endpoints/employees.api", () => ({
+  default: {
+    getEmployees: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../../api/endpoints/availability.api", () => ({
+  default: {
+    getEmployeeAvailabilities: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+vi.mock("../../api/endpoints/availabilityExceptions.api", () => ({
+  default: {
+    getAvailabilityExceptions: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+  },
+}));
+
+function makeStore(options: { authenticated?: boolean; role?: Role } = {}) {
+  const { authenticated = false, role } = options;
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {
       auth: {
-        user: authenticated ? user : null,
+        user: authenticated
+          ? { ...user, ...(role ? { role } : {}) }
+          : null,
         mustChangePassword: false,
         isAuthenticated: authenticated,
         isInitializing: false,
@@ -55,13 +124,29 @@ function renderLayout(store = makeStore()) {
   );
 }
 
+function renderLayoutWithPortal(store = makeStore(), initialEntries: string[] = ["/"]) {
+  return render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={initialEntries}>
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<div>Home content</div>} />
+            <Route path="portal" element={<div>Portal content</div>} />
+          </Route>
+          <Route path="/login" element={<div>Login page</div>} />
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
 describe("AppLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("renders the navbar, sidebar and outlet content", () => {
-    renderLayout(makeStore(true));
+    renderLayout(makeStore({ authenticated: true }));
 
     expect(screen.getAllByRole("navigation").length).toBeGreaterThan(0);
     expect(screen.getByText("SchedulerPro")).toBeInTheDocument();
@@ -70,7 +155,7 @@ describe("AppLayout", () => {
   });
 
   it("shows the user name, role and logout button when authenticated", () => {
-    renderLayout(makeStore(true));
+    renderLayout(makeStore({ authenticated: true }));
 
     expect(screen.getByText("Owner Teste")).toBeInTheDocument();
     expect(screen.getByText("OWNER")).toBeInTheDocument();
@@ -78,7 +163,7 @@ describe("AppLayout", () => {
   });
 
   it("hides the logout button for anonymous users", () => {
-    renderLayout(makeStore(false));
+    renderLayout(makeStore());
 
     expect(screen.getByText("Home content")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /logout/i })).not.toBeInTheDocument();
@@ -87,7 +172,7 @@ describe("AppLayout", () => {
   it("calls /auth/logout, clears Redux and redirects to /login", async () => {
     vi.mocked(authApi.logout).mockResolvedValue({ success: true, message: "ok" });
 
-    const store = makeStore(true);
+    const store = makeStore({ authenticated: true });
     renderLayout(store);
 
     fireEvent.click(screen.getByRole("button", { name: /logout/i }));
@@ -103,7 +188,7 @@ describe("AppLayout", () => {
       httpError(500, { message: "Erro interno do servidor." }),
     );
 
-    const store = makeStore(true);
+    const store = makeStore({ authenticated: true });
     renderLayout(store);
 
     fireEvent.click(screen.getByRole("button", { name: /logout/i }));
@@ -113,7 +198,7 @@ describe("AppLayout", () => {
   });
 
   it("opens the mobile sidebar via the menu toggle and closes it", () => {
-    renderLayout(makeStore(true));
+    renderLayout(makeStore({ authenticated: true }));
 
     expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
 
@@ -125,5 +210,32 @@ describe("AppLayout", () => {
     fireEvent.click(screen.getByTestId("sidebar-backdrop"));
     expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
     expect(screen.queryByTestId("sidebar-backdrop")).not.toBeInTheDocument();
+  });
+
+  it("redirects a CLIENT user from admin routes to /portal", () => {
+    renderLayoutWithPortal(makeStore({ authenticated: true, role: "CLIENT" }));
+
+    expect(screen.queryByText("Home content")).not.toBeInTheDocument();
+    expect(screen.getByText("Portal content")).toBeInTheDocument();
+  });
+
+  it("redirects a non-CLIENT user from /portal to /", () => {
+    renderLayoutWithPortal(
+      makeStore({ authenticated: true, role: "OWNER" }),
+      ["/portal"],
+    );
+
+    expect(screen.getByText("Home content")).toBeInTheDocument();
+    expect(screen.queryByText("Portal content")).not.toBeInTheDocument();
+  });
+
+  it("renders portal sidebar items for CLIENT role", () => {
+    renderLayoutWithPortal(makeStore({ authenticated: true, role: "CLIENT" }));
+
+    expect(screen.getByText("Portal content")).toBeInTheDocument();
+    expect(screen.getByText("Meus agendamentos")).toBeInTheDocument();
+    expect(screen.getByText("Perfil")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
+    expect(screen.queryByText("Clientes")).not.toBeInTheDocument();
   });
 });

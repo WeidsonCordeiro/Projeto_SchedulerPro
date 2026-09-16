@@ -29,6 +29,7 @@ export interface AuthUser {
   role: Role;
   companyId: string;
   isActive: boolean;
+  clientId?: string;
 }
 
 /**

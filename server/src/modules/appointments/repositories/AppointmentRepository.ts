@@ -34,7 +34,7 @@ export interface AppointmentListRange {
 
 class AppointmentRepository {
   /**
- 
+  
 * ==========================================================
 * Busca um agendamento pelo ID.
 * ==========================================================
@@ -49,19 +49,27 @@ class AppointmentRepository {
   }
 
   /**
- 
+  
 * ==========================================================
-* Busca todos os agendamentos de uma empresa.
+* Busca os agendamentos de uma empresa.
+*
+* Quando clientId é informado, apenas os agendamentos
+* daquele cliente (mesma empresa) são devolvidos.
 * ==========================================================
   */
   public async findByCompanyId(
     companyId: string | Types.ObjectId,
     range?: AppointmentListRange,
+    clientId?: string | Types.ObjectId,
   ): Promise<AppointmentDocument[]> {
     const query: Record<string, unknown> = {
       companyId,
       deletedAt: null,
     };
+
+    if (clientId) {
+      query.clientId = clientId;
+    }
 
     if (range?.startAt) {
       query.endAt = { $gt: range.startAt };

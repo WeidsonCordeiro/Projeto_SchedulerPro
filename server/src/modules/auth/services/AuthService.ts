@@ -331,6 +331,7 @@ class AuthService {
       companyId: user.companyId.toString(),
       isActive: user.isActive,
       mustChangePassword: user.mustChangePassword,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };
   }
 

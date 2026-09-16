@@ -23,3 +23,13 @@ export interface UpdateClientPayload {
   phone?: string;
   notes?: string;
 }
+
+/**
+ * Payload para definir as credenciais de acesso do cliente ao portal
+ * (POST /clients/:id/credentials). Server-side a senha é sempre hashed e
+ * o utilizador criado com role CLIENT e mustChangePassword true.
+ */
+export interface SetClientCredentialsPayload {
+  password: string;
+  confirmPassword: string;
+}

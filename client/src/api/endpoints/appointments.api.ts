@@ -5,6 +5,7 @@ import type {
   CreateAppointmentPayload,
   UpdateAppointmentPayload,
 } from "../../types/appointment";
+import type { PortalAppointment } from "../../types/appointment";
 
 /**
  * Parâmetros opcionais de consulta para filtrar agendamentos por período.
@@ -36,6 +37,22 @@ export const appointmentsApi = {
     const { data } = await apiClient.get<ApiResponse<Appointment>>(
       `/appointments/${id}`,
     );
+    return data;
+  },
+
+  /**
+   * Agendamentos do cliente autenticado no portal (GET /appointments/mine).
+   * Retorna PortalAppointment[] com serviceName e employeeName preenchidos.
+   */
+  async getMyAppointments(params?: GetAppointmentsParams) {
+    const { data } = params
+      ? await apiClient.get<ApiResponse<PortalAppointment[]>>(
+          "/appointments/mine",
+          { params },
+        )
+      : await apiClient.get<ApiResponse<PortalAppointment[]>>(
+          "/appointments/mine",
+        );
     return data;
   },
 

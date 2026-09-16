@@ -17,6 +17,7 @@ import { Request, Response } from "express";
 import AppointmentService from "../services/AppointmentService";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
+import { Role } from "../../../constants/roles";
 import { ResponseHandler } from "../../../utils/response";
 
 class AppointmentController {
@@ -50,6 +51,8 @@ class AppointmentController {
   */
   public findAll = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
+    const clientScope =
+      req.user!.role === Role.CLIENT ? req.user!.clientId : undefined;
 
     const { startAt, endAt } = req.query as Record<string, string | undefined>;
     const filter: { startAt?: Date; endAt?: Date } = {};
@@ -64,12 +67,57 @@ class AppointmentController {
     const appointments = await this.appointmentService.findAll(
       companyId,
       filter,
+      clientScope,
     );
 
     return ResponseHandler.success(
       res,
       appointments,
       HttpMessages.APPOINTMENTS_FOUND,
+      HttpStatus.OK,
+    );
+  };
+
+  /**
+   * ==========================================================
+   * Lista os agendamentos do cliente autenticado no portal.
+   *
+   * O clientId vem exclusivamente da sessão.
+   * ==========================================================
+   */
+  public findMine = async (req: Request, res: Response) => {
+    const companyId = req.user!.companyId;
+    const clientId = req.user!.clientId;
+
+    if (!clientId) {
+      return ResponseHandler.success(
+        res,
+        [],
+        HttpMessages.MY_APPOINTMENTS_FOUND,
+        HttpStatus.OK,
+      );
+    }
+
+    const { startAt, endAt } = req.query as Record<string, string | undefined>;
+    const filter: { startAt?: Date; endAt?: Date } = {};
+
+    if (startAt) {
+      filter.startAt = new Date(startAt);
+    }
+    if (endAt) {
+      filter.endAt = new Date(endAt);
+    }
+
+    const appointments = await this.appointmentService.findMine(
+      clientId,
+      companyId,
+      filter,
+    );
+
+    return ResponseHandler.success(
+      res,
+      appointments,
+      HttpMessages.MY_APPOINTMENTS_FOUND,
       HttpStatus.OK,
     );
   };
@@ -82,10 +130,13 @@ class AppointmentController {
   */
   public findById = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
+    const clientScope =
+      req.user!.role === Role.CLIENT ? req.user!.clientId : undefined;
 
     const appointment = await this.appointmentService.findById(
       req.params.id as string,
       companyId,
+      clientScope,
     );
 
     return ResponseHandler.success(

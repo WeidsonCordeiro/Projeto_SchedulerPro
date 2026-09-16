@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../store";
 import { setCredentials, setLoading } from "../store/slices/authSlice";
 import authApi from "../api/endpoints/auth.api";
@@ -114,6 +115,14 @@ export default function LoginPage() {
             )}
           </button>
         </form>
+
+        <div className="mt-3 text-center">
+          <div className="d-flex justify-content-center gap-3">
+            <Link to="/forgot-password">Esqueceu a senha?</Link>
+            <span className="text-muted">|</span>
+            <Link to="/register">Criar conta</Link>
+          </div>
+        </div>
       </div>
     </div>
   );

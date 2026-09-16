@@ -191,8 +191,63 @@ class UserRepository {
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
     return User.findOne({ _id: id, deletedAt: null }).select(
-      "_id companyId role mustChangePassword isActive lockUntil deletedAt",
+      "_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified",
     );
+  }
+
+  /**
+   * ==========================================================
+   * Busca o utilizador (CLIENT) vinculado a um cliente.
+   * ==========================================================
+   */
+  public async findByClientId(
+    clientId: string | Types.ObjectId,
+  ): Promise<UserDocument | null> {
+    return User.findOne({ clientId: clientId, deletedAt: null });
+  }
+
+  /**
+   * ==========================================================
+   * Busca o utilizador (CLIENT) vinculado a um cliente,
+   * incluindo documentos soft-deleted.
+   *
+   * O índice unique de email no MongoDB continua reservando o
+   * e-mail mesmo após soft delete; essa consulta permite
+   * restaurar o vínculo em vez de duplicá-lo.
+   * ==========================================================
+   */
+  public async findByClientIdIncludingDeleted(
+    clientId: string | Types.ObjectId,
+  ): Promise<UserDocument | null> {
+    return User.findOne({ clientId: clientId });
+  }
+
+  /**
+   * ==========================================================
+   * Busca por email, incluindo documentos soft-deleted.
+   * ==========================================================
+   */
+  public async findByEmailIncludingDeleted(
+    email: string,
+  ): Promise<UserDocument | null> {
+    return User.findOne({ email });
+  }
+
+  /**
+   * ==========================================================
+   * Atualiza um utilizador, incluindo documentos soft-deleted.
+   *
+   * Usado para restaurar contas removidas (deletedAt: null).
+   * ==========================================================
+   */
+  public async updateIncludingDeleted(
+    id: string,
+    data: UpdateUserData,
+  ): Promise<UserDocument | null> {
+    return User.findOneAndUpdate({ _id: id }, data, {
+      new: true,
+      runValidators: true,
+    });
   }
   /**
    * ==========================================================

@@ -52,3 +52,13 @@ export interface UpdateAppointmentPayload {
   startAt?: string;
   notes?: string;
 }
+
+/**
+ * Agendamento do portal do cliente (GET /appointments/mine). O backend
+ * anexa os nomes do serviço e do funcionário porque o portal não consulta
+ * esses recursos diretamente.
+ */
+export interface PortalAppointment extends Appointment {
+  serviceName: string | null;
+  employeeName: string | null;
+}

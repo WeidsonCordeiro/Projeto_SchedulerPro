@@ -17,6 +17,7 @@ const activeUser = {
   role: "MANAGER",
   isActive: true,
   lockUntil: null,
+  emailVerified: true,
 };
 
 describe("AuthMiddleware", () => {
@@ -42,6 +43,19 @@ describe("AuthMiddleware", () => {
     expect(next).toHaveBeenCalledOnce();
   });
 
+  it("inclui clientId em req.user quando o usuário é vinculado a um cliente", async () => {
+    const next = vi.fn();
+    userRepository.findByIdForAccessControl.mockResolvedValue({
+      ...activeUser,
+      role: "CLIENT",
+      clientId: { toString: () => "db-client" },
+    });
+    jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "CLIENT", type: "access" });
+    const req = { cookies: { accessToken: "token" } } as never;
+    await AuthMiddleware.authenticate(req, {} as never, next);
+    expect(req.user).toEqual({ userId: "db-user", companyId: "db-company", role: "CLIENT", clientId: "db-client" });
+  });
+
   it("rejeita token com tipo incorreto", async () => {
     const next = vi.fn();
     jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "ADMIN", type: "refresh" });
@@ -54,12 +68,21 @@ describe("AuthMiddleware", () => {
     ["inexistente/soft-deleted", null, 401],
     ["inativo", { ...activeUser, isActive: false }, 403],
     ["bloqueado", { ...activeUser, lockUntil: new Date(Date.now() + 60_000) }, 403],
-  ])("rejeita usuário %s mesmo com token assinado", async (_label, user, statusCode) => {
+    ["não verificado", { ...activeUser, emailVerified: false }, 403],
+    ["CLIENT sem clientId (fail closed)", { ...activeUser, role: "CLIENT", emailVerified: true }, 403],
+    ["CLIENT com clientId (permitido)", { ...activeUser, role: "CLIENT", clientId: { toString: () => "db-client" }, emailVerified: true }, 200],
+  ])("valida usuário %s mesmo com token assinado", async (_label, user, expectedStatus) => {
     userRepository.findByIdForAccessControl.mockResolvedValue(user);
     jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "ADMIN", type: "access" });
     const next = vi.fn();
-    await expect(AuthMiddleware.authenticate({ cookies: { accessToken: "token" } } as never, {} as never, next)).rejects.toMatchObject({ statusCode });
-    expect(next).not.toHaveBeenCalled();
+    if (expectedStatus === 200) {
+      const req = { cookies: { accessToken: "token" } } as never;
+      await AuthMiddleware.authenticate(req, {} as never, next);
+      expect(next).toHaveBeenCalledOnce();
+    } else {
+      await expect(AuthMiddleware.authenticate({ cookies: { accessToken: "token" } } as never, {} as never, next)).rejects.toMatchObject({ statusCode: expectedStatus });
+      expect(next).not.toHaveBeenCalled();
+    }
   });
 
   it("propaga token criptograficamente inválido e não chama next", async () => {

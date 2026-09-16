@@ -66,6 +66,41 @@ describe("appointmentsApi", () => {
     expect(apiClient.get).toHaveBeenCalledWith("/appointments/appt1");
   });
 
+  it("gets /appointments/mine", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { success: true, message: "ok", data: [] },
+    });
+
+    await appointmentsApi.getMyAppointments();
+
+    expect(apiClient.get).toHaveBeenCalledWith("/appointments/mine");
+  });
+
+  it("gets /appointments/mine with period params when provided", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { success: true, message: "ok", data: [] },
+    });
+
+    await appointmentsApi.getMyAppointments({
+      startAt: "2026-08-01T00:00:00.000Z",
+    });
+
+    expect(apiClient.get).toHaveBeenCalledWith("/appointments/mine", {
+      params: { startAt: "2026-08-01T00:00:00.000Z" },
+    });
+  });
+
+  it("does not send companyId in /appointments/mine calls", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { success: true, message: "ok", data: [] },
+    });
+
+    await appointmentsApi.getMyAppointments();
+
+    const params = vi.mocked(apiClient.get).mock.calls[0][1];
+    expect(params ?? {}).not.toHaveProperty("params.companyId");
+  });
+
   it("posts /appointments with the create payload", async () => {
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { success: true, message: "criado", data: createdAppointment },

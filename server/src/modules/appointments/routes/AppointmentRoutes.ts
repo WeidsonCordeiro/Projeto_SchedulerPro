@@ -16,7 +16,9 @@ import AppointmentController from "../controllers/AppointmentController";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
+import { authorize } from "../../../middlewares/role.middleware";
 import { Permission } from "../../../constants/permissions";
+import { Role } from "../../../constants/roles";
 import { createAppointmentValidator } from "../validators/create-appointment.validator";
 import { updateAppointmentValidator } from "../validators/update-appointment.validator";
 import { listAppointmentsValidator } from "../validators/list-appointments.validator";
@@ -87,16 +89,34 @@ appointmentRoutes.patch(
 
 /**
  * ==========================================================
- * Cancela um agendamento.
+ * Meus agendamentos (portal do cliente).
+ *
+ * Precisa estar registada antes de "/:id". O clientId vem
+ * exclusivamente da sessão autenticada.
  * ==========================================================
  */
-appointmentRoutes.patch(
-  "/:id/cancel",
+appointmentRoutes.get(
+  "/mine",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  authorize(Role.CLIENT),
+  listAppointmentsValidator,
+  validateRequest,
+  AppointmentController.findMine,
+);
+
+/**
+ * ==========================================================
+ * Buscar agendamento pelo ID.
+ * ==========================================================
+  */
+appointmentRoutes.get(
+  "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
-  hasPermission(Permission.APPOINTMENT_UPDATE),
-  AppointmentController.cancel,
+  hasPermission(Permission.APPOINTMENT_READ),
+  AppointmentController.findById,
 );
 
 /**
@@ -114,18 +134,17 @@ appointmentRoutes.patch(
 );
 
 /**
-
-* ==========================================================
-* Buscar agendamento pelo ID.
-* ==========================================================
-  */
-appointmentRoutes.get(
-  "/:id",
+ * ==========================================================
+ * Cancela um agendamento.
+ * ==========================================================
+ */
+appointmentRoutes.patch(
+  "/:id/cancel",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   validateObjectId("id"),
-  hasPermission(Permission.APPOINTMENT_READ),
-  AppointmentController.findById,
+  hasPermission(Permission.APPOINTMENT_UPDATE),
+  AppointmentController.cancel,
 );
 
 /**
