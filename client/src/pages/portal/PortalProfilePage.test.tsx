@@ -25,6 +25,7 @@ function makeClient(overrides: Partial<Client> = {}): Client {
     companyId: "company1",
     notes: "VIP",
     isActive: true,
+    portalAccess: { exists: true, isActive: true },
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,

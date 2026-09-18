@@ -12,12 +12,13 @@
 
 import { Types } from "mongoose";
 import ClientRepository from "../repositories/ClientRepository";
-import ClientMapper from "../mappers/ClientMapper";
+import ClientMapper, { ClientPortalAccess } from "../mappers/ClientMapper";
 import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
 import { SetClientCredentialsDto } from "../dto/SetClientCredentials.dto";
 import UserRepository from "../../users/repositories/UserRepository";
 import { UpdateUserData } from "../../users/types";
+import { ClientDocument } from "../models/Client.model";
 import PasswordProvider from "../../../providers/security/PasswordProvider";
 import { Role } from "../../../constants/roles";
 import { AppError } from "../../../errors/AppError";
@@ -31,16 +32,101 @@ class ClientService {
 
   /**
    * ==========================================================
+   * Resolve o estado de acesso ao portal de um cliente.
+   *
+   * A busca é limitada à empresa do cliente para garantir o
+   * isolamento: um cliente da Company A nunca resolve (nem
+   * escreve em) um usuário da Company B.
+   * ==========================================================
+   */
+  private async resolvePortalAccess(
+    clientId: string,
+    companyId: string,
+  ): Promise<ClientPortalAccess> {
+    const user = await this.userRepository.findByClientIdIncludingDeleted(
+      clientId,
+      companyId,
+    );
+
+    if (!user) {
+      return { exists: false, isActive: false };
+    }
+
+    return {
+      exists: true,
+      isActive: user.isActive === true && user.deletedAt == null,
+    };
+  }
+
+  /**
+   * ==========================================================
+   * Resolve o estado de acesso de uma lista de clientes em lote.
+   * ==========================================================
+   */
+  private async resolvePortalAccessMap(
+    clients: ClientDocument[],
+    companyId: string,
+  ): Promise<Map<string, ClientPortalAccess>> {
+    const map = new Map<string, ClientPortalAccess>();
+
+    for (const client of clients) {
+      map.set(client._id.toString(), { exists: false, isActive: false });
+    }
+
+    const users = await this.userRepository.findByClientIdsAndCompanyIncludingDeleted(
+      clients.map((client) => client._id),
+      companyId,
+    );
+
+    for (const user of users) {
+      if (!user.clientId) {
+        continue;
+      }
+
+      map.set(user.clientId.toString(), {
+        exists: true,
+        isActive: user.isActive === true && user.deletedAt == null,
+      });
+    }
+
+    return map;
+  }
+
+  /**
+   * ==========================================================
    * Cria um novo cliente.
+   *
+   * Quando um e-mail é informado, verifica-se conflito global
+   * com a coleção User (incluindo soft-deleted, pois o índice
+   * unique de email é global). Conflito => 409 antes de gravar:
+   * o Client não é criado e nenhum User é tocado.
+   *
+   * Cliente pode existir sem conta de acesso; a unicidade do
+   * e-mail com User vale independentemente disso.
    * ==========================================================
    */
   public async create(dto: CreateClientDto, companyId: string) {
+    const email = dto.email?.trim().toLowerCase();
+
+    if (email) {
+      const emailUser = await this.userRepository.findByEmailIncludingDeleted(
+        email,
+      );
+
+      if (emailUser) {
+        throw new AppError(
+          HttpMessages.EMAIL_ALREADY_EXISTS,
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
     const client = await this.clientRepository.create({
       ...dto,
       companyId: new Types.ObjectId(companyId),
     });
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(client, { exists: false, isActive: false });
   }
 
   /**
@@ -50,8 +136,14 @@ class ClientService {
    */
   public async findAll(companyId: string) {
     const clients = await this.clientRepository.findByCompanyId(companyId);
+    const portalAccessMap = await this.resolvePortalAccessMap(clients, companyId);
 
-    return clients.map(ClientMapper.toResponse);
+    return clients.map((client) =>
+      ClientMapper.toResponse(
+        client,
+        portalAccessMap.get(client._id.toString()),
+      ),
+    );
   }
 
   /**
@@ -69,20 +161,66 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(client._id.toString(), companyId),
+    );
   }
 
   /**
    * ==========================================================
    * Atualiza um cliente.
+   *
+   * Quando o cliente possui conta de acesso (User CLIENT
+   * vinculado por clientId), os campos de identidade name e
+   * email são sincronizados nessa conta. Nenhum dado sensível é
+   * tocado: passwordHash, role, clientId, companyId e isActive
+   * da conta permanecem inalterados.
+   *
+   * O vínculo é sempre buscado de forma isolada (mesma empresa)
+   * e contas soft-deleted não são sincronizadas. A validação de
+   * conflito de e-mail com User vale também para clientes sem
+   * conta de acesso.
    * ==========================================================
    */
   public async update(id: string, dto: UpdateClientDto, companyId: string) {
     const updateData: UpdateClientDto = {};
     if (dto.name !== undefined) updateData.name = dto.name;
-    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.email !== undefined) {
+      updateData.email = dto.email.trim().toLowerCase();
+    }
     if (dto.phone !== undefined) updateData.phone = dto.phone;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
+
+    const linkedUser = await this.userRepository.findByClientIdIncludingDeleted(
+      id,
+      companyId,
+    );
+
+    /**
+     * Conflito de e-mail: o índice unique de email do User é
+     * global, então a checagem considera qualquer empresa e até
+     * contas soft-deleted (que seguem reservando o e-mail).
+     *
+     * Vale também para clientes sem conta de acesso (Client sem
+     * User vinculado não pode usar um e-mail já reservado). O
+     * próprio e-mail da conta vinculada é permitido.
+     */
+    if (
+      updateData.email !== undefined &&
+      updateData.email !== linkedUser?.email
+    ) {
+      const owner = await this.userRepository.findByEmailIncludingDeleted(
+        updateData.email,
+      );
+
+      if (owner && owner._id.toString() !== linkedUser?._id.toString()) {
+        throw new AppError(
+          HttpMessages.EMAIL_ALREADY_EXISTS,
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
 
     const client = await this.clientRepository.update(id, companyId, updateData);
 
@@ -90,7 +228,39 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    /**
+     * Sincroniza apenas a identidade (name e/ou email) na conta
+     * de acesso ativa. Conta soft-deleted não é restaurada nem
+     * alterada por esta operação.
+     */
+    if (linkedUser && linkedUser.deletedAt == null) {
+      const userUpdate: UpdateUserData = {};
+
+      if (updateData.name !== undefined && client.name !== linkedUser.name) {
+        userUpdate.name = client.name;
+      }
+
+      if (
+        updateData.email !== undefined &&
+        client.email !== null &&
+        client.email !== linkedUser.email
+      ) {
+        userUpdate.email = client.email;
+      }
+
+      if (Object.keys(userUpdate).length > 0) {
+        await this.userRepository.update(linkedUser._id.toString(), userUpdate);
+      }
+    }
+
+    const portalAccess: ClientPortalAccess = linkedUser
+      ? {
+          exists: true,
+          isActive: linkedUser.isActive === true && linkedUser.deletedAt == null,
+        }
+      : { exists: false, isActive: false };
+
+    return ClientMapper.toResponse(client, portalAccess);
   }
 
   /**
@@ -125,7 +295,10 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(id, companyId),
+    );
   }
 
   /**
@@ -140,7 +313,10 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(id, companyId),
+    );
   }
 
   /**
@@ -161,7 +337,10 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(clientId, companyId),
+    );
   }
 
   /**
@@ -261,7 +440,7 @@ class ClientService {
       });
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(client, { exists: true, isActive: true });
   }
 }
 

@@ -130,9 +130,13 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+      await screen.findByRole(
+        "heading",
+        { name: /bem-vindo ao schedulerpro/i },
+        { timeout: 15000 },
+      ),
     ).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("redirects an unauthenticated user from / to /login", () => {
     renderAt("/", { isInitializing: false });

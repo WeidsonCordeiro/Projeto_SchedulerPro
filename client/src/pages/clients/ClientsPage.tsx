@@ -6,7 +6,31 @@ import DeleteClientModal from "../../components/clients/DeleteClientModal";
 import SetClientCredentialsModal from "../../components/clients/SetClientCredentialsModal";
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
-import type { Client } from "../../types/client";
+import type { Client, ClientPortalAccess } from "../../types/client";
+
+function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
+  if (!portalAccess.exists) {
+    return "Dar acesso";
+  }
+
+  return portalAccess.isActive ? "Gerenciar acesso" : "Reativar acesso";
+}
+
+function getAccessButtonTitle(
+  client: Client,
+): string {
+  if (!client.email) {
+    return "O cliente precisa de um email para acessar o portal";
+  }
+
+  if (!client.portalAccess.exists) {
+    return "Definir o acesso do cliente ao portal";
+  }
+
+  return client.portalAccess.isActive
+    ? "Gerenciar o acesso do cliente ao portal"
+    : "Reativar o acesso do cliente ao portal";
+}
 
 export default function ClientsPage() {
   const user = useAppSelector((state) => state.auth.user);
@@ -180,13 +204,9 @@ export default function ClientsPage() {
                             className="btn btn-sm btn-outline-success"
                             onClick={() => setCredentialingClient(client)}
                             disabled={!client.email}
-                            title={
-                              client.email
-                                ? "Definir acesso ao portal"
-                                : "O cliente precisa de um email para acessar o portal"
-                            }
+                            title={getAccessButtonTitle(client)}
                           >
-                            Acesso
+                            {getAccessButtonLabel(client.portalAccess)}
                           </button>
                         )}
                         {canDelete && (

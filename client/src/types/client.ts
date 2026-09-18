@@ -1,3 +1,8 @@
+export interface ClientPortalAccess {
+  exists: boolean;
+  isActive: boolean;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -6,6 +11,7 @@ export interface Client {
   companyId: string;
   notes: string | null;
   isActive: boolean;
+  portalAccess: ClientPortalAccess;
   createdAt: string;
   updatedAt: string;
 }

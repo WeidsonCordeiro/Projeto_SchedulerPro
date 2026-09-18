@@ -20,6 +20,7 @@ const existingClient: Client = {
   companyId: "company1",
   notes: "Cliente antigo",
   isActive: true,
+  portalAccess: { exists: false, isActive: false },
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
