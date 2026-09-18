@@ -463,13 +463,29 @@ class AuthService {
       resetUrl,
     });
 
-    await this.resendProvider.send({
-      to: user.email,
-      subject: "Recuperação de palavra-passe",
-      html,
-    });
+    /**
+     * A falha do provider não é silenciosamente ignorada: o erro é
+     * registado (com detalhe) para diagnóstico. A resposta HTTP
+     * continua a ser 200 (anti-enumeração), preservando o desenho
+     * existente do fluxo de recuperação.
+     */
+    try {
+      await this.resendProvider.send({
+        to: user.email,
+        subject: "Recuperação de palavra-passe",
+        html,
+      });
 
-    Logger.auth(`Token de recuperação enviado para ${user.email}`);
+      Logger.auth(`Token de recuperação enviado para ${user.email}`);
+    } catch (error) {
+      Logger.error(
+        `Falha ao enviar e-mail de recuperação para ${user.email}`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user._id.toString(),
+        },
+      );
+    }
   }
 
   /**

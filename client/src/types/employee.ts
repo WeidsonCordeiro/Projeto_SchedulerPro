@@ -10,6 +10,7 @@ export interface Employee {
   name: string;
   email: string;
   role: EmployeeRole;
+  isActive: boolean;
   companyId: string;
   createdAt: string;
   updatedAt: string;

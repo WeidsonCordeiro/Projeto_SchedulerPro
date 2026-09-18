@@ -128,7 +128,14 @@ class UserService {
   public async findAll(companyId: string) {
     const users = await this.userRepository.findByCompanyId(companyId);
 
-    return users.map(UserMapper.toResponse);
+    /**
+     * A listagem de funcionários não trata CLIENT como funcionário:
+     * o User com role CLIENT representa acesso ao Portal do Cliente
+     * e não pertence à equipe da empresa.
+     */
+    return users
+      .filter((user) => user.role !== Role.CLIENT)
+      .map(UserMapper.toResponse);
   }
 
   /**

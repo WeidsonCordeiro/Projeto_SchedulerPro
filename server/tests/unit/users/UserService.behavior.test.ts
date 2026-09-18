@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { userRepository, companyRepository, passwordProvider, resendProvider, jwtProvider, userMapper } = vi.hoisted(() => ({
-  userRepository: { existsByEmail: vi.fn(), create: vi.fn(), findById: vi.fn(), update: vi.fn() },
+  userRepository: { existsByEmail: vi.fn(), create: vi.fn(), findById: vi.fn(), findByCompanyId: vi.fn(), update: vi.fn() },
   companyRepository: { findById: vi.fn() },
   passwordProvider: { hash: vi.fn() },
   resendProvider: { send: vi.fn() },
@@ -32,6 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   userRepository.existsByEmail.mockResolvedValue(false);
   userRepository.findById.mockResolvedValue(user);
+  userRepository.findByCompanyId.mockResolvedValue([user]);
   userRepository.update.mockResolvedValue({ ...user, role: Role.MANAGER });
   userRepository.create.mockResolvedValue(user);
   companyRepository.findById.mockResolvedValue(company);
@@ -95,5 +96,29 @@ describe("UserService.create/update", () => {
     await expect(UserService.update(userId, { role: Role.ADMIN }, companyId, "actor", Role.MANAGER)).rejects.toMatchObject({ statusCode: HttpStatus.FORBIDDEN });
     await expect(UserService.update(userId, { role: Role.MANAGER }, companyId, userId, Role.EMPLOYEE)).rejects.toMatchObject({ statusCode: HttpStatus.FORBIDDEN });
     expect(userRepository.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("UserService.findAll", () => {
+  it("exclui usuários CLIENT da listagem de funcionários", async () => {
+    userRepository.findByCompanyId.mockResolvedValue([
+      { ...user, id: "1", role: Role.OWNER },
+      { ...user, id: "2", role: Role.ADMIN },
+      { ...user, id: "3", role: Role.CLIENT },
+    ]);
+
+    const result = await UserService.findAll(companyId);
+
+    expect(userRepository.findByCompanyId).toHaveBeenCalledWith(companyId);
+    expect(result).toEqual([
+      { ...user, id: "1", role: Role.OWNER },
+      { ...user, id: "2", role: Role.ADMIN },
+    ]);
+    expect(result.some((u) => u.role === Role.CLIENT)).toBe(false);
+  });
+
+  it("retorna lista vazia quando a empresa não possui funcionários", async () => {
+    userRepository.findByCompanyId.mockResolvedValue([]);
+    await expect(UserService.findAll(companyId)).resolves.toEqual([]);
   });
 });
