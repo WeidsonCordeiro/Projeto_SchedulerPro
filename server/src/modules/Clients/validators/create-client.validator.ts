@@ -30,8 +30,7 @@ export const createClientValidator = [
     .optional({ values: "falsy" })
     .trim()
     .isEmail()
-    .withMessage("O e-mail informado é inválido.")
-    .normalizeEmail(),
+    .withMessage("O e-mail informado é inválido."),
 
   body("notes")
     .optional({ values: "falsy" })

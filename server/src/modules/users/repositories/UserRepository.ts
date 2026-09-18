@@ -218,8 +218,33 @@ class UserRepository {
    */
   public async findByClientIdIncludingDeleted(
     clientId: string | Types.ObjectId,
+    companyId?: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
-    return User.findOne({ clientId: clientId });
+    const filter: Record<string, unknown> = { clientId };
+    if (companyId !== undefined) {
+      filter.companyId = companyId;
+    }
+
+    return User.findOne(filter);
+  }
+
+  /**
+   * ==========================================================
+   * Busca os utilizadores (CLIENT) vinculados a uma lista de
+   * clientes de uma empresa, incluindo soft-deleted.
+   *
+   * Usado para resolver, em lote, o estado de acesso ao portal
+   * da listagem de clientes.
+   * ==========================================================
+   */
+  public async findByClientIdsAndCompanyIncludingDeleted(
+    clientIds: (string | Types.ObjectId)[],
+    companyId: string | Types.ObjectId,
+  ): Promise<UserDocument[]> {
+    return User.find({
+      clientId: { $in: clientIds },
+      companyId,
+    });
   }
 
   /**

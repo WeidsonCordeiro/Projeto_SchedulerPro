@@ -84,12 +84,22 @@ export default function SetClientCredentialsModal({
     return null;
   }
 
+  const { portalAccess } = client;
+  const hasAccess = portalAccess.exists;
+  const hasActiveAccess = portalAccess.isActive;
+
+  const modalTitle = hasAccess
+    ? hasActiveAccess
+      ? "Gerenciar acesso ao portal do cliente"
+      : "Reativar acesso ao portal do cliente"
+    : "Dar acesso ao portal do cliente";
+
   return (
     <div className="modal show d-block" role="dialog" aria-modal="true">
       <div className="modal-dialog">
         <div className="modal-content">
           <div className="modal-header">
-            <h2 className="modal-title h5">Acesso ao portal do cliente</h2>
+            <h2 className="modal-title h5">{modalTitle}</h2>
             <button
               type="button"
               className="btn-close"
@@ -99,11 +109,29 @@ export default function SetClientCredentialsModal({
           </div>
 
           <div className="modal-body">
-            <p className="text-muted">
-              Estas credenciais permitem que <strong>{client.name}</strong> acesse
-              o portal usando o email <strong>{client.email ?? "—"}</strong>. No
-              primeiro acesso, o cliente deve alterar a senha.
-            </p>
+            {hasAccess ? (
+              hasActiveAccess ? (
+                <p className="text-muted">
+                  O cliente <strong>{client.name}</strong> já possui acesso ao
+                  portal com o email <strong>{client.email ?? "—"}</strong>.
+                  Defina novas credenciais apenas se necessário.
+                </p>
+              ) : (
+                <p className="text-muted">
+                  O acesso do cliente <strong>{client.name}</strong> está
+                  inativo. Ao definir novas credenciais, o acesso será reativado
+                  usando o email <strong>{client.email ?? "—"}</strong>. No
+                  primeiro acesso, o cliente deve alterar a senha.
+                </p>
+              )
+            ) : (
+              <p className="text-muted">
+                Estas credenciais permitem que <strong>{client.name}</strong>{" "}
+                acesse o portal usando o email{" "}
+                <strong>{client.email ?? "—"}</strong>. No primeiro acesso, o
+                cliente deve alterar a senha.
+              </p>
+            )}
 
             {errorMessage && (
               <div className="alert alert-danger" role="alert">

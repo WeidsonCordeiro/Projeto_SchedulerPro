@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  user: { findOne: vi.fn(), findOneAndUpdate: vi.fn() },
+  user: { findOne: vi.fn(), find: vi.fn(), findOneAndUpdate: vi.fn() },
   service: { findOneAndUpdate: vi.fn() },
   appointment: { findOneAndUpdate: vi.fn() },
 }));
@@ -75,6 +75,27 @@ describe("soft delete nos repositories", () => {
     mocks.user.findOne.mockResolvedValue(null);
     await expect(UserRepository.findByClientIdIncludingDeleted(id)).resolves.toBeNull();
     expect(mocks.user.findOne).toHaveBeenCalledWith({ clientId: id });
+  });
+
+  it("UserRepository.findByClientIdIncludingDeleted aceita vínculo por empresa", async () => {
+    const companyId = "507f1f77bcf86cd799439022";
+    mocks.user.findOne.mockResolvedValue(null);
+    await UserRepository.findByClientIdIncludingDeleted(id, companyId);
+    expect(mocks.user.findOne).toHaveBeenCalledWith({ clientId: id, companyId });
+  });
+
+  it("UserRepository.findByClientIdsAndCompanyIncludingDeleted busca vínculos em lote", async () => {
+    const secondId = "507f1f77bcf86cd799439012";
+    const companyId = "507f1f77bcf86cd799439022";
+    mocks.user.find.mockResolvedValue([]);
+    await UserRepository.findByClientIdsAndCompanyIncludingDeleted(
+      [id, secondId],
+      companyId,
+    );
+    expect(mocks.user.find).toHaveBeenCalledWith({
+      clientId: { $in: [id, secondId] },
+      companyId,
+    });
   });
 
   it("UserRepository.findByEmailIncludingDeleted não filtra por deletedAt", async () => {
