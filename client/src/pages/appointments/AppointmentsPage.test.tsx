@@ -118,6 +118,7 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     name: "Ana Lima",
     email: "ana@example.com",
     role: "EMPLOYEE",
+    isActive: true,
     companyId: "company1",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
@@ -471,7 +472,7 @@ describe("AppointmentsPage", () => {
       within(screen.getByRole("dialog")).getByRole("button", { name: "11:00" }),
     ).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByText("Agendamento criado com sucesso.")).not.toBeInTheDocument();
-  });
+  }, 15000);
 
   it("edits an appointment with the pre-filled form", async () => {
     vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({

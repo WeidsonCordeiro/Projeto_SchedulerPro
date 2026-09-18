@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { userRepository, companyRepository, passwordProvider, jwtProvider, passwordResetRepository, resendProvider, session, authMapper } = vi.hoisted(() => ({
+const { userRepository, companyRepository, passwordProvider, jwtProvider, passwordResetRepository, resendProvider, session, authMapper, logger } = vi.hoisted(() => ({
   userRepository: { existsByEmail: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), create: vi.fn(), verifyEmail: vi.fn() },
   companyRepository: { findByName: vi.fn(), create: vi.fn() },
   passwordProvider: { compare: vi.fn(), hash: vi.fn() },
@@ -9,6 +9,7 @@ const { userRepository, companyRepository, passwordProvider, jwtProvider, passwo
   resendProvider: { send: vi.fn() },
   session: { startTransaction: vi.fn(), commitTransaction: vi.fn(), abortTransaction: vi.fn(), endSession: vi.fn() },
   authMapper: { toAuthUser: vi.fn((user: any) => ({ id: user.id, email: user.email, role: user.role, companyId: user.companyId.toString(), isActive: user.isActive })) },
+  logger: { auth: vi.fn(), security: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
@@ -20,7 +21,7 @@ vi.mock("../../../src/providers/mail/ResendProvider", () => ({ default: resendPr
 vi.mock("../../../src/modules/auth/mapper/AuthMapper", () => ({ default: authMapper }));
 vi.mock("../../../src/providers/mail/templates/welcome.template", () => ({ welcomeTemplate: vi.fn(() => "welcome-html") }));
 vi.mock("../../../src/providers/mail/templates/reset-password.template", () => ({ resetPasswordTemplate: vi.fn(() => "reset-html") }));
-vi.mock("../../../src/providers/logger", () => ({ default: { auth: vi.fn(), security: vi.fn(), error: vi.fn() } }));
+vi.mock("../../../src/providers/logger", () => ({ default: logger }));
 vi.mock("../../../src/config/env", () => ({ env: { frontend: { FRONTEND_URL: "http://localhost" } } }));
 vi.mock("mongoose", () => ({ default: { startSession: vi.fn().mockResolvedValue(session) } }));
 
@@ -137,6 +138,36 @@ describe("AuthService.password e email verification", () => {
     await AuthService.forgotPassword("user@example.com");
     expect(passwordResetRepository.create).toHaveBeenCalledWith(expect.objectContaining({ userId, token: "reset-token" }));
     expect(resendProvider.send).toHaveBeenCalled();
+  });
+
+  it("permite recuperação de senha de usuário CLIENT (Portal do Cliente)", async () => {
+    const client = makeUser({
+      role: Role.CLIENT,
+      email: "cliente@example.com",
+    });
+    userRepository.findByEmail.mockResolvedValue(client);
+
+    await AuthService.forgotPassword("cliente@example.com");
+
+    expect(passwordResetRepository.create).toHaveBeenCalledTimes(1);
+    expect(resendProvider.send).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "cliente@example.com" }),
+    );
+  });
+
+  it("mantém anti-enumeração e registra a falha do provider no log", async () => {
+    userRepository.findByEmail.mockResolvedValue(makeUser());
+    resendProvider.send.mockRejectedValue(
+      new Error("Resend: from address not verified"),
+    );
+
+    await expect(AuthService.forgotPassword("user@example.com")).resolves.toBeUndefined();
+    expect(passwordResetRepository.create).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining("Falha ao enviar e-mail de recuperação"),
+      expect.objectContaining({ userId }),
+    );
   });
 
   it("redefine senha válida, invalida o token e rejeita token ausente/expirado/usado", async () => {

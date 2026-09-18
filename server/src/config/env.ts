@@ -107,6 +107,16 @@ export const env = {
      * Resend
      */
     RESEND_API_KEY: process.env.RESEND_API_KEY || "",
+
+    /**
+     * Remetente utilizado nos e-mails transacionais.
+     *
+     * Deve ser um endereço de um domínio verificado no painel da
+     * Resend para entregar para destinatários arbitrários. O valor
+     * padrão (onboarding@resend.dev) só entrega para o e-mail
+     * cadastrado na conta Resend.
+     */
+    MAIL_FROM: process.env.MAIL_FROM || "onboarding@resend.dev",
   },
   whatsApp: {
     /**

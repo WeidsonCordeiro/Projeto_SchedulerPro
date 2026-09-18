@@ -48,6 +48,7 @@ export const HttpMessages = {
   PASSWORD_CHANGE_FAILED: "Falha ao alterar a senha.",
   PASSWORD_RESET_TOKEN_INVALID: "Token de redefinição de senha inválido.",
   PASSWORD_RESET_TOKEN_EXPIRED: "Token de redefinição de senha expirado.",
+  EMAIL_SEND_FAILED: "Falha ao enviar o e-mail. Tente novamente mais tarde.",
 
   /*Empresa*/
   COMPANY_FOUND: "Empresa encontrada.",

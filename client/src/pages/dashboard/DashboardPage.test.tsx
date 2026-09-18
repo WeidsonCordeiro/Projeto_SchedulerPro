@@ -87,6 +87,7 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     name: "Ana Lima",
     email: "ana@example.com",
     role: "EMPLOYEE",
+    isActive: true,
     companyId: "company1",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",

@@ -42,7 +42,12 @@ export default function EmployeesPage() {
     setLoadError(null);
     try {
       const response = await employeesApi.getEmployees();
-      setEmployees(response.data ?? []);
+      /**
+       * O backend já exclui CLIENT da listagem de funcionários; este
+       * filtro defensivo garante que contas de acesso ao Portal do
+       * Cliente nunca sejam tratadas como funcionários na interface.
+       */
+      setEmployees((response.data ?? []).filter((e) => e.role !== "CLIENT"));
     } catch (error) {
       const failure = getApiError(error);
       setLoadError(getFriendlyErrorMessage(failure));
@@ -231,7 +236,7 @@ export default function EmployeesPage() {
                               Editar
                             </button>
                           )}
-                          {!isSelf && canActivate && (
+                          {!isSelf && canDeactivate && employee.isActive !== false && (
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-secondary"
@@ -243,7 +248,7 @@ export default function EmployeesPage() {
                                 : "Desativar"}
                             </button>
                           )}
-                          {!isSelf && canDeactivate && (
+                          {!isSelf && canActivate && employee.isActive === false && (
                             <button
                               type="button"
                               className="btn btn-sm btn-outline-success"

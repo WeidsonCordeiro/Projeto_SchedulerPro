@@ -24,6 +24,7 @@ class UserMapper {
       name: user.name,
       email: user.email,
       role: user.role,
+      isActive: user.isActive,
       companyId: user.companyId,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

@@ -28,6 +28,7 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
     name: "Ana Silva",
     email: "ana@example.com",
     role: "EMPLOYEE",
+    isActive: true,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
@@ -134,6 +135,24 @@ describe("EmployeesPage", () => {
     expect(
       within(table).getAllByText((content) => content.includes("2026")),
     ).toHaveLength(2);
+  });
+
+  it("never renders CLIENT accounts in the employee list", async () => {
+    vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        makeEmployee(),
+        makeEmployee({ id: "2", name: "Cliente Portal", role: "CLIENT" }),
+      ],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("Ana Silva")).toBeInTheDocument();
+    expect(within(table).queryByText("Cliente Portal")).not.toBeInTheDocument();
+    expect(within(table).queryByText("CLIENT")).not.toBeInTheDocument();
   });
 
   it("creates an employee through the form and reloads the list", async () => {
@@ -326,7 +345,7 @@ describe("EmployeesPage", () => {
     vi.mocked(employeesApi.getEmployees).mockResolvedValue({
       success: true,
       message: "ok",
-      data: [makeEmployee()],
+      data: [makeEmployee({ isActive: false })],
     });
     vi.mocked(employeesApi.activateEmployee).mockResolvedValue({
       success: true,
@@ -337,6 +356,7 @@ describe("EmployeesPage", () => {
     renderPage();
     await screen.findByRole("table");
 
+    expect(screen.queryByRole("button", { name: /desativar/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ativar" }));
 
     expect(
@@ -415,12 +435,8 @@ describe("EmployeesPage", () => {
       screen.getByRole("button", { name: /novo funcionário/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /desativar/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Ativar" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ativar" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /excluir/i }),
     ).not.toBeInTheDocument();
@@ -440,12 +456,8 @@ describe("EmployeesPage", () => {
       screen.getByRole("button", { name: /novo funcionário/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /desativar/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Ativar" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ativar" })).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /excluir/i }),
     ).toBeInTheDocument();
