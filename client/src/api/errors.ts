@@ -87,9 +87,11 @@ export const SESSION_ERROR_CODES = {
   SESSION_ABSOLUTE_TIMEOUT: "SESSION_ABSOLUTE_TIMEOUT",
 } as const;
 
+export const DEFAULT_SESSION_EXPIRY_MESSAGE =
+  "Sua sessão não é mais válida. Entre novamente.";
+
 export const SESSION_EXPIRY_MESSAGES: Record<string, string> = {
-  [SESSION_ERROR_CODES.INVALID_SESSION]:
-    "Sua sessão não é mais válida. Entre novamente.",
+  [SESSION_ERROR_CODES.INVALID_SESSION]: DEFAULT_SESSION_EXPIRY_MESSAGE,
   [SESSION_ERROR_CODES.SESSION_IDLE_TIMEOUT]:
     "Sua sessão expirou por inatividade. Entre novamente.",
   [SESSION_ERROR_CODES.SESSION_ABSOLUTE_TIMEOUT]:

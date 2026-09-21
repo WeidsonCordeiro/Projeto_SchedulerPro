@@ -2,10 +2,18 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AxiosError } from "axios";
 import type { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { apiClient } from "./apiClient";
-import { getApiError, getSessionExpiryMessage } from "./errors";
+import {
+  DEFAULT_SESSION_EXPIRY_MESSAGE,
+  getApiError,
+  getSessionExpiryMessage,
+} from "./errors";
 import { store } from "../store";
 import { clearCompany, setCompany } from "../store/slices/companySlice";
-import { clearCredentials, setCredentials } from "../store/slices/authSlice";
+import {
+  clearCredentials,
+  clearSessionExpirationMessage,
+  setCredentials,
+} from "../store/slices/authSlice";
 import { clientUser, session } from "../test/fixtures";
 import type { AuthSession } from "../types/auth";
 
@@ -13,6 +21,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   apiClient.defaults.adapter = undefined;
   store.dispatch(clearCredentials());
+  store.dispatch(clearSessionExpirationMessage());
   store.dispatch(clearCompany());
 });
 
@@ -399,6 +408,11 @@ describe("apiClient session interceptor", () => {
 
     expect(refreshCalls).toBe(1);
     expectLoggedOut();
+    // Mesmo um 401 sem code no refresh gera feedback amigável (fallback) para
+    // o CLIENT não ser desconectado sem explicação.
+    expect(store.getState().auth.sessionExpirationMessage).toBe(
+      DEFAULT_SESSION_EXPIRY_MESSAGE,
+    );
   });
 
   it("anti-loop - a retried request that still 401s is not retried again", async () => {
@@ -544,6 +558,123 @@ describe("apiClient session interceptor", () => {
     expectLoggedOut();
   });
 
+  it("keeps the default session expiry message when refresh 401s without a code", async () => {
+    seedAuthenticated();
+    seedCompany();
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ko(config, 401);
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expectLoggedOut();
+    expect(store.getState().auth.sessionExpirationMessage).toBe(
+      DEFAULT_SESSION_EXPIRY_MESSAGE,
+    );
+  });
+
+  it("dispatches the friendly inatividade message on SESSION_IDLE_TIMEOUT", async () => {
+    seedAuthenticated();
+    seedCompany();
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ko(config, 401, "Sessão expirada por inatividade.", "SESSION_IDLE_TIMEOUT");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expectLoggedOut();
+    expect(store.getState().auth.sessionExpirationMessage).toBe(
+      getSessionExpiryMessage("SESSION_IDLE_TIMEOUT"),
+    );
+  });
+
+  it("dispatches the friendly expiration message on SESSION_ABSOLUTE_TIMEOUT", async () => {
+    seedAuthenticated();
+    seedCompany();
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ko(config, 401, "Sessão atingiu o tempo máximo.", "SESSION_ABSOLUTE_TIMEOUT");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expectLoggedOut();
+    expect(store.getState().auth.sessionExpirationMessage).toBe(
+      getSessionExpiryMessage("SESSION_ABSOLUTE_TIMEOUT"),
+    );
+  });
+
+  it("dispatches the friendly invalid-session message on INVALID_SESSION", async () => {
+    seedAuthenticated();
+    seedCompany();
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ko(config, 401, "Sessão inválida.", "INVALID_SESSION");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expectLoggedOut();
+    expect(store.getState().auth.sessionExpirationMessage).toBe(
+      getSessionExpiryMessage("INVALID_SESSION"),
+    );
+  });
+
+  it("does not store a session message on a transient 5xx refresh failure", async () => {
+    seedAuthenticated();
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ko(config, 500, "Erro interno.");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expect(store.getState().auth.isAuthenticated).toBe(true);
+    expect(store.getState().auth.sessionExpirationMessage).toBeNull();
+  });
+
   it("não encerra a sessão quando o refresh falha por rede", async () => {
     seedAuthenticated();
 
@@ -564,6 +695,7 @@ describe("apiClient session interceptor", () => {
     });
 
     expect(store.getState().auth.isAuthenticated).toBe(true);
+    expect(store.getState().auth.sessionExpirationMessage).toBeNull();
   });
 });
 
@@ -600,5 +732,12 @@ describe("session error codes", () => {
     expect(getSessionExpiryMessage("SESSION_ABSOLUTE_TIMEOUT")).toContain("tempo máximo");
     expect(getSessionExpiryMessage("UNKNOWN_CODE")).toBeNull();
     expect(getSessionExpiryMessage()).toBeNull();
+  });
+
+  it("fallback default message equals the INVALID_SESSION message", () => {
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE).toBe(
+      getSessionExpiryMessage("INVALID_SESSION"),
+    );
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE).toContain("sessão");
   });
 });
