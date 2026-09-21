@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AxiosError } from "axios";
 import type { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { apiClient } from "./apiClient";
+import { getApiError, getSessionExpiryMessage } from "./errors";
 import { store } from "../store";
 import { clearCompany, setCompany } from "../store/slices/companySlice";
 import { clearCredentials, setCredentials } from "../store/slices/authSlice";
@@ -37,6 +38,7 @@ function ko(
   config: InternalAxiosRequestConfig,
   status: number,
   message = "erro",
+  code?: string,
 ): Promise<AxiosResponse> {
   return Promise.reject(
     new AxiosError(
@@ -45,7 +47,7 @@ function ko(
       config,
       null,
       {
-        data: { success: false, message },
+        data: { success: false, message, code },
         status,
         statusText: message,
         headers: {},
@@ -468,5 +470,135 @@ describe("apiClient session interceptor", () => {
 
     expect(store.getState().auth.user?.name).toBe("Owner Renovado");
     expect(store.getState().auth.isAuthenticated).toBe(true);
+  });
+
+  it("Caso 11 - SESSION_IDLE_TIMEOUT on refresh clears the session", async () => {
+    seedAuthenticated();
+    seedCompany();
+    let refreshCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls += 1;
+        return ko(config, 401, "Sessão expirada por inatividade.", "SESSION_IDLE_TIMEOUT");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expect(refreshCalls).toBe(1);
+    expectLoggedOut();
+  });
+
+  it("Caso 12 - SESSION_ABSOLUTE_TIMEOUT on refresh clears the session", async () => {
+    seedAuthenticated();
+    seedCompany();
+    let refreshCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls += 1;
+        return ko(config, 401, "Sessão atingiu o tempo máximo.", "SESSION_ABSOLUTE_TIMEOUT");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expect(refreshCalls).toBe(1);
+    expectLoggedOut();
+  });
+
+  it("Caso 13 - INVALID_SESSION on refresh clears the session", async () => {
+    seedAuthenticated();
+    seedCompany();
+    let refreshCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls += 1;
+        return ko(config, 401, "Sessão inválida.", "INVALID_SESSION");
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expect(refreshCalls).toBe(1);
+    expectLoggedOut();
+  });
+
+  it("não encerra a sessão quando o refresh falha por rede", async () => {
+    seedAuthenticated();
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return Promise.reject(
+          new AxiosError("Network Error", AxiosError.ERR_NETWORK, config),
+        );
+      }
+      if (config.url === "/appointments") {
+        return ko(config, 401);
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/appointments")).rejects.toMatchObject({
+      response: { status: 401 },
+    });
+
+    expect(store.getState().auth.isAuthenticated).toBe(true);
+  });
+});
+
+describe("session error codes", () => {
+  it("captura o code e o status 401 das falhas de sessão", () => {
+    const error = new AxiosError(
+      "",
+      AxiosError.ERR_BAD_REQUEST,
+      undefined,
+      null,
+      {
+        data: {
+          success: false,
+          message: "Sessão expirada por inatividade.",
+          code: "SESSION_IDLE_TIMEOUT",
+        },
+        status: 401,
+        statusText: "Unauthorized",
+        headers: {},
+        config: {} as InternalAxiosRequestConfig,
+      },
+    );
+
+    expect(getApiError(error)).toMatchObject({
+      kind: "auth",
+      status: 401,
+      code: "SESSION_IDLE_TIMEOUT",
+    });
+  });
+
+  it("mapeia os códigos de sessão para mensagens amigáveis", () => {
+    expect(getSessionExpiryMessage("INVALID_SESSION")).toContain("sessão");
+    expect(getSessionExpiryMessage("SESSION_IDLE_TIMEOUT")).toContain("inatividade");
+    expect(getSessionExpiryMessage("SESSION_ABSOLUTE_TIMEOUT")).toContain("tempo máximo");
+    expect(getSessionExpiryMessage("UNKNOWN_CODE")).toBeNull();
+    expect(getSessionExpiryMessage()).toBeNull();
   });
 });

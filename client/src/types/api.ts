@@ -8,4 +8,5 @@ export interface ApiResponse<T = unknown> {
   message: string;
   data?: T;
   errors?: ApiValidationError[];
+  code?: string;
 }

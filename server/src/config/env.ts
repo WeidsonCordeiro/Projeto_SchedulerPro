@@ -63,7 +63,7 @@ export const env = {
      * Refresh Token
      */
     REFRESH_SECRET: process.env.REFRESH_SECRET!,
-    REFRESH_EXPIRES_IN: process.env.REFRESH_EXPIRES_IN || "7d",
+    REFRESH_EXPIRES_IN: process.env.REFRESH_EXPIRES_IN || "8h",
     /**
      * Reset Token
      */

@@ -15,6 +15,7 @@ export interface ApiFailure {
   status?: number;
   message: string;
   errors?: ApiValidationError[];
+  code?: string;
 }
 
 export function getApiError(error: unknown): ApiFailure {
@@ -26,6 +27,7 @@ export function getApiError(error: unknown): ApiFailure {
     }
 
     const message = error.response.data?.message ?? "";
+    const code = error.response.data?.code;
 
     if (status === 400) {
       return {
@@ -33,26 +35,27 @@ export function getApiError(error: unknown): ApiFailure {
         status,
         message,
         errors: error.response.data?.errors,
+        code,
       };
     }
 
     if (status === 401 || status === 403) {
-      return { kind: "auth", status, message };
+      return { kind: "auth", status, message, code };
     }
 
     if (status === 404) {
-      return { kind: "not_found", status, message };
+      return { kind: "not_found", status, message, code };
     }
 
     if (status === 409) {
-      return { kind: "conflict", status, message };
+      return { kind: "conflict", status, message, code };
     }
 
     if (status !== undefined && status >= 500) {
-      return { kind: "server", status, message };
+      return { kind: "server", status, message, code };
     }
 
-    return { kind: "unknown", status, message };
+    return { kind: "unknown", status, message, code };
   }
 
   return {
@@ -76,4 +79,27 @@ export function getFriendlyErrorMessage(failure: ApiFailure): string {
     return FRIENDLY_MESSAGES.network;
   }
   return failure.message?.trim() ? failure.message : FRIENDLY_MESSAGES[failure.kind];
+}
+
+export const SESSION_ERROR_CODES = {
+  INVALID_SESSION: "INVALID_SESSION",
+  SESSION_IDLE_TIMEOUT: "SESSION_IDLE_TIMEOUT",
+  SESSION_ABSOLUTE_TIMEOUT: "SESSION_ABSOLUTE_TIMEOUT",
+} as const;
+
+export const SESSION_EXPIRY_MESSAGES: Record<string, string> = {
+  [SESSION_ERROR_CODES.INVALID_SESSION]:
+    "Sua sessão não é mais válida. Entre novamente.",
+  [SESSION_ERROR_CODES.SESSION_IDLE_TIMEOUT]:
+    "Sua sessão expirou por inatividade. Entre novamente.",
+  [SESSION_ERROR_CODES.SESSION_ABSOLUTE_TIMEOUT]:
+    "Sua sessão atingiu o tempo máximo de uso. Entre novamente.",
+};
+
+export function getSessionExpiryMessage(code?: string): string | null {
+  if (!code) {
+    return null;
+  }
+
+  return SESSION_EXPIRY_MESSAGES[code] ?? null;
 }

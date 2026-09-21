@@ -46,7 +46,8 @@ export function errorMiddleware(
       res,
       error.message,
       error.statusCode,
-      error.errors
+      error.errors,
+      error.code
     );
   }
 

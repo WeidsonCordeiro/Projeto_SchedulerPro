@@ -28,9 +28,13 @@ import { HttpMessages } from "../constants/http-messages";
 import { HttpStatus } from "../constants/http-status";
 import { TokenType } from "../constants/token-type";
 import { Role } from "../constants/roles";
+import SessionService from "../modules/auth/services/SessionService";
+import { ErrorCode } from "../constants/error-codes";
 
 class AuthMiddleware {
   private readonly jwtProvider = JwtProvider;
+
+  private readonly sessionService = SessionService;
 
   public authenticate = async (
     req: Request,
@@ -48,6 +52,17 @@ class AuthMiddleware {
     if (payload.type !== TokenType.ACCESS || !payload.userId) {
       throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
     }
+
+    if (!payload.sessionId) {
+      throw new AppError(
+        HttpMessages.INVALID_SESSION,
+        HttpStatus.UNAUTHORIZED,
+        undefined,
+        ErrorCode.INVALID_SESSION,
+      );
+    }
+
+    await this.sessionService.validate(payload.sessionId, payload.userId);
 
     const user = await UserRepository.findByIdForAccessControl(payload.userId);
 
@@ -84,11 +99,14 @@ class AuthMiddleware {
       );
     }
 
+    await this.sessionService.touch(payload.sessionId);
+
     req.user = {
       userId: user._id.toString(),
       companyId: user.companyId.toString(),
       role: user.role,
       ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
+      sessionId: payload.sessionId,
     };
 
     next();

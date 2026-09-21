@@ -20,6 +20,7 @@ export interface JwtPayload {
   companyId: string;
   role: Role;
   type: TokenType;
+  sessionId?: string;
 }
 
 /*** Tokens gerados após autenticação.*/
