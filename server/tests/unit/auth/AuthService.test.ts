@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { userRepository, companyRepository, passwordProvider, jwtProvider, passwordResetRepository, resendProvider, session, authMapper, logger } = vi.hoisted(() => ({
+const { userRepository, companyRepository, passwordProvider, jwtProvider, passwordResetRepository, resendProvider, session, authMapper, sessionService, logger } = vi.hoisted(() => ({
   userRepository: { existsByEmail: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), create: vi.fn(), verifyEmail: vi.fn() },
   companyRepository: { findByName: vi.fn(), create: vi.fn() },
   passwordProvider: { compare: vi.fn(), hash: vi.fn() },
@@ -9,6 +9,7 @@ const { userRepository, companyRepository, passwordProvider, jwtProvider, passwo
   resendProvider: { send: vi.fn() },
   session: { startTransaction: vi.fn(), commitTransaction: vi.fn(), abortTransaction: vi.fn(), endSession: vi.fn() },
   authMapper: { toAuthUser: vi.fn((user: any) => ({ id: user.id, email: user.email, role: user.role, companyId: user.companyId.toString(), isActive: user.isActive })) },
+  sessionService: { start: vi.fn(), validate: vi.fn(), touch: vi.fn(), revoke: vi.fn() },
   logger: { auth: vi.fn(), security: vi.fn(), error: vi.fn() },
 }));
 
@@ -18,6 +19,7 @@ vi.mock("../../../src/providers/security/PasswordProvider", () => ({ default: pa
 vi.mock("../../../src/providers/security/JwtProvider", () => ({ default: jwtProvider }));
 vi.mock("../../../src/modules/auth/repositories/PasswordResetRepository", () => ({ default: passwordResetRepository }));
 vi.mock("../../../src/providers/mail/ResendProvider", () => ({ default: resendProvider }));
+vi.mock("../../../src/modules/auth/services/SessionService", () => ({ default: sessionService }));
 vi.mock("../../../src/modules/auth/mapper/AuthMapper", () => ({ default: authMapper }));
 vi.mock("../../../src/providers/mail/templates/welcome.template", () => ({ welcomeTemplate: vi.fn(() => "welcome-html") }));
 vi.mock("../../../src/providers/mail/templates/reset-password.template", () => ({ resetPasswordTemplate: vi.fn(() => "reset-html") }));
@@ -29,9 +31,12 @@ import AuthService from "../../../src/modules/auth/services/AuthService";
 import { Role } from "../../../src/constants/roles";
 import { TokenType } from "../../../src/constants/token-type";
 import { HttpStatus } from "../../../src/constants/http-status";
+import { ErrorCode } from "../../../src/constants/error-codes";
+import { AppError } from "../../../src/errors/AppError";
 
 const companyId = "507f1f77bcf86cd799439011";
 const userId = "507f1f77bcf86cd799439012";
+const sessionId = "507f1f77bcf86cd799439099";
 const company = { _id: { toString: () => companyId }, name: "Empresa", timezone: "Europe/Lisbon" };
 const makeUser = (extra = {}) => ({
   _id: { toString: () => userId }, id: userId, name: "User", email: "user@example.com",
@@ -55,11 +60,15 @@ beforeEach(() => {
   jwtProvider.generateRefreshToken.mockReturnValue("refresh-token");
   jwtProvider.generateEmailVerificationToken.mockReturnValue("email-token");
   jwtProvider.generateResetPasswordToken.mockReturnValue("reset-token");
-  jwtProvider.verifyRefreshToken.mockReturnValue({ userId, companyId, role: Role.OWNER, type: TokenType.REFRESH });
+  jwtProvider.verifyRefreshToken.mockReturnValue({ userId, companyId, role: Role.OWNER, type: TokenType.REFRESH, sessionId });
   jwtProvider.verifyResetPasswordToken.mockReturnValue({ userId });
   jwtProvider.verifyEmailVerificationToken.mockReturnValue({ userId, type: TokenType.EMAIL_VERIFICATION });
   passwordResetRepository.findByToken.mockResolvedValue({ usedAt: null, expiresAt: new Date(Date.now() + 60_000) });
   resendProvider.send.mockResolvedValue(undefined);
+  sessionService.start.mockResolvedValue({ _id: { toString: () => sessionId } });
+  sessionService.validate.mockResolvedValue({ _id: { toString: () => sessionId } });
+  sessionService.touch.mockResolvedValue(undefined);
+  sessionService.revoke.mockResolvedValue(undefined);
 });
 
 describe("AuthService.register", () => {
@@ -101,6 +110,8 @@ describe("AuthService.login e refresh", () => {
     expect(passwordProvider.compare).toHaveBeenCalledWith("password123", "stored-hash");
     expect(jwtProvider.generateAccessToken).toHaveBeenCalledWith(expect.objectContaining({ userId, companyId, type: TokenType.ACCESS }));
     expect(jwtProvider.generateRefreshToken).toHaveBeenCalledWith(expect.objectContaining({ userId, companyId, type: TokenType.REFRESH }));
+    expect(sessionService.start).toHaveBeenCalledWith(userId);
+    expect(jwtProvider.generateAccessToken).toHaveBeenCalledWith(expect.objectContaining({ sessionId }));
     expect(user.save).toHaveBeenCalledOnce();
     expect(result.tokens).toEqual({ accessToken: "access-token", refreshToken: "refresh-token" });
   });
@@ -120,8 +131,44 @@ describe("AuthService.login e refresh", () => {
     await expect(AuthService.login({ email: "deleted@example.com", password: "password123" })).rejects.toMatchObject({ statusCode: HttpStatus.UNAUTHORIZED });
   });
 
-  it("renova token válido e rejeita usuário que deixou de existir ou autenticar", async () => {
+  it("renova token válido reutilizando a mesma sessão", async () => {
     await expect(AuthService.refresh("refresh-token")).resolves.toMatchObject({ tokens: { accessToken: "access-token" } });
+    expect(sessionService.validate).toHaveBeenCalledWith(sessionId, userId);
+    expect(sessionService.start).not.toHaveBeenCalled();
+    expect(sessionService.touch).not.toHaveBeenCalled();
+    expect(jwtProvider.generateAccessToken).toHaveBeenCalledWith(expect.objectContaining({ sessionId }));
+  });
+
+  it("rejeita refresh sem sessão no payload", async () => {
+    jwtProvider.verifyRefreshToken.mockReturnValue({ userId, companyId, role: Role.OWNER, type: TokenType.REFRESH });
+    await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({ statusCode: HttpStatus.UNAUTHORIZED, code: ErrorCode.INVALID_SESSION });
+    expect(sessionService.validate).not.toHaveBeenCalled();
+  });
+
+  it("rejeita refresh com sessão expirada/revogada", async () => {
+    sessionService.validate.mockRejectedValue(new AppError("Sessão inválida.", HttpStatus.UNAUTHORIZED, undefined, ErrorCode.INVALID_SESSION));
+    await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({ statusCode: HttpStatus.UNAUTHORIZED, code: ErrorCode.INVALID_SESSION });
+  });
+
+  it("múltiplos refreshes preservam a sessão absoluta original", async () => {
+    await AuthService.refresh("refresh-token");
+    await AuthService.refresh("refresh-token");
+    await AuthService.refresh("refresh-token");
+    expect(sessionService.start).not.toHaveBeenCalled();
+    expect(sessionService.touch).not.toHaveBeenCalled();
+    expect(sessionService.validate).toHaveBeenCalledTimes(3);
+    expect(sessionService.validate).toHaveBeenNthCalledWith(1, sessionId, userId);
+    expect(sessionService.validate).toHaveBeenNthCalledWith(3, sessionId, userId);
+  });
+
+  it("logout revoga a sessão e refresh posterior falha", async () => {
+    await AuthService.logout(sessionId);
+    expect(sessionService.revoke).toHaveBeenCalledWith(sessionId);
+    sessionService.validate.mockRejectedValue(new AppError("Sessão inválida.", HttpStatus.UNAUTHORIZED, undefined, ErrorCode.INVALID_SESSION));
+    await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({ code: ErrorCode.INVALID_SESSION });
+  });
+
+  it("rejeita usuário que deixou de existir ou token inválido", async () => {
     userRepository.findById.mockResolvedValue(null);
     await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({ statusCode: HttpStatus.NOT_FOUND });
     jwtProvider.verifyRefreshToken.mockImplementation(() => { throw new Error("invalid token"); });

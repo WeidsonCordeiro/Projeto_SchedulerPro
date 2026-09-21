@@ -106,7 +106,9 @@ class AuthController {
    * Realiza o logout do usuário.
    * ======================================================
    */
-  public async logout(_: Request, res: Response): Promise<Response> {
+  public async logout(req: Request, res: Response): Promise<Response> {
+    await AuthService.logout(req.user?.sessionId);
+
     CookieProvider.clearAuth(res);
 
     return ResponseHandler.success(res, null, HttpMessages.LOGOUT_SUCCESS);

@@ -10,6 +10,11 @@ export const HttpMessages = {
   INVALID_TOKEN: "Token inválido.",
   INVALID_REFRESH_TOKEN: "Refresh Token inválido.",
   TOKEN_EXPIRED: "Token expirado.",
+  INVALID_SESSION: "Sessão inválida.",
+  SESSION_IDLE_TIMEOUT:
+    "Sessão expirada por inatividade. Faça login novamente.",
+  SESSION_ABSOLUTE_TIMEOUT:
+    "Sessão expirada por tempo máximo de uso. Faça login novamente.",
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
   PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",

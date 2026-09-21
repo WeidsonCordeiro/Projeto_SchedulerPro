@@ -66,6 +66,8 @@ import { welcomeTemplate } from "../../../providers/mail/templates/welcome.templ
 import { env } from "../../../config/env";
 import mongoose, { ClientSession } from "mongoose";
 import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
+import SessionService from "./SessionService";
+import { ErrorCode } from "../../../constants/error-codes";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -74,6 +76,7 @@ class AuthService {
   private readonly companyRepository = CompanyRepository;
   private readonly passwordResetRepository = PasswordResetRepository;
   private readonly resendProvider = ResendProvider;
+  private readonly sessionService = SessionService;
 
   // ==========================================================
   // Métodos Públicos
@@ -108,7 +111,7 @@ class AuthService {
 
       await this.sendWelcomeEmail(user, company);
 
-      return this.authenticate(user);
+      return this.authenticateWithSession(user);
     } catch (error) {
       Logger.error("Erro ao registar usuário.", {
         name: dto.name,
@@ -133,15 +136,22 @@ class AuthService {
 
     this.validateUserStatus(user);
 
-    return this.authenticate(user);
+    return this.authenticateWithSession(user);
   }
 
   // ==========================================================
   // Fluxo de Autenticação
   // ==========================================================
 
-  private async authenticate(user: UserDocument): Promise<LoginResult> {
-    const tokens = this.generateTokens(user);
+  private async authenticateWithSession(
+    user: UserDocument,
+    existingSessionId?: string,
+  ): Promise<LoginResult> {
+    const sessionId =
+      existingSessionId ??
+      (await this.sessionService.start(user.id))._id.toString();
+
+    const tokens = this.generateTokens(user, sessionId);
 
     await this.updateLoginInfo(user);
 
@@ -152,12 +162,13 @@ class AuthService {
     };
   }
 
-  private generateTokens(user: UserDocument): AuthTokens {
+  private generateTokens(user: UserDocument, sessionId: string): AuthTokens {
     const accessToken = this.jwtProvider.generateAccessToken({
       userId: user.id,
       companyId: user.companyId.toString(),
       role: user.role,
       type: TokenType.ACCESS,
+      sessionId,
     });
 
     const refreshToken = this.jwtProvider.generateRefreshToken({
@@ -165,6 +176,7 @@ class AuthService {
       companyId: user.companyId.toString(),
       role: user.role,
       type: TokenType.REFRESH,
+      sessionId,
     });
 
     return {
@@ -199,6 +211,17 @@ class AuthService {
       userId: payload.userId,
     });
 
+    if (!payload.sessionId) {
+      throw new AppError(
+        HttpMessages.INVALID_SESSION,
+        HttpStatus.UNAUTHORIZED,
+        undefined,
+        ErrorCode.INVALID_SESSION,
+      );
+    }
+
+    await this.sessionService.validate(payload.sessionId, payload.userId);
+
     const user = await this.userRepository.findById(payload.userId);
 
     if (!user) {
@@ -211,7 +234,16 @@ class AuthService {
 
     this.validateUserStatus(user);
 
-    return this.authenticate(user);
+    return this.authenticateWithSession(user, payload.sessionId);
+  }
+
+  /**
+   * ==========================================================
+   * Encerra a sessão atual.
+   * ==========================================================
+   */
+  public async logout(sessionId?: string): Promise<void> {
+    await this.sessionService.revoke(sessionId);
   }
 
   // ==========================================================
