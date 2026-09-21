@@ -346,6 +346,24 @@ describe("AppRoutes", () => {
     ).toBeInTheDocument();
   });
 
+  it.each([
+    "/portal",
+    "/portal/agendamentos",
+    "/portal/perfil",
+  ])("redirects an unauthenticated CLIENT from %s to /login", (path) => {
+    // Estado típico após a expiração da sessão: credenciais já limpas
+    // (isAuthenticated=false), o usuário não pode permanecer preso no portal.
+    renderAt(path, {
+      user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
+      isInitializing: false,
+    });
+
+    expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/olá, cliente teste/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows login form links to register and forgot-password", async () => {
     renderAt("/login", { isInitializing: false });
 

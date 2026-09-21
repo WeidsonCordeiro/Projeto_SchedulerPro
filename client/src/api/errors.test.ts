@@ -1,6 +1,10 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
-import { getApiError, getFriendlyErrorMessage } from "./errors";
+import {
+  DEFAULT_SESSION_EXPIRY_MESSAGE,
+  getApiError,
+  getFriendlyErrorMessage,
+} from "./errors";
 
 function httpError(status: number, body?: unknown) {
   return new AxiosError(
@@ -86,5 +90,17 @@ describe("getFriendlyErrorMessage", () => {
     expect(getFriendlyErrorMessage(failure)).toBe(
       "Erro interno do servidor. Tente novamente mais tarde.",
     );
+  });
+});
+
+describe("default session expiry message", () => {
+  it("is a friendly, non-technical message", () => {
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE.length).toBeGreaterThan(0);
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE).toContain("sessão");
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE).toMatch(/[a-zçãáéíóú]/i);
+    // Não deve vazar detalhes internos de segurança.
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE.toLowerCase()).not.toContain("jwt");
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE.toLowerCase()).not.toContain("refresh");
+    expect(DEFAULT_SESSION_EXPIRY_MESSAGE.toLowerCase()).not.toContain("token");
   });
 });

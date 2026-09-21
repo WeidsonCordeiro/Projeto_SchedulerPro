@@ -2,10 +2,15 @@ import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "../config/env";
 import { store } from "../store";
-import { clearCredentials, setCredentials } from "../store/slices/authSlice";
+import {
+  clearCredentials,
+  setCredentials,
+  setSessionExpirationMessage,
+} from "../store/slices/authSlice";
 import { clearCompany } from "../store/slices/companySlice";
 import type { ApiResponse } from "../types/api";
 import type { AuthSession } from "../types/auth";
+import { DEFAULT_SESSION_EXPIRY_MESSAGE, getSessionExpiryMessage } from "./errors";
 
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
@@ -63,9 +68,15 @@ async function performSessionRefresh(): Promise<RefreshResult> {
     }
     return "ok";
   } catch (error) {
-    // 401 no refresh = sessão definitivamente expirada/inválida.
-    // Qualquer outro erro (403, 5xx, rede) é tratado como falha transitória.
+    // 401 no refresh = sessão definitivamente expirada/inválida. Grava o
+    // feedback amigável (com base no code do backend, ou no fallback) no
+    // Redux ANTES de limpar a sessão, para que a LoginPage o exiba após o
+    // redirect. Qualquer outro erro (403, 5xx, rede) é tratado como falha
+    // transitória e NÃO encerra a sessão.
     if (axios.isAxiosError(error) && error.response?.status === 401) {
+      const code = error.response.data?.code;
+      const message = getSessionExpiryMessage(code) ?? DEFAULT_SESSION_EXPIRY_MESSAGE;
+      store.dispatch(setSessionExpirationMessage(message));
       return "expired";
     }
     return "error";

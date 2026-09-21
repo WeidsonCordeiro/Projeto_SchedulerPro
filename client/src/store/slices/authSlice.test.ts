@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import authReducer, {
   clearCredentials,
   clearMustChangePassword,
+  clearSessionExpirationMessage,
   initialState,
   setCredentials,
   setLoading,
+  setSessionExpirationMessage,
 } from "./authSlice";
 import { session, sessionRequiringChange } from "../../test/fixtures";
 
@@ -16,6 +18,7 @@ describe("authSlice", () => {
       isAuthenticated: false,
       isInitializing: true,
       isLoading: false,
+      sessionExpirationMessage: null,
     });
   });
 
@@ -74,5 +77,54 @@ describe("authSlice", () => {
     const state = authReducer(initialState, setLoading(true));
 
     expect(state.isLoading).toBe(true);
+  });
+
+  it("stores the session expiration message", () => {
+    const state = authReducer(
+      initialState,
+      setSessionExpirationMessage("Sua sessão expirou por inatividade."),
+    );
+
+    expect(state.sessionExpirationMessage).toBe(
+      "Sua sessão expirou por inatividade.",
+    );
+  });
+
+  it("clears the session expiration message on demand", () => {
+    const withMessage = authReducer(
+      initialState,
+      setSessionExpirationMessage("Sua sessão expirou por inatividade."),
+    );
+    const state = authReducer(withMessage, clearSessionExpirationMessage());
+
+    expect(state.sessionExpirationMessage).toBeNull();
+  });
+
+  it("clearCredentials does NOT erase the session expiration message", () => {
+    const withMessage = authReducer(
+      initialState,
+      setSessionExpirationMessage("Sua sessão expirou por inatividade."),
+    );
+    const state = authReducer(withMessage, clearCredentials());
+
+    expect(state.user).toBeNull();
+    expect(state.isAuthenticated).toBe(false);
+    // A mensagem precisa sobreviver ao clearCredentials para ser exibida na
+    // LoginPage após o redirect (o interceptor só limpa o estado, não limpa o
+    // feedback de expiração).
+    expect(state.sessionExpirationMessage).toBe(
+      "Sua sessão expirou por inatividade.",
+    );
+  });
+
+  it("a successful login clears a previous session expiration message", () => {
+    const withMessage = authReducer(
+      initialState,
+      setSessionExpirationMessage("Sua sessão expirou por inatividade."),
+    );
+    const state = authReducer(withMessage, setCredentials(session));
+
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.sessionExpirationMessage).toBeNull();
   });
 });

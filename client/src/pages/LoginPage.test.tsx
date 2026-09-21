@@ -10,6 +10,8 @@ import type { AuthSession } from "../types/auth";
 import { session, sessionRequiringChange } from "../test/fixtures";
 import { httpError, networkError } from "../test/http";
 import authReducer from "../store/slices/authSlice";
+import type { AuthState } from "../store/slices/authSlice";
+import { getSessionExpiryMessage } from "../api/errors";
 
 vi.mock("../api/endpoints/auth.api", () => ({
   default: {
@@ -19,7 +21,7 @@ vi.mock("../api/endpoints/auth.api", () => ({
 
 type LoginResponse = { success: boolean; message: string; data: AuthSession };
 
-function makeStore() {
+function makeStore(auth?: Partial<AuthState>) {
   return configureStore({
     reducer: { auth: authReducer },
     preloadedState: {
@@ -29,6 +31,8 @@ function makeStore() {
         isAuthenticated: false,
         isInitializing: false,
         isLoading: false,
+        sessionExpirationMessage: null,
+        ...auth,
       },
     },
   });
@@ -209,5 +213,41 @@ describe("LoginPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não foi possível conectar ao servidor. Verifique sua conexão.",
     );
+  });
+
+  it.each([
+    [
+      "SESSION_IDLE_TIMEOUT",
+      getSessionExpiryMessage("SESSION_IDLE_TIMEOUT"),
+      "inatividade",
+    ],
+    [
+      "SESSION_ABSOLUTE_TIMEOUT",
+      getSessionExpiryMessage("SESSION_ABSOLUTE_TIMEOUT"),
+      "tempo máximo",
+    ],
+    [
+      "INVALID_SESSION",
+      getSessionExpiryMessage("INVALID_SESSION"),
+      "não é mais válida",
+    ],
+  ])(
+    "shows the friendly %s message when redirected after session expiry",
+    (_code, expectedMessage, expectPiece) => {
+      const store = makeStore({ sessionExpirationMessage: expectedMessage });
+      renderLogin(store);
+
+      expect(screen.getByRole("alert")).toHaveTextContent(expectPiece);
+      // A mensagem é consumida uma única vez e removida do estado global.
+      expect(store.getState().auth.sessionExpirationMessage).toBeNull();
+    },
+  );
+
+  it("does not show a session message when none is stored", () => {
+    const store = makeStore();
+    renderLogin(store);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(store.getState().auth.sessionExpirationMessage).toBeNull();
   });
 });

@@ -1,7 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import authApi from "../../api/endpoints/auth.api";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { clearCredentials, setLoading } from "../../store/slices/authSlice";
+import {
+  clearCredentials,
+  clearSessionExpirationMessage,
+  setLoading,
+} from "../../store/slices/authSlice";
 import { clearCompany } from "../../store/slices/companySlice";
 
 export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
@@ -17,6 +21,7 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => vo
       // Erro recuperável no backend não deve deixar a UI fingindo autenticada.
     } finally {
       dispatch(clearCredentials());
+      dispatch(clearSessionExpirationMessage());
       dispatch(clearCompany());
       navigate("/login", { replace: true });
     }

@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../store";
-import { setCredentials, setLoading } from "../store/slices/authSlice";
+import {
+  clearSessionExpirationMessage,
+  setCredentials,
+  setLoading,
+} from "../store/slices/authSlice";
 import authApi from "../api/endpoints/auth.api";
 import { getApiError, getFriendlyErrorMessage } from "../api/errors";
 
@@ -21,6 +25,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const sessionExpirationMessage = useAppSelector(
+    (state) => state.auth.sessionExpirationMessage,
+  );
+
+  // Feedback de sessão encerrada pelo backend (inatividade, duração máxima ou
+  // sessão inválida). O interceptor grava a mensagem no Redux antes de limpar
+  // a Sessão; aqui ela é consumida uma única vez e removida do estado global.
+  useEffect(() => {
+    if (sessionExpirationMessage) {
+      setErrorMessage(sessionExpirationMessage);
+      dispatch(clearSessionExpirationMessage());
+    }
+  }, [sessionExpirationMessage, dispatch]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
