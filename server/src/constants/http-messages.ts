@@ -140,4 +140,12 @@ export const HttpMessages = {
     "Não é possível aplicar esta exceção porque existe um agendamento ativo nesse período.",
 
   EMPLOYEE_NOT_AVAILABLE: "O funcionário não está disponível neste horário.",
+
+  /*Relatórios*/
+  REPORT_OVERVIEW_FOUND: "Visão geral de agendamentos gerada com sucesso.",
+  REPORT_REVENUE_FOUND: "Receita estimada calculada com sucesso.",
+  REPORT_TOP_SERVICES_FOUND: "Ranking de serviços gerado com sucesso.",
+  REPORT_EMPLOYEES_FOUND: "Ranking de funcionários gerado com sucesso.",
+  REPORT_CLIENTS_FOUND: "Clientes recorrentes gerados com sucesso.",
+  REPORT_CANCELLATIONS_FOUND: "Relatório de cancelamentos gerado com sucesso.",
 } as const;

@@ -53,6 +53,11 @@ export const MENU_ITEMS: MenuItem[] = [
     roles: ["OWNER", "ADMIN", "MANAGER", "EMPLOYEE"],
   },
   {
+    label: "Relatórios",
+    path: "/reports",
+    roles: ["OWNER", "ADMIN", "MANAGER"],
+  },
+  {
     label: "Empresa",
     path: "/company",
     roles: ["OWNER", "ADMIN"],

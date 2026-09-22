@@ -97,6 +97,36 @@ vi.mock("../api/endpoints/company.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/reports.api", () => ({
+  default: {
+    getOverview: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: {
+        total: 0,
+        byStatus: { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, "no-show": 0 },
+      },
+    }),
+    getRevenue: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { completedCount: 0, estimatedRevenue: 0, forecastCount: 0, forecastRevenue: 0 },
+    }),
+    getTopServices: vi.fn().mockResolvedValue({ success: true, message: "ok", data: [] }),
+    getEmployees: vi.fn().mockResolvedValue({ success: true, message: "ok", data: [] }),
+    getClients: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { totalClients: 0, recurringCount: 0, topClients: [] },
+    }),
+    getCancellations: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { total: 0, cancelledCount: 0, cancellationRate: 0 },
+    }),
+  },
+}));
+
 function renderAt(path: string, auth: Partial<AuthState>) {
   const store = configureStore({
     reducer: { auth: authReducer },
@@ -222,6 +252,7 @@ describe("AppRoutes", () => {
     ["/employees", "Funcionários"],
     ["/availability", "Disponibilidade"],
     ["/appointments", "Agendamentos"],
+    ["/reports", "Relatórios"],
     ["/company", "Empresa"],
   ])("renders the %s module page for an authenticated user", (path, title) => {
     renderAt(path, {
@@ -258,6 +289,31 @@ describe("AppRoutes", () => {
 
   it("blocks EMPLOYEE from the company page", () => {
     renderAt("/company", {
+      user: { ...user, role: "EMPLOYEE" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByText("Você não tem permissão para acessar esta página."),
+    ).toBeInTheDocument();
+  });
+
+  it("redirects a CLIENT role from /reports to /portal", () => {
+    renderAt("/reports", {
+      user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /olá, cliente teste/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Relatórios")).not.toBeInTheDocument();
+  });
+
+  it("blocks EMPLOYEE from the reports page", () => {
+    renderAt("/reports", {
       user: { ...user, role: "EMPLOYEE" },
       isAuthenticated: true,
       isInitializing: false,

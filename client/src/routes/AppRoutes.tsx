@@ -6,6 +6,7 @@ import ServicesPage from "../pages/services/ServicesPage";
 import EmployeesPage from "../pages/employees/EmployeesPage";
 import AvailabilityPage from "../pages/availability/AvailabilityPage";
 import AppointmentsPage from "../pages/appointments/AppointmentsPage";
+import ReportsPage from "../pages/reports/ReportsPage";
 import CompanyPage from "../pages/company/CompanyPage";
 import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
@@ -44,6 +45,7 @@ export default function AppRoutes() {
           <Route path="/employees" element={<EmployeesPage />} />
           <Route path="/availability" element={<AvailabilityPage />} />
           <Route path="/appointments" element={<AppointmentsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/company" element={<CompanyPage />} />
           <Route path="/portal" element={<PortalHomePage />} />
           <Route path="/portal/agendamentos" element={<PortalAppointmentsPage />} />
