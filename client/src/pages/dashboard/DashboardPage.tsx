@@ -209,23 +209,23 @@ export default function DashboardPage() {
         <div className="col-6 col-md-4 col-lg-2">
           <DashboardCard
             title="Pendentes"
-            value={
-              appointments.filter((a) => a.status === "scheduled").length
-            }
+            value={appointments.filter((a) => a.status === "scheduled").length}
             icon="bi-clock"
           />
         </div>
         <div className="col-6 col-md-4 col-lg-2">
           <DashboardCard
             title="Confirmados"
-            value={
-              appointments.filter((a) => a.status === "confirmed").length
-            }
+            value={appointments.filter((a) => a.status === "confirmed").length}
             icon="bi-check-circle"
           />
         </div>
         <div className="col-6 col-md-4 col-lg-2">
-          <DashboardCard title="Clientes" value={clients.length} icon="bi-people" />
+          <DashboardCard
+            title="Clientes"
+            value={clients.length}
+            icon="bi-people"
+          />
         </div>
         <div className="col-6 col-md-4 col-lg-2">
           <DashboardCard

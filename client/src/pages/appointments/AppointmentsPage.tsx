@@ -36,7 +36,7 @@ import type { Service } from "../../types/service";
 import type { Employee, EmployeeRole } from "../../types/employee";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
-const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN"];
+const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN", "MANAGER"];
 
 function canLoadNames(role: string | undefined | null): boolean {
   return Boolean(role) && role !== "CLIENT";
@@ -69,8 +69,10 @@ export default function AppointmentsPage() {
   const actorRole = currentUser?.role ?? null;
   const { canList, canCreate, canUpdate, canStatus, canDelete } =
     getAppointmentAbilities(actorRole);
+
   const canListEmployees =
-    currentUser?.role != null && CAN_LIST_EMPLOYEES_ROLES.includes(currentUser.role);
+    currentUser?.role != null &&
+    CAN_LIST_EMPLOYEES_ROLES.includes(currentUser.role);
 
   const todayKey = useMemo(
     () => DateTime.now().setZone(timezone).toISODate() ?? "",
@@ -96,14 +98,18 @@ export default function AppointmentsPage() {
   } | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+  const [editingAppointment, setEditingAppointment] =
+    useState<Appointment | null>(null);
   const [formReadOnly, setFormReadOnly] = useState(false);
-  const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
+  const [deletingAppointment, setDeletingAppointment] =
+    useState<Appointment | null>(null);
 
   // Prefill: dados de criação rápida a partir do calendário
   const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined);
   const [prefillTime, setPrefillTime] = useState<string | undefined>(undefined);
-  const [prefillEmployeeId, setPrefillEmployeeId] = useState<string | undefined>(undefined);
+  const [prefillEmployeeId, setPrefillEmployeeId] = useState<
+    string | undefined
+  >(undefined);
 
   const range = useMemo(
     () => computeRange(viewType, currentDateKey, timezone),
@@ -118,7 +124,9 @@ export default function AppointmentsPage() {
     setLoadError(null);
     try {
       const params =
-        range.startAt && range.endAt ? { startAt: range.startAt, endAt: range.endAt } : undefined;
+        range.startAt && range.endAt
+          ? { startAt: range.startAt, endAt: range.endAt }
+          : undefined;
       const response = await appointmentsApi.getAppointments(params);
       if (requestId === requestIdRef.current) {
         setAppointments(response.data ?? []);
@@ -156,8 +164,11 @@ export default function AppointmentsPage() {
     if (canListEmployees) {
       try {
         const response = await employeesApi.getEmployees();
+        
         setEmployees(
-          (response.data ?? []).filter((employee) => employee.role !== "CLIENT"),
+          (response.data ?? []).filter(
+            (employee) => employee.role !== "CLIENT",
+          ),
         );
       } catch (error) {
         failures.push(getFriendlyErrorMessage(getApiError(error)));
@@ -193,11 +204,7 @@ export default function AppointmentsPage() {
     return map.get(id) ?? "—";
   }
 
-  function openCreate(
-    date?: string,
-    time?: string,
-    employeeId?: string,
-  ) {
+  function openCreate(date?: string, time?: string, employeeId?: string) {
     setEditingAppointment(null);
     setFormReadOnly(false);
     setPrefillDate(date);
@@ -324,7 +331,11 @@ export default function AppointmentsPage() {
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 className="h3 mb-0">Agendamentos</h1>
         {canCreate && (
-          <button type="button" className="btn btn-primary" onClick={() => openCreate()}>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => openCreate()}
+          >
             Novo agendamento
           </button>
         )}
@@ -370,7 +381,11 @@ export default function AppointmentsPage() {
           <div className="d-flex align-items-center gap-2">
             <h2 className="h5 mb-0">Lista de agendamentos</h2>
           </div>
-          <div className="btn-group btn-group-sm" role="group" aria-label="Visualização">
+          <div
+            className="btn-group btn-group-sm"
+            role="group"
+            aria-label="Visualização"
+          >
             {(["month", "week", "day", "list"] as const).map((vt) => (
               <button
                 key={vt}
@@ -378,7 +393,13 @@ export default function AppointmentsPage() {
                 className={`btn ${viewType === vt ? "btn-primary" : "btn-outline-primary"}`}
                 onClick={() => setViewType(vt)}
               >
-                {vt === "month" ? "Mês" : vt === "week" ? "Semana" : vt === "day" ? "Dia" : "Lista"}
+                {vt === "month"
+                  ? "Mês"
+                  : vt === "week"
+                    ? "Semana"
+                    : vt === "day"
+                      ? "Dia"
+                      : "Lista"}
               </button>
             ))}
           </div>
@@ -408,142 +429,156 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {!isLoading && !loadError && viewType === "list" && appointments.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum agendamento encontrado.</p>
+      {!isLoading &&
+        !loadError &&
+        viewType === "list" &&
+        appointments.length === 0 && (
+          <div className="card">
+            <div className="card-body text-center py-5">
+              <p className="mb-3 text-muted">Nenhum agendamento encontrado.</p>
+              {canCreate && (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => openCreate()}
+                >
+                  Cadastrar primeiro agendamento
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+      {!isLoading &&
+        !loadError &&
+        viewType === "list" &&
+        appointments.length > 0 && (
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Data</th>
+                  <th scope="col">Hora</th>
+                  <th scope="col">Cliente</th>
+                  <th scope="col">Serviço</th>
+                  <th scope="col">Funcionário</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Observações</th>
+                  {hasActions && <th scope="col">Ações</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.map((appointment) => {
+                  const statusActions = canStatus
+                    ? getAppointmentStatusActions(appointment.status)
+                    : [];
+                  const pending =
+                    pendingStatusAction?.id === appointment.id
+                      ? pendingStatusAction.action
+                      : null;
+
+                  return (
+                    <tr key={appointment.id}>
+                      <td>
+                        {formatAppointmentDate(appointment.startAt, timezone)}
+                      </td>
+                      <td>
+                        {formatAppointmentTime(appointment.startAt, timezone)}
+                        <div className="small text-muted">
+                          até{" "}
+                          {formatAppointmentTime(appointment.endAt, timezone)}
+                        </div>
+                      </td>
+                      <td>{nameFor(clientNames, appointment.clientId)}</td>
+                      <td>{nameFor(serviceNames, appointment.serviceId)}</td>
+                      <td>{nameFor(employeeNames, appointment.employeeId)}</td>
+                      <td>
+                        <span
+                          className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
+                        >
+                          {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                        </span>
+                      </td>
+                      <td>{appointment.notes || "—"}</td>
+                      {hasActions && (
+                        <td>
+                          <div className="d-flex flex-wrap gap-2">
+                            {canUpdate &&
+                              (isInstantInPast(appointment.startAt) ? (
+                                // Agendamento histórico: somente leitura.
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={() => openDetails(appointment)}
+                                  disabled={pending !== null}
+                                >
+                                  Visualizar
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-primary"
+                                  onClick={() => openEdit(appointment)}
+                                  disabled={pending !== null}
+                                >
+                                  Editar
+                                </button>
+                              ))}
+                            {statusActions.map((action) => (
+                              <button
+                                key={action}
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() =>
+                                  void handleStatusAction(appointment, action)
+                                }
+                                disabled={pending !== null}
+                              >
+                                {pending === action
+                                  ? "Aguarde..."
+                                  : APPOINTMENT_ACTION_LABELS[action]}
+                              </button>
+                            ))}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() =>
+                                  setDeletingAppointment(appointment)
+                                }
+                                disabled={pending !== null}
+                              >
+                                Excluir
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+      {!isLoading &&
+        !loadError &&
+        viewType !== "list" &&
+        appointments.length === 0 && (
+          <div className="text-center py-5 text-muted">
+            <p>Nenhum agendamento encontrado para este período.</p>
             {canCreate && (
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={() => openCreate()}
               >
-                Cadastrar primeiro agendamento
+                Cadastrar agendamento
               </button>
             )}
           </div>
-        </div>
-      )}
-
-      {!isLoading && !loadError && viewType === "list" && appointments.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Data</th>
-                <th scope="col">Hora</th>
-                <th scope="col">Cliente</th>
-                <th scope="col">Serviço</th>
-                <th scope="col">Funcionário</th>
-                <th scope="col">Status</th>
-                <th scope="col">Observações</th>
-                {hasActions && <th scope="col">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((appointment) => {
-                const statusActions = canStatus
-                  ? getAppointmentStatusActions(appointment.status)
-                  : [];
-                const pending =
-                  pendingStatusAction?.id === appointment.id
-                    ? pendingStatusAction.action
-                    : null;
-
-                return (
-                  <tr key={appointment.id}>
-                    <td>{formatAppointmentDate(appointment.startAt, timezone)}</td>
-                    <td>
-                      {formatAppointmentTime(appointment.startAt, timezone)}
-                      <div className="small text-muted">
-                        até {formatAppointmentTime(appointment.endAt, timezone)}
-                      </div>
-                    </td>
-                    <td>{nameFor(clientNames, appointment.clientId)}</td>
-                    <td>{nameFor(serviceNames, appointment.serviceId)}</td>
-                    <td>{nameFor(employeeNames, appointment.employeeId)}</td>
-                    <td>
-                      <span
-                        className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
-                      >
-                        {APPOINTMENT_STATUS_LABELS[appointment.status]}
-                      </span>
-                    </td>
-                    <td>{appointment.notes || "—"}</td>
-                    {hasActions && (
-                      <td>
-                        <div className="d-flex flex-wrap gap-2">
-                          {canUpdate &&
-                            (isInstantInPast(appointment.startAt) ? (
-                              // Agendamento histórico: somente leitura.
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() => openDetails(appointment)}
-                                disabled={pending !== null}
-                              >
-                                Visualizar
-                              </button>
-                            ) : (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={() => openEdit(appointment)}
-                                disabled={pending !== null}
-                              >
-                                Editar
-                              </button>
-                            ))}
-                          {statusActions.map((action) => (
-                            <button
-                              key={action}
-                              type="button"
-                              className="btn btn-sm btn-outline-secondary"
-                              onClick={() =>
-                                void handleStatusAction(appointment, action)
-                              }
-                              disabled={pending !== null}
-                            >
-                              {pending === action
-                                ? "Aguarde..."
-                                : APPOINTMENT_ACTION_LABELS[action]}
-                            </button>
-                          ))}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingAppointment(appointment)}
-                              disabled={pending !== null}
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {!isLoading && !loadError && viewType !== "list" && appointments.length === 0 && (
-        <div className="text-center py-5 text-muted">
-          <p>Nenhum agendamento encontrado para este período.</p>
-          {canCreate && (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => openCreate()}
-            >
-              Cadastrar agendamento
-            </button>
-          )}
-        </div>
-      )}
+        )}
 
       {formOpen && (
         <AppointmentForm

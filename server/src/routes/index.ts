@@ -25,6 +25,7 @@ import appointmentRoutes from "../modules/appointments/routes/AppointmentRoutes"
 import availabilityRoutes from "../modules/availability/routes/AvailabilityRoutes";
 import availabilityExceptionRoutes from "../modules/availability/routes/AvailabilityExceptionRoutes";
 import reportRoutes from "../modules/reports/routes/ReportRoutes";
+import notificationRoutes from "../modules/notifications/routes/NotificationRoutes";
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.use("/appointments", appointmentRoutes);
 router.use("/availability", availabilityRoutes);
 router.use("/availability-exceptions", availabilityExceptionRoutes);
 router.use("/reports", reportRoutes);
+router.use("/notifications", notificationRoutes);
 
 /**
  * Health Check
