@@ -7,6 +7,7 @@ import {
   setLoading,
 } from "../../store/slices/authSlice";
 import { clearCompany } from "../../store/slices/companySlice";
+import NotificationBell from "./NotificationBell";
 
 export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const dispatch = useAppDispatch();
@@ -45,6 +46,7 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => vo
         </div>
         {user && (
           <div className="d-flex align-items-center gap-3">
+            <NotificationBell />
             <div className="text-end">
               <div className="navbar-text text-light m-0">{user.name}</div>
               <div className="navbar-text text-secondary text-uppercase small m-0">

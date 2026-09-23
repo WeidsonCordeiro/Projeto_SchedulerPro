@@ -148,4 +148,12 @@ export const HttpMessages = {
   REPORT_EMPLOYEES_FOUND: "Ranking de funcionários gerado com sucesso.",
   REPORT_CLIENTS_FOUND: "Clientes recorrentes gerados com sucesso.",
   REPORT_CANCELLATIONS_FOUND: "Relatório de cancelamentos gerado com sucesso.",
+
+  /*Notificações*/
+  NOTIFICATIONS_FOUND: "Notificações encontradas.",
+  NOTIFICATION_NOT_FOUND: "Notificação não encontrada.",
+  NOTIFICATION_READ: "Notificação marcada como lida.",
+  NOTIFICATIONS_READ: "Todas as notificações foram marcadas como lidas.",
+  NOTIFICATION_UNREAD_COUNT_FOUND:
+    "Quantidade de notificações não lidas obtida com sucesso.",
 } as const;

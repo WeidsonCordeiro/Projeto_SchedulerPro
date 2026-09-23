@@ -3,7 +3,10 @@ import {
   APPOINTMENT_STATUS_BADGE_CLASS,
   APPOINTMENT_STATUS_LABELS,
 } from "../../config/appointmentStatus";
-import { formatAppointmentTime } from "../../config/appointmentTime";
+import {
+  formatAppointmentTime,
+  formatAppointmentDate,
+} from "../../config/appointmentTime";
 
 interface Props {
   appointments: Appointment[];
@@ -42,6 +45,7 @@ export default function DashboardAppointments({
           <table className="table table-hover align-middle mb-0">
             <thead className="table-light">
               <tr>
+                <th scope="col">Dia</th>
                 <th scope="col">Horário</th>
                 <th scope="col">Cliente</th>
                 <th scope="col">Serviço</th>
@@ -52,6 +56,9 @@ export default function DashboardAppointments({
             <tbody>
               {appointments.map((apt) => (
                 <tr key={apt.id}>
+                  <td className="text-nowrap">
+                    {formatAppointmentDate(apt.startAt, timezone)}
+                  </td>
                   <td className="text-nowrap">
                     {formatAppointmentTime(apt.startAt, timezone)}
                   </td>

@@ -73,6 +73,8 @@ export const RolePermissions: Record<Role, Permission[]> = {
   ],
 
   [Role.MANAGER]: [
+    Permission.USER_READ,
+
     Permission.CLIENT_CREATE,
     Permission.CLIENT_READ,
     Permission.CLIENT_UPDATE,

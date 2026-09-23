@@ -16,6 +16,27 @@ vi.mock("../../api/endpoints/auth.api", () => ({
   },
 }));
 
+vi.mock("../../api/endpoints/notifications.api", () => ({
+  default: {
+    getNotifications: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [],
+    }),
+    getUnreadCount: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { unreadCount: 0 },
+    }),
+    markAsRead: vi.fn().mockResolvedValue({ success: true, message: "ok" }),
+    markAllAsRead: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { markedRead: 0 },
+    }),
+  },
+}));
+
 vi.mock("../../api/endpoints/clients.api", () => ({
   default: {
     getClients: vi.fn().mockResolvedValue({

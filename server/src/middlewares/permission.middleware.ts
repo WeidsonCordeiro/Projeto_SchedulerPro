@@ -45,7 +45,7 @@ export function hasPermission(permission: Permission) {
     if (!permissions || !permissions.includes(permission)) {
       throw new AppError(
         HttpMessages.USER_NOT_PREVILEGES,
-        HttpStatus.FORBIDDEN
+        HttpStatus.FORBIDDEN,
       );
     }
 

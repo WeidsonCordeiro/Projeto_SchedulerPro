@@ -26,9 +26,13 @@ import UserRepository from "../../users/repositories/UserRepository";
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
+import Logger from "../../../providers/logger/Logger";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
 import AvailabilityService from "../../availability/services/AvailabilityService";
+import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
+import { NotificationType } from "../../notifications";
+import { AppointmentDocument } from "../models/Appointment.model";
 
 /**
  * Janela opcional de consulta por período. Repassada ao repositório para
@@ -44,6 +48,40 @@ class AppointmentService {
   private readonly clientRepository = ClientRepository;
   private readonly serviceRepository = ServiceRepository;
   private readonly userRepository = UserRepository;
+
+  /**
+   * ==========================================================
+   * Dispara as notificações de um evento de agendamento.
+   *
+   * As notificações (e-mail ao cliente + notificações internas)
+   * são "best effort": falhas são registadas e NUNCA alteram o
+   * resultado do agendamento já persistido.
+   * ==========================================================
+   */
+  private async dispatchAppointmentNotification(
+    appointment: AppointmentDocument,
+    type: NotificationType,
+  ): Promise<void> {
+    try {
+      await NotificationDispatcher.dispatchAppointmentEvent({
+        companyId: appointment.companyId.toString(),
+        appointmentId: appointment._id.toString(),
+        type,
+        clientId: appointment.clientId.toString(),
+        serviceId: appointment.serviceId.toString(),
+        employeeId: appointment.employeeId.toString(),
+        startAt: appointment.startAt,
+        notes: appointment.notes,
+      });
+    } catch (error) {
+      Logger.error("Falha ao disparar notificações de agendamento", {
+        appointmentId: appointment._id.toString(),
+        companyId: appointment.companyId.toString(),
+        type,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   /**
 
@@ -184,6 +222,11 @@ class AppointmentService {
       status: AppointmentStatus.SCHEDULED,
       notes: dto.notes ?? null,
     });
+
+    await this.dispatchAppointmentNotification(
+      appointment,
+      NotificationType.APPOINTMENT_CREATED,
+    );
 
     return AppointmentMapper.toResponse(appointment);
   }
@@ -498,6 +541,11 @@ class AppointmentService {
       notes,
     });
 
+    await this.dispatchAppointmentNotification(
+      updatedAppointment!,
+      NotificationType.APPOINTMENT_UPDATED,
+    );
+
     return AppointmentMapper.toResponse(updatedAppointment!);
   }
 
@@ -540,6 +588,13 @@ class AppointmentService {
       throw new AppError(
         HttpMessages.STATUS_UPDATE_FAILED,
         HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (newStatus === AppointmentStatus.CANCELLED) {
+      await this.dispatchAppointmentNotification(
+        updatedAppointment,
+        NotificationType.APPOINTMENT_CANCELLED,
       );
     }
 
