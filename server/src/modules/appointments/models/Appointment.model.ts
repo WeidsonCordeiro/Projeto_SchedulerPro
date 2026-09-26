@@ -35,6 +35,26 @@ export interface AppointmentDocument extends Document {
   status: AppointmentStatus;
   notes?: string | null;
   deletedAt?: Date | null;
+
+  /**
+   * Marcas de lembretes automáticos enviados ao cliente.
+   *
+   * O horário em que o lembrete foi enviado (ou `null` enquanto
+   * não enviado). Usadas como guarda de idempotência do job.
+   */
+  reminder24hSentAt?: Date | null;
+  reminder2hSentAt?: Date | null;
+
+  /**
+   * Travas (lease) de processamento dos lembretes.
+   *
+   * Previne que duas execuções concorrentes do job enviem o
+   * mesmo lembrete. Um processo que morre durante o envio deixa
+   * a trava expirada e outra execução retoma.
+   */
+  reminder24hLeaseUntil?: Date | null;
+  reminder2hLeaseUntil?: Date | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,6 +120,26 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     },
 
     deletedAt: {
+      type: Date,
+      default: null,
+    },
+
+    reminder24hSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    reminder2hSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    reminder24hLeaseUntil: {
+      type: Date,
+      default: null,
+    },
+
+    reminder2hLeaseUntil: {
       type: Date,
       default: null,
     },

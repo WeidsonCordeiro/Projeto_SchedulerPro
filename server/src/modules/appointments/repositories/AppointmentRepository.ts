@@ -32,6 +32,17 @@ export interface AppointmentListRange {
   endAt?: Date;
 }
 
+/**
+ * Campos do documento usados na persistência dos lembretes.
+ *
+ * Os nomes vêm do enum `ReminderType` (módulo reminders) e são
+ * mapeados aqui para os campos correspondentes no modelo.
+ */
+export interface ReminderFields {
+  sentField: string;
+  leaseField: string;
+}
+
 class AppointmentRepository {
   /**
   
@@ -213,6 +224,116 @@ class AppointmentRepository {
     const appointment = await Appointment.findOne(query);
 
     return Boolean(appointment);
+  }
+
+  /**
+   * ==========================================================
+   * Busca agendamentos futuros aptos a receber lembretes.
+   *
+   * Retorna apenas agendamentos ativos (scheduled/confirmed),
+   * sem soft delete, que começam depois de `now` e até
+   * `now + lookaheadMs`. O lookahead cobre a janela mais longa
+   * (24h + tolerância) e o serviço de lembretes decide, item a
+   * item, qual lembrete está dentro da janela válida.
+   *
+   * A consulta é global (todas as empresas); o isolamento por
+   * empresa acontece nas buscas de company/client do serviço,
+   * sempre usando o companyId do próprio agendamento.
+   * ==========================================================
+   */
+  public async findUpcomingForReminders(
+    now: Date,
+    lookaheadMs: number,
+  ): Promise<AppointmentDocument[]> {
+    return Appointment.find({
+      deletedAt: null,
+      status: {
+        $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+      },
+      startAt: {
+        $gt: now,
+        $lte: new Date(now.getTime() + lookaheadMs),
+      },
+    }).sort({ startAt: 1 });
+  }
+
+  /**
+   * ==========================================================
+   * Reivindica (claim) um lembrete de forma atômica.
+   *
+   * Só atualiza se o lembrete ainda não foi enviado
+   * (`sentField: null`) e a trava atual está livre ou expirada.
+   * Essa condição torna a operação idempotente sob concorrência:
+   * apenas uma execução do job consegue fazer o claim de cada
+   * lembrete por vez.
+   *
+   * O status é revalidado para garantir que agendamentos
+   * cancelados/no-show/completed/soft-deleted entre a consulta
+   * e o claim não recebam lembrete.
+   * ==========================================================
+   */
+  public async claimReminder(
+    id: string | Types.ObjectId,
+    fields: ReminderFields,
+    leaseUntil: Date,
+    now: Date,
+  ): Promise<{ modifiedCount?: number }> {
+    return Appointment.updateOne(
+      {
+        _id: id,
+        deletedAt: null,
+        status: {
+          $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+        },
+        [fields.sentField]: null,
+        $or: [
+          { [fields.leaseField]: null },
+          { [fields.leaseField]: { $lte: now } },
+        ],
+      },
+      { $set: { [fields.leaseField]: leaseUntil } },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Marca um lembrete como enviado e libera a trava.
+   *
+   * Chamado apenas depois do e-mail ser enviado com sucesso.
+   * ==========================================================
+   */
+  public async markReminderSent(
+    id: string | Types.ObjectId,
+    fields: ReminderFields,
+    sentAt: Date,
+  ): Promise<{ modifiedCount?: number }> {
+    return Appointment.updateOne(
+      { _id: id },
+      {
+        $set: {
+          [fields.sentField]: sentAt,
+          [fields.leaseField]: null,
+        },
+      },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Libera a trava de um lembrete sem marcar como enviado.
+   *
+   * Usado quando o envio falha, para que uma execução posterior
+   * tente novamente.
+   * ==========================================================
+   */
+  public async releaseReminderLease(
+    id: string | Types.ObjectId,
+    leaseField: string,
+  ): Promise<{ modifiedCount?: number }> {
+    return Appointment.updateOne(
+      { _id: id },
+      { $set: { [leaseField]: null } },
+    );
   }
 
   /**
