@@ -19,6 +19,7 @@ import app from "./app";
 import { env } from "./config/env";
 import Database from "./providers/database";
 import Logger from "./providers/logger";
+import ReminderScheduler from "./modules/reminders/scheduler/ReminderScheduler";
 
 let server: ReturnType<typeof app.listen>;
 
@@ -28,6 +29,12 @@ let server: ReturnType<typeof app.listen>;
 async function startServer() {
   try {
     await Database.connect();
+
+    /**
+     * Lembretes automáticos: roda uma vez na inicialização
+     * (catch-up após indisponibilidade) e depois periodicamente.
+     */
+    ReminderScheduler.start();
 
     server = app.listen(env.app.PORT, () => {
       Logger.success(`API iniciada na porta ${env.app.PORT}`);
@@ -60,6 +67,8 @@ async function shutdown(signal: string): Promise<void> {
 
       Logger.success("Servidor HTTP encerrado.");
     }
+
+    await ReminderScheduler.stop();
 
     await Database.disconnect();
 
