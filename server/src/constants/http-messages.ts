@@ -156,4 +156,20 @@ export const HttpMessages = {
   NOTIFICATIONS_READ: "Todas as notificações foram marcadas como lidas.",
   NOTIFICATION_UNREAD_COUNT_FOUND:
     "Quantidade de notificações não lidas obtida com sucesso.",
+
+  /*Imagens*/
+  IMAGE_UPLOADED: "Imagem enviada com sucesso.",
+  IMAGE_UPDATED: "Imagem atualizada com sucesso.",
+  IMAGE_REMOVED: "Imagem removida com sucesso.",
+  IMAGE_FILE_REQUIRED: "É necessário enviar um ficheiro de imagem.",
+  IMAGE_FILE_EMPTY: "O ficheiro de imagem enviado está vazio.",
+  IMAGE_FILE_TOO_LARGE: "A imagem excede o tamanho máximo de 5 MB.",
+  IMAGE_FORMAT_NOT_ALLOWED: "Formato de imagem não permitido.",
+  IMAGE_FORMAT_ACCEPTED: "Formatos aceites",
+  IMAGE_UPLOAD_FAILED:
+    "Falha ao enviar a imagem. Tente novamente mais tarde.",
+  IMAGE_REMOVE_FAILED:
+    "Falha ao remover a imagem. Tente novamente mais tarde.",
+  IMAGE_NOT_CONFIGURED:
+    "O armazenamento de imagens não está configurado neste ambiente.",
 } as const;
