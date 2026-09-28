@@ -4,6 +4,7 @@ import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import { useAppSelector } from "../../store";
 import type { Client } from "../../types/client";
 import { ROLE_LABELS } from "../../config/roles";
+import PageHeader from "../../components/common/PageHeader";
 
 export default function PortalProfilePage() {
   const user = useAppSelector((state) => state.auth.user);
@@ -32,7 +33,7 @@ export default function PortalProfilePage() {
 
   return (
     <section>
-      <h1 className="h3 mb-3">Meu perfil</h1>
+      <PageHeader title="Meu perfil" description="Consulte os dados da sua conta e do seu cadastro." />
 
       {isLoading && (
         <div className="d-flex justify-content-center py-5">

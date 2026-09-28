@@ -418,7 +418,7 @@ export default function AppointmentForm({
             )}
 
             <form onSubmit={handleSubmit} noValidate>
-              <div className="row">
+              <div className="row g-3">
                 <div className="col-md-6 mb-3">
                   <label htmlFor="appointment-client" className="form-label">
                     Cliente
@@ -641,7 +641,6 @@ export default function AppointmentForm({
                     {isSubmitting && (
                       <span
                         className="spinner-border spinner-border-sm me-1"
-                        role="status"
                         aria-hidden="true"
                       />
                     )}

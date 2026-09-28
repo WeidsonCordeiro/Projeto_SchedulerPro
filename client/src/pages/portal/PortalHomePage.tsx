@@ -13,6 +13,7 @@ import {
 } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
 import type { PortalAppointment } from "../../types/appointment";
+import PageHeader from "../../components/common/PageHeader";
 
 export default function PortalHomePage() {
   const user = useAppSelector((state) => state.auth.user);
@@ -53,8 +54,7 @@ export default function PortalHomePage() {
 
   return (
     <section>
-      <h1 className="h3 mb-1">Olá, {user?.name}</h1>
-      <p className="text-muted">Bem-vindo(a) ao seu portal de agendamentos.</p>
+      <PageHeader title={`Olá, ${user?.name}`} description="Bem-vindo(a) ao seu portal de agendamentos." />
 
       {isLoading && (
         <div className="d-flex justify-content-center py-5">

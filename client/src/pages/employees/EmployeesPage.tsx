@@ -7,9 +7,15 @@ import { getEmployeeAbilities } from "../../config/employeePermissions";
 import { useAppSelector } from "../../store";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("pt-PT");
+}
+
+function initials(name: string): string {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
 const ROLE_BADGE_CLASS: Record<Role, string> = {
@@ -129,17 +135,12 @@ export default function EmployeesPage() {
   }
 
   const actionsVisible = canEdit || canActivate || canDeactivate || canDelete;
+  const activeCount = employees.filter((employee) => employee.isActive !== false).length;
+  const managerCount = employees.filter((employee) => employee.role === "MANAGER").length;
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h3 mb-0">Funcionários</h1>
-        {canCreate && (
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            Novo funcionário
-          </button>
-        )}
-      </div>
+      <PageHeader title="Funcionários" description="Organize a equipa e as permissões de acesso ao sistema." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo funcionário</button>} />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -150,6 +151,14 @@ export default function EmployeesPage() {
       {actionError && (
         <div className="alert alert-danger" role="alert">
           {actionError}
+        </div>
+      )}
+
+      {!isLoading && !loadError && employees.length > 0 && (
+        <div className="insight-strip mb-4" aria-label="Resumo da equipa">
+          <div><span>Total da equipa</span><strong>{employees.length}</strong></div>
+          <div><span>Ativos</span><strong>{activeCount}</strong></div>
+          <div><span>Managers</span><strong>{managerCount}</strong></div>
         </div>
       )}
 
@@ -177,107 +186,95 @@ export default function EmployeesPage() {
       )}
 
       {!isLoading && !loadError && employees.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum funcionário cadastrado.</p>
-            {canCreate && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={openCreate}
-              >
-                Cadastrar primeiro funcionário
-              </button>
-            )}
-          </div>
-        </div>
+        <EmptyState title="Nenhum funcionário cadastrado." description="Você ainda não possui funcionários. Adicione a equipa que participa dos seus agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro funcionário</button>} />
       )}
 
       {!isLoading && !loadError && employees.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Funcionário</th>
-                <th scope="col">E-mail</th>
-                <th scope="col">Perfil</th>
-                <th scope="col">Adicionado em</th>
-                {actionsVisible && <th scope="col">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => {
-                const isSelf = employee.id === currentUser?.id;
-                return (
-                  <tr key={employee.id}>
-                    <td>
-                      {employee.name}
-                      {isSelf && (
-                        <span className="small text-muted"> (você)</span>
-                      )}
-                    </td>
-                    <td>{employee.email}</td>
-                    <td>
-                      <span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>
-                        {employee.role}
-                      </span>
-                    </td>
-                    <td>{formatDate(employee.createdAt)}</td>
-                    {actionsVisible && (
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Funcionário</th>
+                  <th scope="col">E-mail</th>
+                  <th scope="col">Perfil</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Adicionado em</th>
+                  {actionsVisible && <th scope="col">Ações</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((employee) => {
+                  const isSelf = employee.id === currentUser?.id;
+                  return (
+                    <tr key={employee.id}>
+                      <td><div className="person-cell"><span className="person-avatar">{initials(employee.name)}</span><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="table-subline">Você</span>}</span></div></td>
+                      <td>{employee.email}</td>
+                      <td><span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>{employee.role}</span></td>
                       <td>
-                        <div className="d-flex gap-2">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => openEdit(employee)}
-                              disabled={togglingId === employee.id}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {!isSelf && canDeactivate && employee.isActive !== false && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-secondary"
-                              onClick={() => void handleToggle(employee, false)}
-                              disabled={togglingId === employee.id}
-                            >
-                              {togglingId === employee.id
-                                ? "Aguarde..."
-                                : "Desativar"}
-                            </button>
-                          )}
-                          {!isSelf && canActivate && employee.isActive === false && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-success"
-                              onClick={() => void handleToggle(employee, true)}
-                              disabled={togglingId === employee.id}
-                            >
-                              {togglingId === employee.id
-                                ? "Aguarde..."
-                                : "Ativar"}
-                            </button>
-                          )}
-                          {!isSelf && canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingEmployee(employee)}
-                              disabled={togglingId === employee.id}
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
+                        {employee.isActive === false ? (
+                          <span className="badge text-bg-secondary">Inativo</span>
+                        ) : (
+                          <span className="badge text-bg-success">Ativo</span>
+                        )}
                       </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td>{formatDate(employee.createdAt)}</td>
+                      {actionsVisible && (
+                        <td>
+                          <div className="table-actions">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => openEdit(employee)}
+                                disabled={togglingId === employee.id}
+                              >
+                                Editar
+                              </button>
+                            )}
+                            {!isSelf && canDeactivate && employee.isActive !== false && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => void handleToggle(employee, false)}
+                                disabled={togglingId === employee.id}
+                              >
+                                {togglingId === employee.id
+                                  ? "Aguarde..."
+                                  : "Desativar"}
+                              </button>
+                            )}
+                            {!isSelf && canActivate && employee.isActive === false && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-success"
+                                onClick={() => void handleToggle(employee, true)}
+                                disabled={togglingId === employee.id}
+                              >
+                                {togglingId === employee.id
+                                  ? "Aguarde..."
+                                  : "Ativar"}
+                              </button>
+                            )}
+                            {!isSelf && canDelete && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => setDeletingEmployee(employee)}
+                                disabled={togglingId === employee.id}
+                              >
+                                Excluir
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

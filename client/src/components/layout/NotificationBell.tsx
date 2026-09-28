@@ -59,9 +59,19 @@ export default function NotificationBell() {
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    }
 
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   async function loadNotifications() {
@@ -148,7 +158,7 @@ export default function NotificationBell() {
         <span aria-hidden="true">🔔</span>
         {unreadCount > 0 && (
           <span
-            className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+            className="notification-badge position-absolute badge rounded-pill bg-danger"
             data-testid="notification-badge"
           >
             {unreadCount}
@@ -157,9 +167,15 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="dropdown-menu dropdown-menu-end show" style={{ minWidth: "22rem" }}>
-          <div className="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-            <span className="fw-semibold">Notificações</span>
+        <div
+          className="dropdown-menu dropdown-menu-end show notification-menu"
+          role="dialog"
+          aria-labelledby="notification-menu-title"
+        >
+          <div className="notification-menu-header d-flex justify-content-between align-items-center gap-2 px-3 py-2 border-bottom">
+            <span className="fw-semibold" id="notification-menu-title">
+              Notificações
+            </span>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -172,7 +188,7 @@ export default function NotificationBell() {
             )}
           </div>
 
-          <div className="dropdown-menu-body" data-testid="notification-list" style={{ maxHeight: "18rem", overflowY: "auto" }}>
+          <div className="dropdown-menu-body" data-testid="notification-list">
             {loading && (
               <div className="text-center text-muted small py-3">A carregar...</div>
             )}
@@ -195,13 +211,17 @@ export default function NotificationBell() {
                 <button
                   key={notification.id}
                   type="button"
-                  className={`dropdown-item d-flex flex-column align-items-start gap-1 ${notification.readAt ? "" : "bg-warning-subtle"}`}
+                  className={`dropdown-item notification-item d-flex flex-column align-items-start gap-1 ${notification.readAt ? "" : "bg-warning-subtle"}`}
                   onClick={() => handleMarkAsRead(notification)}
                 >
-                  <span className={`small ${notification.readAt ? "" : "fw-semibold"}`}>
+                  <span
+                    className={`notification-item-title small ${notification.readAt ? "" : "fw-semibold"}`}
+                  >
                     {notification.title}
                   </span>
-                  <span className="small text-dark">{notification.message}</span>
+                  <span className="notification-item-message small text-dark">
+                    {notification.message}
+                  </span>
                   <span className="small text-muted">
                     {formatCreatedAt(notification.createdAt)}
                   </span>

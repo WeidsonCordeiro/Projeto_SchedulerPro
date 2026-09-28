@@ -86,6 +86,28 @@ describe("ServiceForm", () => {
     expect(screen.getByRole("heading", { name: "Novo serviço" })).toBeInTheDocument();
   });
 
+  it("keeps the shared modal structure so the common spacing applies", () => {
+    renderForm();
+
+    // Par de campos lado a lado dentro de uma linha com goteira, para que a
+    // grelha não ultrapasse o padding do corpo do modal.
+    const duration = screen.getByLabelText("Duração (minutos)");
+    const row = duration.closest(".row");
+    expect(row).not.toBeNull();
+    expect(row).toHaveClass("g-3");
+    expect(duration.closest(".col-md-6")).not.toBeNull();
+    expect(screen.getByLabelText("Preço").closest(".col-md-6")).not.toBeNull();
+
+    // Ações no rodapé partilhado, para que o espaçamento venha do `gap`.
+    const submit = screen.getByRole("button", { name: /criar serviço/i });
+    const footer = submit.closest(".modal-footer");
+    expect(footer).not.toBeNull();
+    expect(footer).toContainElement(submit);
+    expect(
+      screen.getByRole("button", { name: /cancelar/i }).closest(".modal-footer"),
+    ).toBe(footer);
+  });
+
   it("renders the edit form pre-filled when a service is provided", () => {
     renderForm({ service: existingService });
     expect(screen.getByRole("heading", { name: "Editar serviço" })).toBeInTheDocument();

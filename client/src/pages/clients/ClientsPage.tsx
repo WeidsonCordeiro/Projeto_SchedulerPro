@@ -7,6 +7,8 @@ import SetClientCredentialsModal from "../../components/clients/SetClientCredent
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
 import type { Client, ClientPortalAccess } from "../../types/client";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
   if (!portalAccess.exists) {
@@ -106,19 +108,16 @@ export default function ClientsPage() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h3 mb-0">Clientes</h1>
-        {canCreate && (
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            Novo cliente
-          </button>
-        )}
-      </div>
+      <PageHeader title="Clientes" description="Gerencie os clientes e o acesso ao portal." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo cliente</button>} />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
           {successMessage}
         </div>
+      )}
+
+      {!isLoading && !loadError && clients.length > 0 && (
+        <div className="list-intro mb-3"><span className="list-intro-number">{clients.length}</span><span>clientes na sua base</span></div>
       )}
 
       {isLoading && (
@@ -145,86 +144,75 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum cliente cadastrado.</p>
-            {canCreate && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={openCreate}
-              >
-                Cadastrar primeiro cliente
-              </button>
-            )}
-          </div>
-        </div>
+        <EmptyState title="Nenhum cliente cadastrado." description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro cliente</button>} />
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Cliente</th>
-                <th scope="col">Email</th>
-                <th scope="col">Telefone</th>
-                <th scope="col">Situação</th>
-                {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((client) => (
-                <tr key={client.id}>
-                  <td>{client.name}</td>
-                  <td>{client.email ?? "—"}</td>
-                  <td>{client.phone}</td>
-                  <td>
-                    {client.isActive ? (
-                      <span className="badge text-bg-success">Ativo</span>
-                    ) : (
-                      <span className="badge text-bg-secondary">Inativo</span>
-                    )}
-                  </td>
-                  {(canUpdate || canDelete) && (
-                    <td>
-                      <div className="d-flex gap-2">
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openEdit(client)}
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-success"
-                            onClick={() => setCredentialingClient(client)}
-                            disabled={!client.email}
-                            title={getAccessButtonTitle(client)}
-                          >
-                            {getAccessButtonLabel(client.portalAccess)}
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => setDeletingClient(client)}
-                          >
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Cliente</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Telefone</th>
+                  <th scope="col">Status</th>
+                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {clients.map((client) => (
+                  <tr key={client.id}>
+                    <td>{client.name}</td>
+                    <td>{client.email ?? "—"}</td>
+                    <td>{client.phone}</td>
+                    <td>
+                      {client.isActive ? (
+                        <span className="badge text-bg-success">Ativo</span>
+                      ) : (
+                        <span className="badge text-bg-secondary">Inativo</span>
+                      )}
+                    </td>
+                    {(canUpdate || canDelete) && (
+                      <td>
+                        <div className="table-actions">
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => openEdit(client)}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => setCredentialingClient(client)}
+                              disabled={!client.email}
+                              title={getAccessButtonTitle(client)}
+                            >
+                              {getAccessButtonLabel(client.portalAccess)}
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => setDeletingClient(client)}
+                            >
+                              Excluir
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

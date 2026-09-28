@@ -16,7 +16,7 @@ export default function DashboardCard({
   footer,
 }: Props) {
   return (
-    <div className="card h-100">
+    <div className="card dashboard-kpi h-100">
       <div className="card-body">
         <div className="d-flex justify-content-between align-items-start">
           <div>

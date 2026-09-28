@@ -11,6 +11,8 @@ import {
   formatAppointmentTime,
 } from "../../config/appointmentTime";
 import type { PortalAppointment } from "../../types/appointment";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 type Filter = "all" | "upcoming" | "past";
 
@@ -60,9 +62,7 @@ export default function PortalAppointmentsPage() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 className="h3 mb-0">Meus agendamentos</h1>
-        <div className="btn-group" role="group" aria-label="Filtrar agendamentos">
+      <PageHeader title="Meus agendamentos" description="Consulte os seus próximos atendimentos e o histórico." actions={<div className="btn-group" role="group" aria-label="Filtrar agendamentos">
           <button
             type="button"
             className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-outline-primary"}`}
@@ -84,8 +84,7 @@ export default function PortalAppointmentsPage() {
           >
             Passados
           </button>
-        </div>
-      </div>
+        </div>} />
 
       {isLoading && (
         <div className="d-flex justify-content-center py-5">
@@ -111,43 +110,41 @@ export default function PortalAppointmentsPage() {
       )}
 
       {!isLoading && !loadError && visibleAppointments.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-0 text-muted">Nenhum agendamento encontrado.</p>
-          </div>
-        </div>
+        <EmptyState title="Nenhum agendamento encontrado" description="Quando tiver um atendimento marcado, ele aparecerá aqui." />
       )}
 
       {!isLoading && !loadError && visibleAppointments.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Serviço</th>
-                <th scope="col">Funcionário</th>
-                <th scope="col">Data</th>
-                <th scope="col">Hora</th>
-                <th scope="col">Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleAppointments.map((appointment) => (
-                <tr key={appointment.id}>
-                  <td>{appointment.serviceName ?? "—"}</td>
-                  <td>{appointment.employeeName ?? "—"}</td>
-                  <td>{formatAppointmentDate(appointment.startAt)}</td>
-                  <td>{formatAppointmentTime(appointment.startAt)}</td>
-                  <td>
-                    <span
-                      className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
-                    >
-                      {APPOINTMENT_STATUS_LABELS[appointment.status]}
-                    </span>
-                  </td>
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Serviço</th>
+                  <th scope="col">Funcionário</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Hora</th>
+                  <th scope="col">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visibleAppointments.map((appointment) => (
+                  <tr key={appointment.id}>
+                    <td>{appointment.serviceName ?? "—"}</td>
+                    <td>{appointment.employeeName ?? "—"}</td>
+                    <td>{formatAppointmentDate(appointment.startAt)}</td>
+                    <td>{formatAppointmentTime(appointment.startAt)}</td>
+                    <td>
+                      <span
+                        className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
+                      >
+                        {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>

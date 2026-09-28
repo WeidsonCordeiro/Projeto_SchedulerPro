@@ -29,7 +29,7 @@ export default function CalendarToolbar({
   ];
 
   return (
-    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div className="calendar-toolbar">
       <div className="d-flex align-items-center gap-2">
         <button
           type="button"
@@ -54,7 +54,7 @@ export default function CalendarToolbar({
         >
           &#8250;
         </button>
-        <h2 className="h5 mb-0 ms-2 d-none d-sm-inline">{label}</h2>
+        <h2 className="calendar-toolbar-label">{label}</h2>
       </div>
 
       <div className="btn-group btn-group-sm" role="group" aria-label="Visualização">

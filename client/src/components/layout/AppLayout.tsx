@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
@@ -12,6 +12,21 @@ export default function AppLayout() {
   const isClient = user?.role === "CLIENT";
   const isPortalPath = location.pathname.startsWith("/portal");
 
+  useEffect(() => {
+    if (!sidebarOpen) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen]);
+
   if (isClient && !isPortalPath) {
     return <Navigate to="/portal" replace />;
   }
@@ -23,8 +38,8 @@ export default function AppLayout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <div className="app-shell d-flex flex-column vh-100">
-      <Navbar onToggleSidebar={openSidebar} />
+    <div className="app-shell d-flex flex-column">
+      <Navbar onToggleSidebar={openSidebar} isSidebarOpen={sidebarOpen} />
 
       <div className="app-body d-flex flex-grow-1 overflow-hidden">
         <aside
@@ -32,7 +47,7 @@ export default function AppLayout() {
           data-testid="sidebar"
           className={`app-sidebar d-flex flex-column flex-shrink-0 bg-light border-end ${sidebarOpen ? "open" : ""}`}
         >
-          <div className="d-flex justify-content-between align-items-center border-bottom p-2 d-lg-none">
+          <div className="d-flex justify-content-between align-items-center border-bottom p-2 d-lg-none flex-shrink-0">
             <span className="fw-semibold">Menu</span>
             <button
               type="button"
@@ -41,7 +56,7 @@ export default function AppLayout() {
               onClick={closeSidebar}
             />
           </div>
-          <div className="p-2 flex-grow-1">
+          <div className="p-2 flex-grow-1 app-sidebar-scroll">
             <Sidebar onNavigate={closeSidebar} />
           </div>
         </aside>

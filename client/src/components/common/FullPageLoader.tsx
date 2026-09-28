@@ -1,8 +1,10 @@
 export default function FullPageLoader() {
   return (
-    <div className="d-flex justify-content-center align-items-center py-5">
-      <div className="spinner-border text-primary" role="status">
-        <span className="visually-hidden">Carregando...</span>
+    <div className="full-page-loader">
+      <div className="brand-mark" aria-hidden="true">S</div>
+      <div className="loading-state" role="status">
+        <span className="spinner-border spinner-border-sm text-primary" aria-hidden="true" />
+        <span>Carregando...</span>
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import { getCompanyAbilities } from "../../config/companyPermissions";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { setCompany } from "../../store/slices/companySlice";
 import type { Company } from "../../types/company";
+import PageHeader from "../../components/common/PageHeader";
 
 export default function CompanyPage() {
   const dispatch = useAppDispatch();
@@ -65,9 +66,7 @@ export default function CompanyPage() {
 
   return (
     <section>
-      <div className="mb-3">
-        <h1 className="h3 mb-0">Empresa</h1>
-      </div>
+      <PageHeader title="Empresa" description="Mantenha os dados e o fuso horário da empresa atualizados." />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">

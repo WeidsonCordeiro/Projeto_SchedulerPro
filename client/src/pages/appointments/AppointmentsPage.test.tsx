@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AppointmentsPage from "./AppointmentsPage";
 import appointmentsApi from "../../api/endpoints/appointments.api";
@@ -157,7 +158,9 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
 function renderPage(role: Role | null = "OWNER", timezone?: string) {
   return render(
     <Provider store={makeStore(role, timezone)}>
-      <AppointmentsPage />
+      <MemoryRouter>
+        <AppointmentsPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -291,6 +294,29 @@ describe("AppointmentsPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("uses the shared table surface, status column and action row", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+
+    await renderPageList();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+    const actions = within(table)
+      .getByRole("button", { name: "Editar" })
+      .closest(".table-actions");
+    expect(actions).not.toBeNull();
+    expect(
+      within(actions as HTMLElement).getByRole("button", { name: "Excluir" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the table visible when client and service name lists fail to load", async () => {
     vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
       success: true,
@@ -324,7 +350,7 @@ describe("AppointmentsPage", () => {
 
     await renderPageList();
 
-    expect(await screen.findByText("Nenhum agendamento encontrado.")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum agendamento encontrado")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /cadastrar primeiro agendamento/i }),
     ).toBeInTheDocument();
@@ -339,7 +365,7 @@ describe("AppointmentsPage", () => {
 
     await renderPageList("CLIENT");
 
-    expect(await screen.findByText("Nenhum agendamento encontrado.")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum agendamento encontrado")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /cadastrar primeiro agendamento/i }),
     ).not.toBeInTheDocument();
@@ -753,7 +779,13 @@ describe("AppointmentsPage", () => {
     });
 
     const store = makeStore();
-    render(<Provider store={store}><AppointmentsPage /></Provider>);
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <AppointmentsPage />
+        </MemoryRouter>
+      </Provider>,
+    );
     await switchToListView();
     await screen.findByRole("table");
 

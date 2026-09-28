@@ -170,7 +170,9 @@ describe("AppLayout", () => {
     renderLayout(makeStore({ authenticated: true }));
 
     expect(screen.getAllByRole("navigation").length).toBeGreaterThan(0);
-    expect(screen.getByText("SchedulerPro")).toBeInTheDocument();
+    expect(
+      screen.getByText("SchedulerPro", { selector: ".navbar-brand" }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Clientes")).toBeInTheDocument();
     expect(screen.getByText("Home content")).toBeInTheDocument();
   });
@@ -231,6 +233,31 @@ describe("AppLayout", () => {
     fireEvent.click(screen.getByTestId("sidebar-backdrop"));
     expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
     expect(screen.queryByTestId("sidebar-backdrop")).not.toBeInTheDocument();
+  });
+
+  it("closes the mobile sidebar with the Escape key", () => {
+    renderLayout(makeStore({ authenticated: true }));
+
+    fireEvent.click(screen.getByRole("button", { name: /abrir menu/i }));
+    expect(screen.getByTestId("sidebar")).toHaveClass("open");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
+    expect(screen.queryByTestId("sidebar-backdrop")).not.toBeInTheDocument();
+  });
+
+  it("exposes the sidebar toggle state and a scrollable menu region", () => {
+    renderLayout(makeStore({ authenticated: true }));
+
+    const toggle = screen.getByRole("button", { name: /abrir menu/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.getByTestId("sidebar").querySelector(".app-sidebar-scroll"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
   });
 
   it("redirects a CLIENT user from admin routes to /portal", () => {

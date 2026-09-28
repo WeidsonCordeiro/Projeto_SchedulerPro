@@ -9,6 +9,7 @@ import {
   WEEKDAYS_SHORT,
 } from "../../config/appointmentCalendar";
 import { formatAppointmentTime } from "../../config/appointmentTime";
+import { APPOINTMENT_STATUS_CALENDAR_CLASS } from "../../config/appointmentStatus";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
@@ -125,7 +126,7 @@ export default function WeekCalendar({
         {/* Day columns */}
         {dayKeys.map((dk, dayIdx) => {
           const layout = layoutPerDay[dayIdx];
-          const isToday = dk === todayKey;
+          const isToday = dk === todayKeyInternal;
 
           return (
             <div
@@ -182,12 +183,12 @@ export default function WeekCalendar({
                     }}
                     role="button"
                   >
-                    <div className="h-100 overflow-hidden p-1 small bg-primary bg-opacity-75 text-white rounded">
-                      <div className="fw-semibold">
+                    <div className={`calendar-week-event h-100 overflow-hidden p-1 rounded ${APPOINTMENT_STATUS_CALENDAR_CLASS[item.appointment.status]}`}>
+                      <div className="calendar-event-time">
                         {formatAppointmentTime(item.appointment.startAt, timezone)} –{" "}
                         {formatAppointmentTime(item.appointment.endAt, timezone)}
                       </div>
-                      <div className="text-truncate">
+                      <div className="calendar-event-client text-truncate">
                         {clientNames.get(item.appointment.clientId) ?? "Cliente"}
                       </div>
                     </div>

@@ -31,7 +31,7 @@ export default function AvailabilityDayEditor({
   const available = Boolean(existing);
 
   return (
-    <div className="card h-100">
+    <div className={`availability-day-card card h-100 ${available ? "is-available" : "is-unavailable"}`}>
       <div className="card-body">
         <div className="d-flex justify-content-between align-items-start mb-3">
           <div>
@@ -60,6 +60,12 @@ export default function AvailabilityDayEditor({
               Disponível
             </label>
           </div>
+        </div>
+
+        <div className="availability-timeline" aria-label={`Resumo de ${label}`}>
+          {available && draft.morningStart && draft.morningEnd ? <div className="availability-period"><span>Manhã</span><strong>{draft.morningStart} — {draft.morningEnd}</strong></div> : null}
+          {available && draft.afternoonStart && draft.afternoonEnd ? <div className="availability-period"><span>Tarde</span><strong>{draft.afternoonStart} — {draft.afternoonEnd}</strong></div> : null}
+          {!available && <div className="availability-unavailable-note"><span className="availability-dot" />Sem horários definidos para este dia</div>}
         </div>
 
         <div className="row g-3">
@@ -161,7 +167,7 @@ export default function AvailabilityDayEditor({
         )}
 
         {editable && (
-          <div className="mt-3 d-flex justify-content-end">
+          <div className="availability-day-save mt-3 d-flex justify-content-end">
             <button
               type="button"
               className="btn btn-sm btn-primary"
@@ -171,7 +177,6 @@ export default function AvailabilityDayEditor({
               {isSaving && (
                 <span
                   className="spinner-border spinner-border-sm me-1"
-                  role="status"
                   aria-hidden="true"
                 />
               )}

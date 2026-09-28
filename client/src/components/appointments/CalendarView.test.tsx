@@ -409,4 +409,126 @@ describe("DayCalendar", () => {
     fireEvent.click(screen.getAllByRole("button")[0]);
     expect(onSlotClick).toHaveBeenCalledWith("2026-09-10", expect.any(Number));
   });
+
+  it("places overlapping appointments side by side instead of stacking them", () => {
+    const overlapping = [
+      makeAppointment({ id: "appt1", startAt: "2026-09-10T09:00:00.000Z", endAt: "2026-09-10T10:00:00.000Z" }),
+      makeAppointment({ id: "appt2", clientId: "client2", startAt: "2026-09-10T09:30:00.000Z", endAt: "2026-09-10T10:30:00.000Z" }),
+    ];
+    const multiNames = new Map<string, string>([
+      ["client1", "Maria Silva"],
+      ["client2", "João Costa"],
+      ["service1", "Corte de cabelo"],
+    ]);
+
+    const { container } = renderWithStore(
+      <DayCalendar
+        currentDateKey="2026-09-10"
+        appointments={overlapping}
+        clientNames={multiNames}
+        serviceNames={names}
+        onAppointmentClick={noopOnAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+      />,
+    );
+
+    const blocks = Array.from(
+      container.querySelectorAll<HTMLElement>(".calendar-week-event"),
+    ).map((el) => el.closest<HTMLElement>('[role="button"]'));
+
+    expect(blocks).toHaveLength(2);
+    const [first, second] = blocks.map((block) => block?.style.left ?? "");
+    expect(first).not.toBe(second);
+    // A coluna calculada em computeDayLayout tem de ser respeitada.
+    expect(blocks[0]?.style.width).toBe(blocks[1]?.style.width);
+  });
+
+  it("colours each block by its own status, as the week view does", () => {
+    const { container } = renderWithStore(
+      <DayCalendar
+        currentDateKey="2026-09-10"
+        appointments={[
+          makeAppointment({ id: "appt1", status: "scheduled" }),
+          makeAppointment({ id: "appt2", clientId: "client2", status: "cancelled" }),
+        ]}
+        clientNames={new Map([["client1", "Maria Silva"], ["client2", "João Costa"]])}
+        serviceNames={names}
+        onAppointmentClick={noopOnAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+      />,
+    );
+
+    const classes = Array.from(container.querySelectorAll(".calendar-week-event")).map(
+      (el) => el.className,
+    );
+
+    expect(classes.some((c) => c.includes("status-scheduled"))).toBe(true);
+    expect(classes.some((c) => c.includes("status-cancelled"))).toBe(true);
+  });
+});
+
+describe("WeekCalendar - destaque de hoje", () => {
+  it("marks today's column even when the todayKey prop is not provided", () => {
+    // Sem a prop, a data corrente é calculada internamente. A coluna de hoje
+    // não pode depender de o componente pai fornecer a prop.
+    const { container } = renderWithStore(
+      <WeekCalendar
+        currentDateKey="2026-09-10"
+        appointments={[]}
+        clientNames={names}
+        onDayClick={noopOnDayClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+      />,
+    );
+
+    expect(container.querySelectorAll(".bg-primary-subtle").length).toBeGreaterThan(0);
+  });
+});
+
+describe("MonthCalendar - limite de eventos", () => {
+  it("shows an overflow indicator when a day has more events than the limit", () => {
+    const busyDay = Array.from({ length: 5 }, (_, i) => {
+      const start = `2026-09-15T${String(8 + i).padStart(2, "0")}:00:00.000Z`;
+      const end = `2026-09-15T${String(9 + i).padStart(2, "0")}:00:00.000Z`;
+      return makeAppointment({ id: `busy${i}`, startAt: start, endAt: end });
+    });
+
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={busyDay}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    // Só 4 eventos são desenhados; o resto fica acessível pelo indicador.
+    expect(container.querySelectorAll(".calendar-item")).toHaveLength(4);
+    const indicator = container.querySelector(".calendar-overflow");
+    expect(indicator).not.toBeNull();
+    expect(indicator?.textContent).toContain("1 mais");
+  });
+});
+
+describe("CalendarToolbar - período sempre visível", () => {
+  it("keeps the period label visible at every width", () => {
+    render(
+      <CalendarToolbar
+        currentDateKey="2026-09-10"
+        viewType="week"
+        onViewTypeChange={noopViewChange}
+        onPrev={noopOnDayClick}
+        onNext={noopOnDayClick}
+        onToday={noopOnDayClick}
+        label="10 – 16 Setembro 2026"
+      />,
+    );
+
+    const label = screen.getByRole("heading", { name: "10 – 16 Setembro 2026" });
+    expect(label.className).not.toContain("d-none");
+  });
 });

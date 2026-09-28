@@ -21,6 +21,7 @@ import type {
   ReportTopService,
 } from "../../types/report";
 import { DateTime } from "luxon";
+import PageHeader from "../../components/common/PageHeader";
 
 const STATUSES: AppointmentStatus[] = [
   "scheduled",
@@ -276,26 +277,23 @@ export default function ReportsPage() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 className="h3 mb-0">Relatórios</h1>
-        <span className="text-muted small">
-          Período: {periodDescription}
-        </span>
-      </div>
+      <PageHeader title="Relatórios" description="Acompanhe o desempenho da operação no período selecionado." actions={<span className="text-muted small">Período: {periodDescription}</span>} />
 
       <div className="mb-4">
-        <div className="btn-group" role="group" aria-label="Período do relatório">
-          {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriodKey[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={`btn btn-sm ${period === key ? "btn-primary" : "btn-outline-primary"}`}
-              aria-pressed={period === key}
-              onClick={() => selectPeriod(key)}
-            >
-              {REPORT_PERIOD_LABELS[key]}
-            </button>
-          ))}
+        <div className="filter-bar">
+          <div className="btn-group" role="group" aria-label="Período do relatório">
+            {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriodKey[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                className={`btn btn-sm ${period === key ? "btn-primary" : "btn-outline-primary"}`}
+                aria-pressed={period === key}
+                onClick={() => selectPeriod(key)}
+              >
+                {REPORT_PERIOD_LABELS[key]}
+              </button>
+            ))}
+          </div>
         </div>
 
         {period === "custom" && (
@@ -433,7 +431,7 @@ export default function ReportsPage() {
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Serviços mais realizados</div>
-                <div className="card-body table-responsive">
+                <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum serviço neste período."
                     headers={["Serviço", "Agend.", "Concl.", "Valor estimado"]}
@@ -450,7 +448,7 @@ export default function ReportsPage() {
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Funcionários</div>
-                <div className="card-body table-responsive">
+                <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum agendamento neste período."
                     headers={[
@@ -483,7 +481,7 @@ export default function ReportsPage() {
                     {formatInteger(clients.recurringCount)} recorrentes
                   </span>
                 </div>
-                <div className="card-body table-responsive">
+                <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum cliente neste período."
                     headers={[

@@ -33,6 +33,22 @@ export const APPOINTMENT_STATUS_BADGE_CLASS: Record<AppointmentStatus, string> =
   "no-show": "text-bg-warning",
 };
 
+/**
+ * Classes de cor dos blocos de agendamento nas vistas de calendário
+ * (`.status-*` em index.css). Compartilhadas por Month, Week e Day para que
+ * um mesmo status tenha sempre a mesma cor, independentemente da vista.
+ */
+export const APPOINTMENT_STATUS_CALENDAR_CLASS: Record<
+  AppointmentStatus,
+  string
+> = {
+  scheduled: "status-scheduled",
+  confirmed: "status-confirmed",
+  completed: "status-completed",
+  cancelled: "status-cancelled",
+  "no-show": "status-no-show",
+};
+
 export const APPOINTMENT_ACTION_LABELS: Record<AppointmentStatusAction, string> = {
   confirm: "Confirmar",
   complete: "Concluir",

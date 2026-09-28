@@ -118,7 +118,7 @@ export default function CalendarView({
   }
 
   return (
-    <div>
+    <div className="calendar-surface">
       <CalendarToolbar
         currentDateKey={currentDateKey}
         viewType={viewType}

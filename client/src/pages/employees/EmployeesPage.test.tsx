@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import EmployeesPage from "./EmployeesPage";
 import employeesApi from "../../api/endpoints/employees.api";
@@ -53,7 +54,9 @@ function makeStore(role: Role = "OWNER") {
 function renderPage(store = makeStore()) {
   return render(
     <Provider store={store}>
-      <EmployeesPage />
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -127,14 +130,36 @@ describe("EmployeesPage", () => {
 
     const table = await screen.findByRole("table");
     expect(within(table).getByText("Ana Silva")).toBeInTheDocument();
-    expect(within(table).getByText("ana@example.com")).toBeInTheDocument();
+    expect(within(table).getAllByText("ana@example.com").length).toBeGreaterThan(0);
     expect(within(table).getByText("Bruno Lima")).toBeInTheDocument();
-    expect(within(table).getByText("bruno@example.com")).toBeInTheDocument();
+    expect(within(table).getAllByText("bruno@example.com").length).toBeGreaterThan(0);
     expect(within(table).getByText("EMPLOYEE")).toBeInTheDocument();
     expect(within(table).getByText("MANAGER")).toBeInTheDocument();
     expect(
       within(table).getAllByText((content) => content.includes("2026")),
     ).toHaveLength(2);
+  });
+
+  it("uses the shared table surface and shows status as a badge without repeating the email", async () => {
+    vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeEmployee()],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+
+    const row = within(table).getByText("Ana Silva").closest("tr") as HTMLElement;
+    // O e-mail vive apenas na sua coluna, como nas restantes tabelas.
+    expect(within(row).getAllByText("ana@example.com")).toHaveLength(1);
+    // O estado usa badge, como em Clientes e Serviços.
+    expect(within(row).getByText("Ativo")).toHaveClass("badge");
   });
 
   it("never renders CLIENT accounts in the employee list", async () => {
@@ -480,7 +505,7 @@ describe("EmployeesPage", () => {
 
     const table = await screen.findByRole("table");
     const selfRow = within(table).getByText("Owner Teste").closest("tr");
-    expect(selfRow?.textContent).toContain("você");
+    expect(selfRow?.textContent?.toLowerCase()).toContain("você");
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /desativar/i }),
