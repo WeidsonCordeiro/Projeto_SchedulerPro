@@ -14,6 +14,8 @@ import type { Employee, EmployeeRole } from "../../types/employee";
 import DashboardCard from "./DashboardCard";
 import DashboardAppointments from "./DashboardAppointments";
 import { DateTime } from "luxon";
+import PageHeader from "../../components/common/PageHeader";
+import { Link } from "react-router-dom";
 
 /**
  * Apenas OWNER e ADMIN possuem USER_READ (server/src/constants/rbac.ts), a
@@ -188,17 +190,15 @@ export default function DashboardPage() {
 
   return (
     <section>
-      <h1 className="h3 mb-1">Bem-vindo ao SchedulerPro</h1>
-      {currentUser && <p className="text-muted">{greeting}</p>}
-
+      <PageHeader title="Bem-vindo ao SchedulerPro" description={greeting} eyebrow="Visão geral" actions={<Link className="btn btn-primary" to="/appointments">Abrir agenda</Link>} />
       {relatedError && (
         <div className="alert alert-warning mt-3" role="alert">
           {relatedError}
         </div>
       )}
 
-      <h2 className="h5 mt-4 mb-3">Resumo</h2>
-      <div className="row g-3">
+      <div className="dashboard-section-heading"><div><span className="section-kicker">Operação</span><h2 className="h5 mb-0">Resumo do dia</h2></div><span className="text-muted small">Atualizado com os dados da sua agenda</span></div>
+      <div className="row g-3 dashboard-kpis">
         <div className="col-6 col-md-4 col-lg-2">
           <DashboardCard
             title="Hoje"
@@ -245,25 +245,10 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <DashboardAppointments
-        appointments={todayAppointments}
-        clientNames={clientNames}
-        serviceNames={serviceNames}
-        employeeNames={employeeNames}
-        timezone={timezone}
-        title="Agenda do dia"
-        emptyMessage="Nenhum agendamento para hoje."
-      />
-
-      <DashboardAppointments
-        appointments={upcomingAppointments}
-        clientNames={clientNames}
-        serviceNames={serviceNames}
-        employeeNames={employeeNames}
-        timezone={timezone}
-        title="Próximos agendamentos"
-        emptyMessage="Nenhum agendamento próximo."
-      />
+      <div className="dashboard-agenda-grid">
+        <DashboardAppointments appointments={todayAppointments} clientNames={clientNames} serviceNames={serviceNames} employeeNames={employeeNames} timezone={timezone} title="Agenda do dia" emptyMessage="Nenhum agendamento para hoje." />
+        <DashboardAppointments appointments={upcomingAppointments} clientNames={clientNames} serviceNames={serviceNames} employeeNames={employeeNames} timezone={timezone} title="Próximos agendamentos" emptyMessage="Nenhum agendamento próximo." />
+      </div>
     </section>
   );
 }

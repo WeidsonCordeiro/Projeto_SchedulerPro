@@ -19,6 +19,7 @@ import type {
 } from "../../types/availability";
 import type { DayDraft } from "../../config/availabilityRules";
 import type { Employee, EmployeeRole } from "../../types/employee";
+import PageHeader from "../../components/common/PageHeader";
 
 const CAN_LIST_USERS_ROLES: EmployeeRole[] = ["OWNER", "ADMIN"];
 
@@ -282,9 +283,7 @@ export default function AvailabilityPage() {
 
   return (
     <section>
-      <div className="mb-3">
-        <h1 className="h3 mb-0">Disponibilidade</h1>
-      </div>
+      <PageHeader title="Disponibilidade" description="Defina os horários de atendimento e exceções da equipa." />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -350,7 +349,9 @@ export default function AvailabilityPage() {
       )}
 
       {!isLoading && !loadError && (
-        <div className="row g-3">
+        <div className="availability-board">
+          <div className="availability-board-header"><span>Dia</span><span>Períodos de atendimento</span><span>Configuração</span></div>
+          <div className="availability-board-grid">
           {DAY_ORDER.map((day) => {
             const existing = availabilityByDay[day];
             const existingDay = Boolean(existing);
@@ -358,7 +359,7 @@ export default function AvailabilityPage() {
             const removeEnabled = existingDay && canDelete;
 
             return (
-              <div key={day} className="col-md-6 col-xxl-4">
+              <div key={day} className="availability-day-column">
                 <AvailabilityDayEditor
                   day={day}
                   label={DAY_LABELS[day]}
@@ -375,6 +376,7 @@ export default function AvailabilityPage() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 

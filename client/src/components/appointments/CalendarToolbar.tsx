@@ -29,7 +29,7 @@ export default function CalendarToolbar({
   ];
 
   return (
-    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div className="calendar-toolbar">
       <div className="d-flex align-items-center gap-2">
         <button
           type="button"

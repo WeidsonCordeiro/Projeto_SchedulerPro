@@ -33,6 +33,8 @@ import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 import type { Employee, EmployeeRole } from "../../types/employee";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
@@ -328,6 +330,8 @@ export default function AppointmentsPage() {
 
   return (
     <section>
+      <PageHeader title="Agendamentos" description="Consulte a agenda e acompanhe o estado de cada atendimento." actions={canCreate && <button type="button" className="btn btn-primary" onClick={() => openCreate()}>Novo agendamento</button>} />
+      {/*
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 className="h3 mb-0">Agendamentos</h1>
         {canCreate && (
@@ -339,7 +343,7 @@ export default function AppointmentsPage() {
             Novo agendamento
           </button>
         )}
-      </div>
+      </div> */}
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -433,20 +437,7 @@ export default function AppointmentsPage() {
         !loadError &&
         viewType === "list" &&
         appointments.length === 0 && (
-          <div className="card">
-            <div className="card-body text-center py-5">
-              <p className="mb-3 text-muted">Nenhum agendamento encontrado.</p>
-              {canCreate && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => openCreate()}
-                >
-                  Cadastrar primeiro agendamento
-                </button>
-              )}
-            </div>
-          </div>
+          <EmptyState title="Nenhum agendamento encontrado" description="Crie o primeiro agendamento para começar a organizar a agenda." action={canCreate && <button type="button" className="btn btn-primary" onClick={() => openCreate()}>Cadastrar primeiro agendamento</button>} />
         )}
 
       {!isLoading &&

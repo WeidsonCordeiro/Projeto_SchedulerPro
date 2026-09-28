@@ -32,7 +32,7 @@ export default function DashboardAppointments({
   emptyMessage,
 }: Props) {
   return (
-    <div className="card mb-4">
+    <div className="card dashboard-agenda-card mb-4">
       <div className="card-header">
         <h2 className="h6 mb-0">{title}</h2>
       </div>

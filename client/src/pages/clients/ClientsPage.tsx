@@ -7,6 +7,8 @@ import SetClientCredentialsModal from "../../components/clients/SetClientCredent
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
 import type { Client, ClientPortalAccess } from "../../types/client";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
   if (!portalAccess.exists) {
@@ -106,19 +108,16 @@ export default function ClientsPage() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h3 mb-0">Clientes</h1>
-        {canCreate && (
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            Novo cliente
-          </button>
-        )}
-      </div>
+      <PageHeader title="Clientes" description="Gerencie os clientes e o acesso ao portal." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo cliente</button>} />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
           {successMessage}
         </div>
+      )}
+
+      {!isLoading && !loadError && clients.length > 0 && (
+        <div className="list-intro mb-3"><span className="list-intro-number">{clients.length}</span><span>clientes na sua base</span></div>
       )}
 
       {isLoading && (
@@ -145,20 +144,7 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum cliente cadastrado.</p>
-            {canCreate && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={openCreate}
-              >
-                Cadastrar primeiro cliente
-              </button>
-            )}
-          </div>
-        </div>
+        <EmptyState title="Nenhum cliente cadastrado." description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro cliente</button>} />
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (

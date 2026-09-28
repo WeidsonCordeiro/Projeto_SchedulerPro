@@ -7,9 +7,15 @@ import { getEmployeeAbilities } from "../../config/employeePermissions";
 import { useAppSelector } from "../../store";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("pt-PT");
+}
+
+function initials(name: string): string {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
 const ROLE_BADGE_CLASS: Record<Role, string> = {
@@ -129,17 +135,12 @@ export default function EmployeesPage() {
   }
 
   const actionsVisible = canEdit || canActivate || canDeactivate || canDelete;
+  const activeCount = employees.filter((employee) => employee.isActive !== false).length;
+  const managerCount = employees.filter((employee) => employee.role === "MANAGER").length;
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h3 mb-0">Funcionários</h1>
-        {canCreate && (
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            Novo funcionário
-          </button>
-        )}
-      </div>
+      <PageHeader title="Funcionários" description="Organize a equipa e as permissões de acesso ao sistema." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo funcionário</button>} />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -150,6 +151,14 @@ export default function EmployeesPage() {
       {actionError && (
         <div className="alert alert-danger" role="alert">
           {actionError}
+        </div>
+      )}
+
+      {!isLoading && !loadError && employees.length > 0 && (
+        <div className="insight-strip mb-4" aria-label="Resumo da equipa">
+          <div><span>Total da equipa</span><strong>{employees.length}</strong></div>
+          <div><span>Ativos</span><strong>{activeCount}</strong></div>
+          <div><span>Managers</span><strong>{managerCount}</strong></div>
         </div>
       )}
 
@@ -177,20 +186,7 @@ export default function EmployeesPage() {
       )}
 
       {!isLoading && !loadError && employees.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum funcionário cadastrado.</p>
-            {canCreate && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={openCreate}
-              >
-                Cadastrar primeiro funcionário
-              </button>
-            )}
-          </div>
-        </div>
+        <EmptyState title="Nenhum funcionário cadastrado." description="Você ainda não possui funcionários. Adicione a equipa que participa dos seus agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro funcionário</button>} />
       )}
 
       {!isLoading && !loadError && employees.length > 0 && (
@@ -210,18 +206,9 @@ export default function EmployeesPage() {
                 const isSelf = employee.id === currentUser?.id;
                 return (
                   <tr key={employee.id}>
-                    <td>
-                      {employee.name}
-                      {isSelf && (
-                        <span className="small text-muted"> (você)</span>
-                      )}
-                    </td>
+                    <td><div className="person-cell"><span className="person-avatar">{initials(employee.name)}</span><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="small text-muted">Você</span>}<small className="d-block text-muted">{employee.email}</small></span></div></td>
                     <td>{employee.email}</td>
-                    <td>
-                      <span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>
-                        {employee.role}
-                      </span>
-                    </td>
+                    <td><span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>{employee.role}</span><span className={`d-block small mt-1 ${employee.isActive === false ? "text-muted" : "text-success"}`}>{employee.isActive === false ? "Inativo" : "Ativo"}</span></td>
                     <td>{formatDate(employee.createdAt)}</td>
                     {actionsVisible && (
                       <td>

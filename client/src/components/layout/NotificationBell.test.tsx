@@ -354,4 +354,43 @@ describe("NotificationBell", () => {
       ).not.toBeInTheDocument();
     });
   });
+
+  it("fecha o dropdown com a tecla Escape", async () => {
+    renderBell();
+
+    fireEvent.click(screen.getByRole("button", { name: /notificações/i }));
+
+    expect(
+      await screen.findByText("Sem notificações."),
+    ).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Sem notificações."),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("mantém o dropdown dentro da largura disponível com textos longos", async () => {
+    const longMessage =
+      "Agendamento de Maria Silva Albuquerque randomised para amanhã às 18:00 na unidade de Alfama com a profissional Ana Beatriz.";
+    vi.mocked(notificationsApi.getNotifications).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [notification({ message: longMessage })],
+    });
+
+    renderBell();
+
+    fireEvent.click(screen.getByRole("button", { name: /notificações/i }));
+
+    const message = await screen.findByText(longMessage);
+    expect(message).toHaveClass("notification-item-message");
+    expect(message.closest(".notification-item")).toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: /notificações/i }),
+    ).toHaveClass("notification-menu");
+  });
 });

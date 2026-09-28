@@ -91,7 +91,7 @@ describe("PortalAppointmentsPage", () => {
     renderPage();
 
     expect(
-      await screen.findByText("Nenhum agendamento encontrado."),
+      await screen.findByText("Nenhum agendamento encontrado"),
     ).toBeInTheDocument();
   });
 

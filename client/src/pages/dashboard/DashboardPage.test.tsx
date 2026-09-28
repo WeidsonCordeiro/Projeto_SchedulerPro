@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "./DashboardPage";
 import appointmentsApi from "../../api/endpoints/appointments.api";
@@ -126,7 +127,9 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
 function renderDashboard(role: Role | null = "OWNER", timezone?: string) {
   return render(
     <Provider store={makeStore(role, timezone)}>
-      <DashboardPage />
+      <MemoryRouter>
+        <DashboardPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -208,7 +211,7 @@ describe("DashboardPage", () => {
       await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/olá, owner teste/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Resumo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
 
     expect(cardValues()).toEqual(["1", "2", "1", "1", "1", "1"]);
 
@@ -280,7 +283,7 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByText(/não foi possível carregar alguns nomes/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Resumo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
     expect(screen.queryByText("Maria Silva")).not.toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
@@ -289,7 +292,7 @@ describe("DashboardPage", () => {
     mockData([makeAppointment()]);
     renderDashboard("MANAGER");
 
-    expect(await screen.findByRole("heading", { name: "Resumo" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
     expect(employeesApi.getEmployees).not.toHaveBeenCalled();
     expect(screen.queryByText("Funcionários")).not.toBeInTheDocument();
   });

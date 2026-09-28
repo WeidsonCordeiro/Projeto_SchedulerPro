@@ -140,20 +140,24 @@ export default function AvailabilityExceptionsSection({
         {!isLoading &&
           !loadError &&
           exceptions.length > 0 && (
-            <ul className="list-group">
+            <ul className="exception-timeline list-unstyled mb-0">
               {exceptions.map((exception) => (
                 <li
                   key={exception.id}
-                  className="list-group-item d-flex justify-content-between align-items-center"
+                  className="exception-item d-flex justify-content-between align-items-center"
                 >
                   <div>
-                    <div className="fw-semibold">
-                      {formatExceptionDate(exception.date)}
+                    <div className="exception-date">
+                      <span className="exception-date-day">{formatExceptionDate(exception.date).split(" ")[0]}</span>
+                      <span className="exception-date-text">{formatExceptionDate(exception.date).split(" ").slice(1).join(" ")}</span>
+                    </div>
+                    <div className="fw-semibold exception-title">
+                      {exception.reason || "Bloqueio de agenda"}
                       <span className="badge text-bg-secondary ms-2">
                         {EXCEPTION_TYPE_LABELS[exception.type] ?? exception.type}
                       </span>
                     </div>
-                    <div className="small text-muted">
+                    <div className="small text-muted exception-period">
                       {exception.allDay ? "Dia inteiro" : formatExceptionPeriod(exception)}
                       {exception.reason ? ` — ${exception.reason}` : ""}
                     </div>

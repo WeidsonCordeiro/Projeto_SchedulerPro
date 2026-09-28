@@ -6,6 +6,8 @@ import DeleteServiceModal from "../../components/services/DeleteServiceModal";
 import { getServiceAbilities } from "../../config/servicePermissions";
 import { useAppSelector } from "../../store";
 import type { Service } from "../../types/service";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 function formatPrice(price: number): string {
   return price.toLocaleString("pt-PT", {
@@ -103,14 +105,7 @@ export default function ServicesPage() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h3 mb-0">Serviços</h1>
-        {canCreate && (
-          <button type="button" className="btn btn-primary" onClick={openCreate}>
-            Novo serviço
-          </button>
-        )}
-      </div>
+      <PageHeader title="Serviços" description="Defina os serviços, durações e preços oferecidos pela empresa." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo serviço</button>} />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -122,6 +117,10 @@ export default function ServicesPage() {
         <div className="alert alert-danger" role="alert">
           {actionError}
         </div>
+      )}
+
+      {!isLoading && !loadError && services.length > 0 && (
+        <div className="service-summary mb-3"><span><strong>{services.filter((service) => service.isActive).length}</strong> serviços ativos</span><span><strong>{services.length}</strong> no catálogo</span></div>
       )}
 
       {isLoading && (
@@ -148,20 +147,7 @@ export default function ServicesPage() {
       )}
 
       {!isLoading && !loadError && services.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum serviço cadastrado.</p>
-            {canCreate && (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={openCreate}
-              >
-                Cadastrar primeiro serviço
-              </button>
-            )}
-          </div>
-        </div>
+        <EmptyState title="Nenhum serviço cadastrado." description="Você ainda não possui serviços. Cadastre os serviços oferecidos para agilizar novos agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro serviço</button>} />
       )}
 
       {!isLoading && !loadError && services.length > 0 && (

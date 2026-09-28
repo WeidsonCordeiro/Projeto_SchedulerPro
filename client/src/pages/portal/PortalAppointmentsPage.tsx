@@ -11,6 +11,8 @@ import {
   formatAppointmentTime,
 } from "../../config/appointmentTime";
 import type { PortalAppointment } from "../../types/appointment";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 
 type Filter = "all" | "upcoming" | "past";
 
@@ -60,9 +62,7 @@ export default function PortalAppointmentsPage() {
 
   return (
     <section>
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 className="h3 mb-0">Meus agendamentos</h1>
-        <div className="btn-group" role="group" aria-label="Filtrar agendamentos">
+      <PageHeader title="Meus agendamentos" description="Consulte os seus próximos atendimentos e o histórico." actions={<div className="btn-group" role="group" aria-label="Filtrar agendamentos">
           <button
             type="button"
             className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-outline-primary"}`}
@@ -84,8 +84,7 @@ export default function PortalAppointmentsPage() {
           >
             Passados
           </button>
-        </div>
-      </div>
+        </div>} />
 
       {isLoading && (
         <div className="d-flex justify-content-center py-5">
@@ -111,11 +110,7 @@ export default function PortalAppointmentsPage() {
       )}
 
       {!isLoading && !loadError && visibleAppointments.length === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-0 text-muted">Nenhum agendamento encontrado.</p>
-          </div>
-        </div>
+        <EmptyState title="Nenhum agendamento encontrado" description="Quando tiver um atendimento marcado, ele aparecerá aqui." />
       )}
 
       {!isLoading && !loadError && visibleAppointments.length > 0 && (

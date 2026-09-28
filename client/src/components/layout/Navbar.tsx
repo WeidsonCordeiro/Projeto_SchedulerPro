@@ -9,7 +9,13 @@ import {
 import { clearCompany } from "../../store/slices/companySlice";
 import NotificationBell from "./NotificationBell";
 
-export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
+export default function Navbar({
+  onToggleSidebar,
+  isSidebarOpen = false,
+}: {
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+}) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { user, isLoading } = useAppSelector((state) => state.auth);
@@ -29,33 +35,34 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => vo
   }
 
   return (
-    <nav className="navbar navbar-dark bg-dark navbar-expand">
-      <div className="container-fluid">
-        <div className="d-flex align-items-center gap-2">
+    <nav className="navbar navbar-dark navbar-expand app-navbar">
+      <div className="container-fluid min-w-0">
+        <div className="d-flex align-items-center flex-shrink-0 gap-2">
           {onToggleSidebar && (
             <button
               type="button"
-              className="btn btn-outline-light btn-sm d-lg-none"
+              className="btn btn-outline-light btn-sm d-lg-none flex-shrink-0"
               aria-label="Abrir menu"
+              aria-expanded={isSidebarOpen}
               onClick={onToggleSidebar}
             >
-              Menu
+              <span aria-hidden="true">☰</span><span className="visually-hidden">Abrir menu</span>
             </button>
           )}
           <span className="navbar-brand mb-0 h1">SchedulerPro</span>
         </div>
         {user && (
-          <div className="d-flex align-items-center gap-3">
+          <div className="d-flex align-items-center gap-2 gap-md-3 ms-auto min-w-0">
             <NotificationBell />
-            <div className="text-end">
-              <div className="navbar-text text-light m-0">{user.name}</div>
-              <div className="navbar-text text-secondary text-uppercase small m-0">
+            <div className="text-end user-summary">
+              <div className="navbar-text user-name m-0">{user.name}</div>
+              <div className="navbar-text user-role text-uppercase small m-0">
                 {user.role}
               </div>
             </div>
             <button
               type="button"
-              className="btn btn-outline-light btn-sm"
+              className="btn btn-outline-light btn-sm flex-shrink-0"
               onClick={handleLogout}
               disabled={isLoading}
             >
@@ -66,7 +73,7 @@ export default function Navbar({ onToggleSidebar }: { onToggleSidebar?: () => vo
                   aria-hidden="true"
                 />
               )}
-              Logout
+              <span>Logout</span>
             </button>
           </div>
         )}

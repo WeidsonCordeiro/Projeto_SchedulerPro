@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import EmployeesPage from "./EmployeesPage";
 import employeesApi from "../../api/endpoints/employees.api";
@@ -53,7 +54,9 @@ function makeStore(role: Role = "OWNER") {
 function renderPage(store = makeStore()) {
   return render(
     <Provider store={store}>
-      <EmployeesPage />
+      <MemoryRouter>
+        <EmployeesPage />
+      </MemoryRouter>
     </Provider>,
   );
 }
@@ -127,9 +130,9 @@ describe("EmployeesPage", () => {
 
     const table = await screen.findByRole("table");
     expect(within(table).getByText("Ana Silva")).toBeInTheDocument();
-    expect(within(table).getByText("ana@example.com")).toBeInTheDocument();
+    expect(within(table).getAllByText("ana@example.com").length).toBeGreaterThan(0);
     expect(within(table).getByText("Bruno Lima")).toBeInTheDocument();
-    expect(within(table).getByText("bruno@example.com")).toBeInTheDocument();
+    expect(within(table).getAllByText("bruno@example.com").length).toBeGreaterThan(0);
     expect(within(table).getByText("EMPLOYEE")).toBeInTheDocument();
     expect(within(table).getByText("MANAGER")).toBeInTheDocument();
     expect(
@@ -480,7 +483,7 @@ describe("EmployeesPage", () => {
 
     const table = await screen.findByRole("table");
     const selfRow = within(table).getByText("Owner Teste").closest("tr");
-    expect(selfRow?.textContent).toContain("você");
+    expect(selfRow?.textContent?.toLowerCase()).toContain("você");
     expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /desativar/i }),
