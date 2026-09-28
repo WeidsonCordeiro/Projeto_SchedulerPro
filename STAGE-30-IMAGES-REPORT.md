@@ -312,55 +312,309 @@ await userService.updateAvatar(req.params.id, image);   // { url, publicId }
 
 ---
 
+## PARTE 2 — FOTOS DOS FUNCIONÁRIOS
+
+**Data:** 28/09/2026
+**Âmbito:** Backend. Integração da infraestrutura de imagens no domínio de
+funcionários (User com `Role.EMPLOYEE`).
+**Estado:** Concluído e validado.
+
+### Objetivo
+
+Tornar a API de funcionários capaz de enviar, substituir e remover a foto,
+guardando sempre o contrato `{ url, publicId }`, nunca uma string avulsa.
+Funcionário não tem model próprio: a foto é armazenada no próprio `User`.
+
+Não implementou: foto de clientes, logo da empresa, frontend, placeholder,
+geração de imagem por defeito, limpeza de órfãos, alteração de RBAC/autenticação.
+
+### Arquitetura utilizada
+
+```
+POST /users/:id/photo   (multipart, campo "photo")
+  -> AuthMiddleware.authenticate
+  -> validateObjectId("id")
+  -> PasswordChangeMiddleware.requirePasswordChangeCompleted
+  -> hasPermission(Permission.USER_UPDATE)
+  -> uploadSingleImage("photo")          (multer.memoryStorage + 5 MB)
+  -> UserController.uploadPhoto
+    -> UserService.updatePhoto
+      -> UserRepository.findById            (filtra deletedAt: null)
+      -> Valida tenant (companyId) e role (EMPLOYEE)
+      -> imageProvider.replace({ file, entity: EMPLOYEE, previous })
+      -> UserRepository.update({ avatar })
+
+DELETE /users/:id/photo
+  -> mesmos middlewares (sem uploadSingleImage)
+  -> UserService.removePhoto
+    -> valida tenant/role
+    -> se não há foto: retorna (idempotente, sem storage)
+    -> imageProvider.remove({ image })
+    -> UserRepository.update({ avatar: null })
+```
+
+O Cloudinary continua acessível **apenas** através do `imageProvider`; nenhuma
+camada fora dele importa o SDK. O controller é uma fachada fina — toda a regra
+está no serviço.
+
+### Alteração de `User.avatar`
+
+| Antes | Depois |
+| --- | --- |
+| `avatar?: string \| null` | `avatar?: StoredImage \| null` |
+
+```ts
+interface StoredImage { url: string; publicId: string; }
+```
+
+- No schema foi criado um sub-objecto (`new Schema<StoredImage>`) com `url` e
+  `publicId` obrigatórios e `_id: false`; o campo continua `default: null`.
+- `users/types.ts` (`CreateUserData`) e `auth/types.ts` (`AuthUser`) também
+  passaram a usar `StoredImage`.
+- A migração de dados foi **avaliada e não é necessária**: neste ambiente não
+  existem documentos com `avatar` preenchido (greps por `avatar` não
+  encontraram dados/fixtures em código nem em testes). O sub-documento passa a
+  ser gravado pelo Mongoose de forma natural. Não foi criada migração complexa.
+- O `auth/mapper/AuthMapper.ts` e `auth/services/AuthService.ts` (endpoint
+  `/auth/me`) passam o objeto sem outra alteração necessária — o tipo agora é
+  `StoredImage | null`.
+
+### `avatar` removido do `PUT /users/:id` (decisão)
+
+O `UpdateUserDto` e o `update-user.validator` **deixaram de aceitar `avatar`**.
+
+Motivo: aceitar uma URL avulsa permitiria gravar uma imagem sem `publicId`
+(impossível de remover do storage) e apontar a foto para um domínio externo.
+Só existe **um caminho** para alterar a foto: os endpoints de foto, via
+`imageProvider`. O campo é ignorado no `PUT` de forma silenciosa e intencional.
+
+### Endpoints criados
+
+| Método | Rota | Permission | Resposta de sucesso |
+| --- | --- | --- | --- |
+| `POST` | `/api/users/:id/photo` | `USER_UPDATE` | 200 com o utilizador; `avatar` = `{ url, publicId }` |
+| `DELETE` | `/api/users/:id/photo` | `USER_UPDATE` | 200 com o utilizador; `avatar` = `null` |
+
+O prefixo `/api/users` segue o registo central (`routes/index.ts`). Usou-se a
+convenção de sub-recursos do módulo (`/:id/activate`, `/:id/deactivate`).
+
+### Permissions utilizadas
+
+- Apenas `Permission.USER_UPDATE`, a mesma já usada em `PUT /users/:id`.
+- **Nenhuma permission nova foi criada** e a matriz de `rbac.ts` **não foi
+  alterada**. `MANAGER -> USER_READ` mantém-se intacta.
+- Consequência direta (testada): OWNER e ADMIN enviarem/removerem foto;
+  MANAGER, EMPLOYEE e CLIENT recebem **403**. Isto significa que um MANAGER
+  não consegue trocar a própria foto — decisão deliberada e documentada, que
+  só muda se a matriz de RBAC for revista numa etapa futura.
+
+### Regras de tenant
+
+O recurso nunca é identificado só por `:id`:
+
+```ts
+const user = await userRepository.findById(id);      // deletedAt: null
+if (user.companyId.toString() !== companyId) 403;    // tenant
+if (user.role !== Role.EMPLOYEE)              403;    // só funcionário
+```
+
+- Erros de tenant e de perfil são os dois **403** (não revelam se o registo
+  existe). Funcionário inexistente (ou soft-deleted, que o repository nunca
+  devolve) é **404**.
+- `companyId` vem de `req.user.companyId` (token), nunca do corpo/pedido.
+
+### Comportamento de upload/substituição
+
+- **Primeira foto**: `imageProvider.replace({ ..., previous: null })` — não há
+  `destroy`, só upload.
+- **Substituição**: o serviço entrega `previous` = imagem atual; o provider
+  valida o ficheiro **antes** de destruir a anterior (regra da Parte 1). O
+  serviço **não** implementa remove+upload à mão.
+- Persistência: `UserRepository.update(id, { avatar })` com o novo
+  `{ url, publicId }`. O `publicId` antigo é descartado (deixa de existir no
+  storage).
+- Se o provider falhar → 400/500 conforme a Parte 1, **nada é gravado** e a
+  imagem atual permanece.
+- Corrida rara "storage gravou mas Mongo não" → 404 + log `orphanPublicId`
+  (a imagem foi enviada mas não associada ao registo).
+
+### Comportamento de remove
+
+- Remove no storage (`imageProvider.remove`) e só depois persiste
+  `avatar: null`. **Nunca** se apaga só o campo deixando o recurso no
+  Cloudinary.
+- Idempotente: funcionário sem foto devolve o utilizador sem tocar no
+  storage nem no MongoDB.
+- Se o `remove` do storage falhar, o campo do MongoDB **não** é apagado (a
+  referência continua válida; pode-se tentar de novo).
+- Corrida rara "storage removeu mas Mongo não" → 404 + log `stalePublicId`.
+
+### Funcionário sem foto
+
+`avatar: null` na base de dados; resposta `avatar: null`. Nenhum ficheiro por
+defeito é copiado para o Cloudinary.
+
+### Funcionário eliminado (soft delete)
+
+O `UserService.delete` **não** remove a imagem do Cloudinary, por duas razões
+combinadas e documentadas:
+
+1. O sistema tem restauro (repo `updateIncludingDeleted` usado para
+   restaurar contas); apagar a imagem no soft-delete destruiria de forma
+   permanente a foto de um funcionário que pode voltar.
+2. O `softDelete` é uma operação única do MongoDB, sem transação: adicionar
+   uma chamada de rede ao meio introduziria um estado inconsistente sem
+   rollback.
+
+A fotada dos utilizadores eliminados permanece no storage até uma futura
+rotina global de limpeza — que continua conscientemente fora do âmbito.
+A imagem de um funcionário eliminado só é apagada se a entidade for
+reativada e o `removePhoto` for executado.
+
+### Testes
+
+3 novos ficheiros, **40 novos testes** (a suíte toda passou de 542 para 582):
+
+| Ficheiro | Cobre |
+| --- | --- |
+| `tests/unit/users/UserService.photo.test.ts` (22) | primeiro upload, substituição, tenant, perfis não-EMPLOYEE, inexistente, erro do provider sem persistir, validação que não apaga a anterior, remove com/sem foto, remove com erro do provider, corridas "Mongo não gravou" |
+| `tests/unit/users/user-photo.routes.test.ts` (13) | cadeia real de middlewares: OWNER/ADMIN permitidos, MANAGER/EMPLOYEE/CLIENT 403, `:id` inválido 400, ficheiro >5 MB 400, sem ficheiro 400, campo inesperado 400, ficheiro entregue em memória com a company do token, erro do serviço propagado |
+| `tests/unit/users/UserMapper.avatar.test.ts` (5) | `avatar` object/null, exposição apenas de `url` e `publicId` (projeção explícita), `passwordHash` nunca exposta |
+
+O mock `UserController` do teste integração
+`tests/integration/users/create-user.route.test.ts` foi atualizado com os dois
+handlers novos (necessário para o router registar as rotas — regressão evitada).
+
+O `imageProvider` é 100% mockado; nenhum teste usa Cloudinary real.
+
+### Coverage, typecheck e build
+
+| Item | Resultado |
+| --- | --- |
+| `npx tsc --noEmit` | **Passou**, 0 erros |
+| `npm run build` | **Passou** |
+| `npx vitest run` | **54 ficheiros, 582/582 passaram** (nenhuma regressão) |
+| `UserService.ts` | Statements 66.37% / Branches 56.45% (subiu de 63.39%/53.22%); os ramos da foto estão cobertos; os ramos descobertos são métodos pré-existentes (activate/deactivate/changePassword) |
+| Total da suíte | Statements 77.42% / Branches 75.7% / Lines 77.62% (subiu face aos 76.91% da Parte 1) |
+
+### Arquivos alterados
+
+| Ficheiro | Alteração |
+| --- | --- |
+| `src/modules/users/models/User.model.ts` | `avatar: StoredImage \| null` + sub-schema |
+| `src/modules/users/types.ts` | `CreateUserData.avatar: StoredImage \| null` |
+| `src/modules/auth/types.ts` | `AuthUser.avatar: StoredImage \| null` |
+| `src/modules/users/dto/UpdateUser.dto.ts` | removido `avatar` |
+| `src/modules/users/validators/update-user.validator.ts` | removida regra de `avatar` |
+| `src/modules/users/mappers/UserMapper.ts` | expõe `avatar` projetado (`{url, publicId}`/null) |
+| `src/modules/users/services/UserService.ts` | `updatePhoto`, `removePhoto`, `findEmployeeForPhoto` |
+| `src/modules/users/controllers/UserController.ts` | `uploadPhoto`, `removePhoto` |
+| `src/modules/users/routes/UserRoutes.ts` | `POST`/`DELETE /:id/photo` |
+| `src/constants/http-messages.ts` | `EMPLOYEE_PHOTO_UPDATED`, `EMPLOYEE_PHOTO_REMOVED`, `USER_NOT_EMPLOYEE` |
+| `tests/integration/users/create-user.route.test.ts` | mock do controller com handlers novos |
+
+### Limitações e decisões técnicas
+
+- **MANAGER não envia foto** (só `USER_READ` na matriz). Deliberado.
+- **A operação exige `Role.EMPLOYEE`** no alvo, mesmo que o autor seja
+  ADMIN/OWNER. Logo, o ADMIN hoje não consegue trocar a própria foto. Decisão
+  literal da especificação; se o domínio exigir "staff", a condição terá de
+  ser revista numa etapa própria.
+- Não há transação entre Cloudinary e MongoDB; os dois ramos de corrida são
+  registados em log (`orphanPublicId` / `stalePublicId`) para observabilidade.
+- Foto de utilizador soft-deleted não é apagada automaticamente.
+- O `publicId` é devolvido ao cliente junto com a `url`. É necessário para o
+  próximo controlo; não expõe metadados internos do storage.
+
+---
+
 ## CONTEXTO PARA A PRÓXIMA IA
 
-### Onde está o que foi feito
+### `User.avatar` a partir desta etapa
 
-- Provider (não importar SDK fora daqui): `server/src/providers/images/CloudinaryImageProvider.ts`
-- Contrato: `server/src/providers/images/ImageProvider.ts` e `types.ts`
-- Validação pura: `server/src/providers/images/imageValidation.ts`
-- Receção do ficheiro: `server/src/providers/images/imageUpload.middleware.ts`
-- Testes: `server/tests/unit/providers/images/`
-- Sem alterações no frontend, nos modelos e nas rotas.
+```ts
+avatar?: { url: string; publicId: string } | null;
+```
 
-### Como usar
+- O sub-documento tem `_id: false` e `default: null`; os dois campos são
+  obrigatórios dentro do objeto.
+- Foi removido de `UpdateUserDto`/`update-user.validator`: o `PUT /users/:id`
+  **ignora avatar**. A foto só muda pelos endpoints de foto.
+- A API devolve sempre object ou `null` através de `UserMapper`, que projeta
+  apenas `url` e `publicId` (nada de bytes/versão/assinatura do storage).
+- `/auth/me` e o `AuthMapper` já recebem o novo contrato.
 
-`imageProvider` é uma instância única (default export) com três operações:
+### Endpoints existentes
 
-| Operação | Assinatura | Comportamento |
-| --- | --- | --- |
-| `upload` | `({ file, entity }) => Promise<StoredImage>` | Valida, envia, devolve `{url, publicId}` |
-| `remove` | `({ image }) => Promise<void>` | Idempotente; `not found` = sucesso |
-| `replace` | `({ file, entity, previous }) => Promise<StoredImage>` | `previous: null` = primeiro upload |
+- `POST /api/users/:id/photo` — envio/substituição (`multipart`, campo
+  `photo`). Utilizador atualizado com o novo avatar.
+- `DELETE /api/users/:id/photo` — remoção (idempotente). Avatar passa a `null`.
 
-Todas lançam `AppError`. A validação corre **sempre** antes da rede, em todas
-as três. `entity` só escolhe a pasta (`schedulerpro/employee`,
-`/client`, `/company`).
+### Como fazer upload
 
-### Regras que não devem ser invertidas
+```ts
+// multipart/form-data, campo "photo", max 5 MB, JPEG/PNG/WebP
+// O ficheiro passa por uploadSingleImage("photo") -> controller -> serviço.
+await UserService.updatePhoto(id, file, companyId);
+```
 
-1. **Nenhum controller, rota ou model importa `cloudinary`.** Passam sempre
-   pelo `imageProvider`.
-2. **Validar antes de destruir** (o `replace` já faz; não reordenar).
-3. **Nunca confiar no MIME declarado** — a assinatura binária é a fonte.
-4. **`remove` é idempotente**; não converter `not found` em erro.
-5. **Entidade sem imagem = `null`**, sem ficheiro por defeito no storage.
-6. **Credenciais continuam opcionais** em `validateEnv()`; a falta delas é um
-   500 de configuração, detectado na operação, não na arranque.
-7. **Limite de 5 MB** em `IMAGE_LIMITS.MAX_FILE_SIZE_BYTES`; mudar o valor
-   muda o `HttpMessages.IMAGE_FILE_TOO_LARGE` e vice-versa (estão alinhados
-   manualmente, ambos em 5 MB).
+Internamente `UserService.updatePhoto` chama:
 
-### Decisões em aberto para a próxima etapa
+```ts
+imageProvider.replace({ file, entity: ImageEntity.EMPLOYEE, previous: user.avatar ?? null });
+```
 
-1. **Persistência:** substituir `User.avatar` por `StoredImage` (com migração)
-   ou adicionar `avatarPublicId` ao lado do `String` atual. Ver secção 8.
-2. **Entidades reais:** `company.logo` ainda não existe; `Client` também não
-   tem imagem. Definir os campos e as rotas.
-3. **RBAC por operação:** `USER_UPDATE` para employees/clients e o que usar
-   para o logótipo da empresa. `MANAGER -> USER_READ` não muda.
-4. **Derivadas:** decidir se o upload guarda o original ou já uma versão
-   redimensionada (`f_auto`, `q_auto`) para a listagem de funcionários.
-5. **Limpeza:** rotina para `orphanPublicId` e para as imagens de entidades
-   eliminadas.
-6. **Frontend:** placeholder/iniciais para `null`. Fora do âmbito desta parte.
+Nunca duplicar remove+upload: o `replace` já valida, remove e envia.
+
+### Como remover
+
+```ts
+await UserService.removePhoto(id, companyId);
+// sem foto -> retorna utilizador, sem tocar no storage
+// com foto -> imageProvider.remove({ image }) + persist avatar: null
+```
+
+### Permissions necessárias
+
+- `USER_UPDATE` (existe; não criar outra). OWNER e ADMIN a têm; MANAGER **não**.
+- Nenhuma alteração em `rbac.ts`, `roles.ts`, `permissions.ts`.
+- `MANAGER -> USER_READ` intocada.
+
+### Como o tenant é validado
+
+```
+findById(id)  -> filtra deletedAt: null
+companyId do token  != user.companyId  -> 403
+user.role !== EMPLOYEE                  -> 403
+```
+
+Nunca confiar no `:id` sozinho. O `companyId` vem do `req.user` (token).
+
+### Integração futura com Clientes
+
+O padrão repete-se por inteiro:
+
+1. `Client` ganha um campo `avatar?: StoredImage | null` (ou similar).
+2. Endpoints `POST/DELETE /clients/:id/photo` com os mesmos middlewares.
+3. `UserService`/router: no caso CLIENT convém decidir se a foto vive no
+   `Client` ou no `User` com `role CLIENT` — o `UserMapper`/`AuthUser` já
+   suporta `StoredImage`.
+4. `ImageEntity.CLIENT` já existe no provider (pasta `schedulerpro/client`).
+5. Replicar os testes de tenant/RBAC com a matriz de CLIENT (`CLIENT_UPDATE`).
+
+### Decisões que NÃO devem ser alteradas
+
+1. `StoredImage` é o único formato persistido de imagem. Sem `publicId`, a
+   imagem não pode ser removida.
+2. Nenhuma camada fora de `providers/images/CloudinaryImageProvider.ts`
+   importa o SDK do Cloudinary.
+3. `replace` valida a nova **antes** de destruir a anterior.
+4. `remove` é idempotente; `not found` não é erro.
+5. Foto só entra por `imageProvider`; o `PUT /users/:id` não aceita avatar.
+6. Soft-delete não apaga a imagem (existe restauro e não há transação).
+7. Entidade sem imagem = `null`, sem ficheiro por defeito no storage.
+8. Credenciais Cloudinary continuam opcionais; ausência delas é 500 na
+   operação, detectado pelo provider.
+9. O `publicId` é devolvido no contrato da API (necessário ao cliente), mas
+   nenhum outro metadado do storage é exposto.
+10. A matriz RBAC atual não muda por causa desta funcionalidade.

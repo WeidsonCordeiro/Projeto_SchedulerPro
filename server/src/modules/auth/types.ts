@@ -15,6 +15,7 @@
 
 import { Role } from "../../constants/roles";
 import { AuthTokens } from "../../providers/security/types";
+import type { StoredImage } from "../../providers/images/types";
 
 /**
  * ==========================================================
@@ -25,7 +26,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  avatar?: string | null;
+  avatar?: StoredImage | null;
   role: Role;
   companyId: string;
   isActive: boolean;

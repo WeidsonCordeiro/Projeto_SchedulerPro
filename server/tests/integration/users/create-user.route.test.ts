@@ -36,6 +36,13 @@ vi.mock("../../../src/modules/users/controllers/UserController", () => ({
     activate: (_req: express.Request, res: express.Response) => res.json({}),
     deactivate: (_req: express.Request, res: express.Response) => res.json({}),
     changePassword: (_req: express.Request, res: express.Response) => res.json({}),
+    /**
+     * Handlers das rotas de foto (POST/DELETE /:id/photo).
+     * O registo das rotas exige que todos os handlers
+     * referenciados existam, mesmo neste teste.
+     */
+    uploadPhoto: (_req: express.Request, res: express.Response) => res.json({}),
+    removePhoto: (_req: express.Request, res: express.Response) => res.json({}),
   },
 }));
 

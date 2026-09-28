@@ -16,6 +16,8 @@ import UserService from "../services/UserService";
 import { ResponseHandler } from "../../../utils/response";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
+import { AppError } from "../../../errors/AppError";
+import { IMAGE_LIMITS } from "../../../providers/images/types";
 
 class UserController {
   /**
@@ -119,13 +121,68 @@ class UserController {
 
   /**
    * ==========================================================
-   * Atualiza a senha de um utilizador.
+   * Atualiza a senha de um usuário.
    * ==========================================================
    */
   public async changePassword(req: Request, res: Response): Promise<Response> {
     await UserService.changePassword(req.user!.userId, req.body);
 
     return ResponseHandler.success(res, null, HttpMessages.PASSWORD_CHANGED);
+  }
+
+  /**
+   * ==========================================================
+   * Envia ou substitui a foto de um funcionário.
+   *
+   * O ficheiro já chega em memória e já limitado a 5 MB
+   * pelo `uploadSingleImage()`. A validação do formato real
+   * (assinatura binária) é feita pelo `imageProvider`, que é
+   * chamado exclusivamente pelo serviço.
+   * ==========================================================
+   */
+  public async uploadPhoto(req: Request, res: Response) {
+    if (!req.file) {
+      /**
+       * Rede de segurança: o middleware aceita pedidos sem
+       * ficheiro para que a mensagem de erro seja sempre a
+       * mesma. A validação definitiva é a do provider.
+       */
+      throw new AppError(
+        HttpMessages.IMAGE_FILE_REQUIRED,
+        HttpStatus.BAD_REQUEST,
+        [{ field: IMAGE_LIMITS.FIELD, message: HttpMessages.IMAGE_FILE_REQUIRED }],
+      );
+    }
+
+    const user = await UserService.updatePhoto(
+      String(req.params.id),
+      req.file,
+      req.user!.companyId,
+    );
+
+    return ResponseHandler.success(
+      res,
+      user,
+      HttpMessages.EMPLOYEE_PHOTO_UPDATED,
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Remove a foto de um funcionário.
+   * ==========================================================
+   */
+  public async removePhoto(req: Request, res: Response) {
+    const user = await UserService.removePhoto(
+      String(req.params.id),
+      req.user!.companyId,
+    );
+
+    return ResponseHandler.success(
+      res,
+      user,
+      HttpMessages.EMPLOYEE_PHOTO_REMOVED,
+    );
   }
 }
 

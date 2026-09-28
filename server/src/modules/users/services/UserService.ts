@@ -28,6 +28,13 @@ import { env } from "../../../config/env";
 import { Role, canAssignRole } from "../../../constants/roles";
 import JwtProvider from "../../../providers/security/JwtProvider";
 import { TokenType } from "../../../constants/token-type";
+import type { UserDocument } from "../models/User.model";
+import imageProvider from "../../../providers/images/CloudinaryImageProvider";
+import {
+  ImageEntity,
+  type StoredImage,
+  type UploadedFile,
+} from "../../../providers/images/types";
 
 class UserService {
   private readonly userRepository = UserRepository;
@@ -35,6 +42,7 @@ class UserService {
   private readonly resendProvider = ResendProvider;
   private readonly companyRepository = CompanyRepository;
   private readonly jwtProvider = JwtProvider;
+  private readonly imageProvider = imageProvider;
 
   /**
    * ==========================================================
@@ -223,7 +231,11 @@ class UserService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.email !== undefined) updateData.email = dto.email;
     if (dto.role !== undefined) updateData.role = dto.role;
-    if (dto.avatar !== undefined) updateData.avatar = dto.avatar;
+    /**
+     * `avatar` é ignorado deliberadamente: a foto só muda
+     * através de updatePhoto()/removePhoto(), que passam
+     * pelo imageProvider.
+     */
 
     const updatedUser = await this.userRepository.update(id, updateData);
     return UserMapper.toResponse(updatedUser!);
@@ -236,6 +248,156 @@ class UserService {
         HttpStatus.FORBIDDEN,
       );
     }
+  }
+
+  /**
+   * ==========================================================
+   * Localiza um funcionário para uma operação de imagem.
+   *
+   * Aplica, pela ordem, as três barreiras:
+   *
+   * 1. existe e não está soft-deleted (o repository já
+   *    filtra por `deletedAt: null`);
+   * 2. pertence à empresa do utilizador autenticado
+   *    (tenant — nunca confiar apenas no `:id`);
+   * 3. tem mesmo o perfil EMPLOYEE.
+   *
+   * Erros de empresa e de perfil são ambos 403 para não
+   * revelar a existência do registo a terceiros.
+   * ==========================================================
+   */
+  private async findEmployeeForPhoto(
+    id: string,
+    companyId: string,
+  ): Promise<UserDocument> {
+    const user = await this.userRepository.findById(id);
+
+    if (!user) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (user.companyId.toString() !== companyId) {
+      throw new AppError(
+        HttpMessages.USER_NOT_PREVILEGES,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (user.role !== Role.EMPLOYEE) {
+      throw new AppError(
+        HttpMessages.USER_NOT_EMPLOYEE,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return user;
+  }
+
+  /**
+   * ==========================================================
+   * Atualiza a foto de um funcionário.
+   *
+   * Delega a substituição ao `imageProvider.replace()`, que
+   * valida o ficheiro novo ANTES de destruir o anterior e
+   * trata a primeira foto (quando `previous` é null).
+   *
+   * Não existe sequência manual remove+upload aqui: isso
+   * duplicaria a lógica da Parte 1.
+   * ==========================================================
+   */
+  public async updatePhoto(
+    id: string,
+    file: UploadedFile,
+    companyId: string,
+  ) {
+    const employee = await this.findEmployeeForPhoto(id, companyId);
+
+    const avatar = await this.imageProvider.replace({
+      file,
+      entity: ImageEntity.EMPLOYEE,
+      previous: employee.avatar ?? null,
+    });
+
+    const updatedUser = await this.userRepository.update(id, { avatar });
+
+    if (!updatedUser) {
+      /**
+       * A imagem já foi enviada para o storage mas não foi
+       * possível associá-la ao registo. O `publicId` fica
+       * registado no log para não se tornar um órfão
+       * silencioso.
+       */
+      Logger.error(
+        "Foto enviada mas utilizador não foi atualizado",
+        {
+          userId: id,
+          companyId,
+          orphanPublicId: avatar.publicId,
+        },
+      );
+
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    Logger.upload(`Foto do funcionário ${id} atualizada`, {
+      userId: id,
+      companyId,
+      publicId: avatar.publicId,
+    });
+
+    return UserMapper.toResponse(updatedUser);
+  }
+
+  /**
+   * ==========================================================
+   * Remove a foto de um funcionário.
+   *
+   * Idempotente: um funcionário sem foto é um estado
+   * válido, devolve o utilizador e não chama o storage.
+   * Nunca se limita a apagar o campo no MongoDB deixando o
+   * recurso no Cloudinary.
+   * ==========================================================
+   */
+  public async removePhoto(id: string, companyId: string) {
+    const employee = await this.findEmployeeForPhoto(id, companyId);
+
+    if (!employee.avatar) {
+      Logger.info(`Funcionário ${id} não possui foto para remover`, {
+        userId: id,
+        companyId,
+      });
+
+      return UserMapper.toResponse(employee);
+    }
+
+    const image: StoredImage = employee.avatar;
+
+    await this.imageProvider.remove({ image });
+
+    const updatedUser = await this.userRepository.update(id, { avatar: null });
+
+    if (!updatedUser) {
+      /**
+       * A imagem já saiu do storage, mas o campo do MongoDB
+       * continua a apontar para ela. Sem este log, a
+       * referência ficaria quebrada sem rasto.
+       */
+      Logger.error("Foto removida mas utilizador não foi atualizado", {
+        userId: id,
+        companyId,
+        stalePublicId: image.publicId,
+      });
+
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    Logger.upload(`Foto do funcionário ${id} removida`, {
+      userId: id,
+      companyId,
+      publicId: image.publicId,
+    });
+
+    return UserMapper.toResponse(updatedUser);
   }
 
   /**

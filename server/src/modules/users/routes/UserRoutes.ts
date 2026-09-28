@@ -20,6 +20,7 @@ import { changePasswordValidator } from "../validators/change-password.validator
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import { createUserValidator } from "../validators/create-user.validator";
+import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
 
 const router = Router();
 
@@ -86,6 +87,43 @@ router.patch(
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.USER_UPDATE),
   UserController.deactivate,
+);
+
+/**
+ * ==========================================================
+ * Foto do funcionário.
+ *
+ * Segue a convenção já existente no módulo (sub-recursos de
+ * `/:id`, como `activate` e `deactivate`).
+ *
+ * `USER_UPDATE` é a mesma permission usada em
+ * `PUT /:id`: não foi criada nenhuma permission nova e a
+ * matriz de RBAC não foi alterada (MANAGER continua sem
+ * USER_UPDATE).
+ *
+ * O `uploadSingleImage()` vem DEPOIS da autenticação e da
+ * autorização: um pedido não autorizado não deve conseguir
+ * consumir memória do processo com o corpo do pedido.
+ * ==========================================================
+ */
+
+router.post(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.USER_UPDATE),
+  uploadSingleImage("photo"),
+  UserController.uploadPhoto,
+);
+
+router.delete(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.USER_UPDATE),
+  UserController.removePhoto,
 );
 
 router.patch(

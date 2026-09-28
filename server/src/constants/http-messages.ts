@@ -161,6 +161,10 @@ export const HttpMessages = {
   IMAGE_UPLOADED: "Imagem enviada com sucesso.",
   IMAGE_UPDATED: "Imagem atualizada com sucesso.",
   IMAGE_REMOVED: "Imagem removida com sucesso.",
+  EMPLOYEE_PHOTO_UPDATED: "Foto do funcionário atualizada com sucesso.",
+  EMPLOYEE_PHOTO_REMOVED: "Foto do funcionário removida com sucesso.",
+  USER_NOT_EMPLOYEE:
+    "A operação só está disponível para o perfil de funcionário.",
   IMAGE_FILE_REQUIRED: "É necessário enviar um ficheiro de imagem.",
   IMAGE_FILE_EMPTY: "O ficheiro de imagem enviado está vazio.",
   IMAGE_FILE_TOO_LARGE: "A imagem excede o tamanho máximo de 5 MB.",

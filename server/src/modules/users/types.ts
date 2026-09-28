@@ -16,6 +16,7 @@
 
 import { Types } from "mongoose";
 import { Role } from "../../constants/roles";
+import type { StoredImage } from "../../providers/images/types";
 
 /**
  * Dados necessários para criar um usuário.
@@ -27,7 +28,7 @@ export interface CreateUserData {
   companyId: Types.ObjectId;
   role: Role;
   phone?: string | null;
-  avatar?: string | null;
+  avatar?: StoredImage | null;
   mustChangePassword: boolean;
   clientId?: Types.ObjectId | null;
   isActive?: boolean;
