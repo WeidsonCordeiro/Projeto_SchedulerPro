@@ -4,7 +4,6 @@ import {
   WEEKDAYS_SHORT,
   appointmentsForDay,
 } from "../../config/appointmentCalendar";
-import { formatMonthYear } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import AppointmentCalendarItem from "./AppointmentCalendarItem";
@@ -52,10 +51,6 @@ export default function MonthCalendar({
 
   return (
     <div className="month-calendar">
-      <h2 className="h5 mb-3 d-sm-none">
-        {formatMonthYear(year, month, timezone)}
-      </h2>
-
       <div className="row g-0 border-bottom">
         {WEEKDAYS_SHORT.map((day) => (
           <div key={day} className="col text-center py-2 fw-semibold small border-end last-border-0 text-muted">
@@ -75,7 +70,7 @@ export default function MonthCalendar({
           return (
             <div
               key={cell.date}
-              className={`col border-end border-bottom p-1 calendar-day-cell ${cell.isCurrentMonth ? "" : "bg-light text-muted"} ${cell.isToday ? "bg-primary-subtle" : ""} ${isPastDay ? "calendar-day-cell-past" : ""}`}
+              className={`col border-end border-bottom p-1 calendar-day-cell ${cell.isCurrentMonth ? "" : "bg-light text-muted"} ${cell.isToday ? "bg-primary-subtle today" : ""} ${isPastDay ? "calendar-day-cell-past" : ""}`}
               style={{ minHeight: 90, cursor: isPastDay ? "default" : "pointer" }}
               onClick={() => {
                 if (!isPastDay) {
@@ -93,8 +88,7 @@ export default function MonthCalendar({
               }}
             >
               <span
-                className={`d-inline-block small fw-semibold ${cell.isToday ? "badge bg-primary rounded-circle" : ""}`}
-                style={cell.isToday ? { width: 26, height: 26, lineHeight: "26px" } : {}}
+                className={`calendar-day-number small fw-semibold ${cell.isToday ? "today" : ""}`}
               >
                 {cell.dayOfMonth}
               </span>
@@ -110,8 +104,9 @@ export default function MonthCalendar({
               ))}
 
               {overflow > 0 && (
-                <div className="small text-muted text-center">
-                  +{overflow} mais
+                <div className="calendar-overflow text-truncate">
+                  <span aria-hidden="true">+</span>
+                  {overflow} mais <span aria-hidden="true">›</span>
                 </div>
               )}
             </div>

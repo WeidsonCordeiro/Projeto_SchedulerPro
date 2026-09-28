@@ -167,7 +167,7 @@ export default function AvailabilityDayEditor({
         )}
 
         {editable && (
-          <div className="mt-3 d-flex justify-content-end">
+          <div className="availability-day-save mt-3 d-flex justify-content-end">
             <button
               type="button"
               className="btn btn-sm btn-primary"
@@ -177,7 +177,6 @@ export default function AvailabilityDayEditor({
               {isSaving && (
                 <span
                   className="spinner-border spinner-border-sm me-1"
-                  role="status"
                   aria-hidden="true"
                 />
               )}

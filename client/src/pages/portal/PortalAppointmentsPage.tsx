@@ -114,35 +114,37 @@ export default function PortalAppointmentsPage() {
       )}
 
       {!isLoading && !loadError && visibleAppointments.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Serviço</th>
-                <th scope="col">Funcionário</th>
-                <th scope="col">Data</th>
-                <th scope="col">Hora</th>
-                <th scope="col">Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleAppointments.map((appointment) => (
-                <tr key={appointment.id}>
-                  <td>{appointment.serviceName ?? "—"}</td>
-                  <td>{appointment.employeeName ?? "—"}</td>
-                  <td>{formatAppointmentDate(appointment.startAt)}</td>
-                  <td>{formatAppointmentTime(appointment.startAt)}</td>
-                  <td>
-                    <span
-                      className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
-                    >
-                      {APPOINTMENT_STATUS_LABELS[appointment.status]}
-                    </span>
-                  </td>
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Serviço</th>
+                  <th scope="col">Funcionário</th>
+                  <th scope="col">Data</th>
+                  <th scope="col">Hora</th>
+                  <th scope="col">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visibleAppointments.map((appointment) => (
+                  <tr key={appointment.id}>
+                    <td>{appointment.serviceName ?? "—"}</td>
+                    <td>{appointment.employeeName ?? "—"}</td>
+                    <td>{formatAppointmentDate(appointment.startAt)}</td>
+                    <td>{formatAppointmentTime(appointment.startAt)}</td>
+                    <td>
+                      <span
+                        className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
+                      >
+                        {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>

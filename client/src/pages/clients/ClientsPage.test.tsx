@@ -145,6 +145,30 @@ describe("ClientsPage", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
   });
 
+  it("uses the shared table surface, status column and action row", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(table.closest(".table-responsive")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+    const actions = within(table)
+      .getByRole("button", { name: "Editar" })
+      .closest(".table-actions");
+    expect(actions).not.toBeNull();
+    expect(
+      within(actions as HTMLElement).getByRole("button", { name: "Excluir" }),
+    ).toBeInTheDocument();
+  });
+
   it("creates a client through the form and reloads the list", async () => {
     const created = makeClient({ id: "99", name: "Bruno Costa" });
     vi.mocked(clientsApi.getClients).mockResolvedValue({

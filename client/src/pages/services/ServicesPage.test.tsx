@@ -154,6 +154,32 @@ describe("ServicesPage", () => {
     expect(screen.getByText("Inativo")).toBeInTheDocument();
   });
 
+  it("uses the shared table surface, status column, subline and action row", async () => {
+    vi.mocked(servicesApi.getServices).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeService()],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+    expect(within(table).getByText("Corte simples")).toHaveClass(
+      "table-subline",
+    );
+    const actions = within(table)
+      .getByRole("button", { name: "Editar" })
+      .closest(".table-actions");
+    expect(actions).not.toBeNull();
+    expect(
+      within(actions as HTMLElement).getByRole("button", { name: "Excluir" }),
+    ).toBeInTheDocument();
+  });
+
   it("creates a service through the form and reloads the list", async () => {
     const created = makeService({ id: "99", name: "Barba" });
     vi.mocked(servicesApi.getServices).mockResolvedValue({

@@ -142,7 +142,6 @@ export default function CompanyForm({ company, onSaved }: CompanyFormProps) {
           {isSubmitting && (
             <span
               className="spinner-border spinner-border-sm me-1"
-              role="status"
               aria-hidden="true"
             />
           )}

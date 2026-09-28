@@ -84,7 +84,6 @@ export default function DeleteServiceModal({
               {isDeleting && (
                 <span
                   className="spinner-border spinner-border-sm me-1"
-                  role="status"
                   aria-hidden="true"
                 />
               )}

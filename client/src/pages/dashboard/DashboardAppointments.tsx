@@ -32,9 +32,12 @@ export default function DashboardAppointments({
   emptyMessage,
 }: Props) {
   return (
-    <div className="card dashboard-agenda-card mb-4">
+    <div className="card dashboard-agenda-card table-card mb-4">
       <div className="card-header">
         <h2 className="h6 mb-0">{title}</h2>
+        {appointments.length > 0 && (
+          <span className="dashboard-agenda-count">{appointments.length}</span>
+        )}
       </div>
       {appointments.length === 0 ? (
         <div className="card-body text-center text-muted py-5">

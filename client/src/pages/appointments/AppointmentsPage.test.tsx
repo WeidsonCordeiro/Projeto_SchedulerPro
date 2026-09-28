@@ -294,6 +294,29 @@ describe("AppointmentsPage", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("uses the shared table surface, status column and action row", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+
+    await renderPageList();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+    const actions = within(table)
+      .getByRole("button", { name: "Editar" })
+      .closest(".table-actions");
+    expect(actions).not.toBeNull();
+    expect(
+      within(actions as HTMLElement).getByRole("button", { name: "Excluir" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the table visible when client and service name lists fail to load", async () => {
     vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
       success: true,

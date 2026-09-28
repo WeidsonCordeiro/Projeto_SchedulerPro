@@ -7,6 +7,7 @@ import {
   isSlotHourInPast,
 } from "../../config/appointmentCalendar";
 import { formatAppointmentTime, formatWeekdayDate } from "../../config/appointmentTime";
+import { APPOINTMENT_STATUS_CALENDAR_CLASS } from "../../config/appointmentStatus";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
@@ -128,6 +129,8 @@ export default function DayCalendar({
 
           {/* Appointment blocks */}
           {layout.map((item) => {
+            const colWidth = 100 / item.totalColumns;
+            const left = item.column * colWidth;
             const topPx = (item.topPercent / 100) * (hours.length * HOUR_HEIGHT);
             const heightPx = Math.max(
               (item.heightPercent / 100) * (hours.length * HOUR_HEIGHT),
@@ -140,8 +143,8 @@ export default function DayCalendar({
                 className="position-absolute rounded border"
                 style={{
                   top: topPx,
-                  left: 0,
-                  width: `${Math.min(100 / item.totalColumns, 95)}%`,
+                  left: `${left}%`,
+                  width: `${colWidth}%`,
                   height: heightPx,
                   zIndex: 10,
                 }}
@@ -151,13 +154,17 @@ export default function DayCalendar({
                 }}
                 role="button"
               >
-                <div className="h-100 overflow-hidden p-2 small bg-primary bg-opacity-75 text-white rounded">
-                  <div className="fw-semibold">
+                <div
+                  className={`calendar-week-event h-100 overflow-hidden p-1 rounded ${APPOINTMENT_STATUS_CALENDAR_CLASS[item.appointment.status]}`}
+                >
+                  <div className="calendar-event-time">
                     {formatAppointmentTime(item.appointment.startAt, timezone)} –{" "}
                     {formatAppointmentTime(item.appointment.endAt, timezone)}
                   </div>
-                  <div className="text-truncate">
-                    {clientNames.get(item.appointment.clientId) ?? "Cliente"} —{" "}
+                  <div className="calendar-event-client text-truncate">
+                    {clientNames.get(item.appointment.clientId) ?? "Cliente"}
+                  </div>
+                  <div className="calendar-event-service text-truncate">
                     {serviceNames.get(item.appointment.serviceId) ?? "Serviço"}
                   </div>
                 </div>

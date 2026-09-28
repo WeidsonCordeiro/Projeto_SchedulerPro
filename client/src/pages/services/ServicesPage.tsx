@@ -151,79 +151,81 @@ export default function ServicesPage() {
       )}
 
       {!isLoading && !loadError && services.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Serviço</th>
-                <th scope="col">Duração</th>
-                <th scope="col">Preço</th>
-                <th scope="col">Situação</th>
-                {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {services.map((service) => (
-                <tr key={service.id}>
-                  <td>
-                    {service.name}
-                    {service.description && (
-                      <div className="small text-muted">{service.description}</div>
-                    )}
-                  </td>
-                  <td>{service.duration} min</td>
-                  <td>{formatPrice(service.price)}</td>
-                  <td>
-                    {service.isActive ? (
-                      <span className="badge text-bg-success">Ativo</span>
-                    ) : (
-                      <span className="badge text-bg-secondary">Inativo</span>
-                    )}
-                  </td>
-                  {(canUpdate || canDelete) && (
-                    <td>
-                      <div className="d-flex gap-2">
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openEdit(service)}
-                            disabled={togglingId === service.id}
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className={`btn btn-sm ${service.isActive ? "btn-outline-secondary" : "btn-outline-success"}`}
-                            onClick={() => void handleToggleActive(service)}
-                            disabled={togglingId === service.id}
-                          >
-                            {togglingId === service.id
-                              ? "Aguarde..."
-                              : service.isActive
-                                ? "Desativar"
-                                : "Ativar"}
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => setDeletingService(service)}
-                            disabled={togglingId === service.id}
-                          >
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Serviço</th>
+                  <th scope="col">Duração</th>
+                  <th scope="col">Preço</th>
+                  <th scope="col">Status</th>
+                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {services.map((service) => (
+                  <tr key={service.id}>
+                    <td>
+                      {service.name}
+                      {service.description && (
+                        <span className="table-subline">{service.description}</span>
+                      )}
+                    </td>
+                    <td>{service.duration} min</td>
+                    <td>{formatPrice(service.price)}</td>
+                    <td>
+                      {service.isActive ? (
+                        <span className="badge text-bg-success">Ativo</span>
+                      ) : (
+                        <span className="badge text-bg-secondary">Inativo</span>
+                      )}
+                    </td>
+                    {(canUpdate || canDelete) && (
+                      <td>
+                        <div className="table-actions">
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => openEdit(service)}
+                              disabled={togglingId === service.id}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${service.isActive ? "btn-outline-secondary" : "btn-outline-success"}`}
+                              onClick={() => void handleToggleActive(service)}
+                              disabled={togglingId === service.id}
+                            >
+                              {togglingId === service.id
+                                ? "Aguarde..."
+                                : service.isActive
+                                  ? "Desativar"
+                                  : "Ativar"}
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => setDeletingService(service)}
+                              disabled={togglingId === service.id}
+                            >
+                              Excluir
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

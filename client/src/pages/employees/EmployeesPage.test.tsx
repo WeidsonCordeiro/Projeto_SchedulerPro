@@ -140,6 +140,28 @@ describe("EmployeesPage", () => {
     ).toHaveLength(2);
   });
 
+  it("uses the shared table surface and shows status as a badge without repeating the email", async () => {
+    vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeEmployee()],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+
+    const row = within(table).getByText("Ana Silva").closest("tr") as HTMLElement;
+    // O e-mail vive apenas na sua coluna, como nas restantes tabelas.
+    expect(within(row).getAllByText("ana@example.com")).toHaveLength(1);
+    // O estado usa badge, como em Clientes e Serviços.
+    expect(within(row).getByText("Ativo")).toHaveClass("badge");
+  });
+
   it("never renders CLIENT accounts in the employee list", async () => {
     vi.mocked(employeesApi.getEmployees).mockResolvedValue({
       success: true,

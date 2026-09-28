@@ -27,6 +27,15 @@ const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN"];
 const UPCOMING_STATUSES: AppointmentStatus[] = ["scheduled", "confirmed"];
 const MAX_UPCOMING = 5;
 
+/**
+ * Ordem cronológica de leitura da agenda. Sem isto, "Próximos agendamentos"
+ * devolvia os 5 primeiros conforme a ordem do backend, podendo omitir o
+ * agendamento mais próximo e mostrar um muito mais distante.
+ */
+function byStartAt(a: Appointment, b: Appointment): number {
+  return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
+}
+
 export default function DashboardPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
   const timezone = useAppSelector(selectCompanyTimezone);
@@ -137,9 +146,11 @@ export default function DashboardPage() {
 
   const todayAppointments = useMemo(
     () =>
-      appointments.filter(
-        (apt) => formatAppointmentDate(apt.startAt, timezone) === todayKey,
-      ),
+      appointments
+        .filter(
+          (apt) => formatAppointmentDate(apt.startAt, timezone) === todayKey,
+        )
+        .sort(byStartAt),
     [appointments, timezone, todayKey],
   );
 
@@ -151,6 +162,7 @@ export default function DashboardPage() {
             UPCOMING_STATUSES.includes(apt.status) &&
             new Date(apt.startAt).getTime() > Date.now(),
         )
+        .sort(byStartAt)
         .slice(0, MAX_UPCOMING),
     [appointments],
   );

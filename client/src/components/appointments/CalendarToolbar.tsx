@@ -54,7 +54,7 @@ export default function CalendarToolbar({
         >
           &#8250;
         </button>
-        <h2 className="h5 mb-0 ms-2 d-none d-sm-inline">{label}</h2>
+        <h2 className="calendar-toolbar-label">{label}</h2>
       </div>
 
       <div className="btn-group btn-group-sm" role="group" aria-label="Visualização">

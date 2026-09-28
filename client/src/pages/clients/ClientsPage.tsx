@@ -148,69 +148,71 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Cliente</th>
-                <th scope="col">Email</th>
-                <th scope="col">Telefone</th>
-                <th scope="col">Situação</th>
-                {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {clients.map((client) => (
-                <tr key={client.id}>
-                  <td>{client.name}</td>
-                  <td>{client.email ?? "—"}</td>
-                  <td>{client.phone}</td>
-                  <td>
-                    {client.isActive ? (
-                      <span className="badge text-bg-success">Ativo</span>
-                    ) : (
-                      <span className="badge text-bg-secondary">Inativo</span>
-                    )}
-                  </td>
-                  {(canUpdate || canDelete) && (
-                    <td>
-                      <div className="d-flex gap-2">
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-primary"
-                            onClick={() => openEdit(client)}
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {canUpdate && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-success"
-                            onClick={() => setCredentialingClient(client)}
-                            disabled={!client.email}
-                            title={getAccessButtonTitle(client)}
-                          >
-                            {getAccessButtonLabel(client.portalAccess)}
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => setDeletingClient(client)}
-                          >
-                            Excluir
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Cliente</th>
+                  <th scope="col">Email</th>
+                  <th scope="col">Telefone</th>
+                  <th scope="col">Status</th>
+                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {clients.map((client) => (
+                  <tr key={client.id}>
+                    <td>{client.name}</td>
+                    <td>{client.email ?? "—"}</td>
+                    <td>{client.phone}</td>
+                    <td>
+                      {client.isActive ? (
+                        <span className="badge text-bg-success">Ativo</span>
+                      ) : (
+                        <span className="badge text-bg-secondary">Inativo</span>
+                      )}
+                    </td>
+                    {(canUpdate || canDelete) && (
+                      <td>
+                        <div className="table-actions">
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => openEdit(client)}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-success"
+                              onClick={() => setCredentialingClient(client)}
+                              disabled={!client.email}
+                              title={getAccessButtonTitle(client)}
+                            >
+                              {getAccessButtonLabel(client.portalAccess)}
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => setDeletingClient(client)}
+                            >
+                              Excluir
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

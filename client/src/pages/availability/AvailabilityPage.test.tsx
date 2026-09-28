@@ -162,6 +162,41 @@ describe("AvailabilityPage", () => {
     );
   });
 
+  it("presents the week from Monday to Sunday, matching the calendar views", async () => {
+    mockEmployees([]);
+    mockAvailability([]);
+
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Segunda-feira" });
+
+    // O calendário (Month, Week e Day) começa à segunda-feira; a disponibilidade
+    // tem de seguir a mesma semana para não obrigar a duas mentalidades.
+    const labels = [
+      "Segunda-feira",
+      "Terça-feira",
+      "Quarta-feira",
+      "Quinta-feira",
+      "Sexta-feira",
+      "Sábado",
+      "Domingo",
+    ];
+    const nodes = labels.map((label) =>
+      screen.getByRole("heading", { name: label }),
+    );
+
+    let previous: HTMLElement | null = null;
+    for (const node of nodes) {
+      if (previous) {
+        expect(
+          previous.compareDocumentPosition(node) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+      previous = node;
+    }
+  });
+
   it("shows a friendly error and retries when loading availability fails", async () => {
     mockEmployees([]);
     vi.mocked(availabilityApi.getEmployeeAvailabilities)
@@ -227,7 +262,7 @@ expect(
     ).toHaveLength(6);
 
     const switches = screen.getAllByRole("switch");
-    expect(switches[1]).toBeDisabled();
+    expect(switches[0]).toBeDisabled();
   });
 
   it("gives EMPLOYEE read-only access to existing and empty days", async () => {
@@ -262,7 +297,7 @@ expect(
     ).toBeInTheDocument();
 
     const switches = screen.getAllByRole("switch");
-    expect(switches[1]).toBeDisabled();
+    expect(switches[0]).toBeDisabled();
   });
 
   it("lets OWNER create a new availability day", async () => {
@@ -406,7 +441,7 @@ expect(
 
     await screen.findByRole("heading", { name: "Segunda-feira" });
 
-    fireEvent.click(screen.getAllByRole("switch")[1]);
+    fireEvent.click(screen.getAllByRole("switch")[0]);
 
     const dialog = screen.getByRole("dialog");
     expect(
@@ -436,7 +471,7 @@ expect(
 
     await screen.findByRole("heading", { name: "Segunda-feira" });
 
-    fireEvent.click(screen.getAllByRole("switch")[1]);
+    fireEvent.click(screen.getAllByRole("switch")[0]);
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: /cancelar/i,
@@ -458,7 +493,7 @@ expect(
 
     await screen.findByRole("heading", { name: "Segunda-feira" });
 
-    fireEvent.click(screen.getAllByRole("switch")[1]);
+    fireEvent.click(screen.getAllByRole("switch")[0]);
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: "Excluir",

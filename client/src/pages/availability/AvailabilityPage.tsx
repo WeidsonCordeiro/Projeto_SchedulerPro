@@ -11,7 +11,7 @@ import {
   toPeriodPayload,
   validateDayDraft,
 } from "../../config/availabilityRules";
-import { DAY_LABELS, DAY_ORDER } from "../../config/dayOfWeek";
+import { DAY_DISPLAY_ORDER, DAY_LABELS, DAY_ORDER } from "../../config/dayOfWeek";
 import { useAppSelector } from "../../store";
 import type {
   Availability,
@@ -352,7 +352,7 @@ export default function AvailabilityPage() {
         <div className="availability-board">
           <div className="availability-board-header"><span>Dia</span><span>Períodos de atendimento</span><span>Configuração</span></div>
           <div className="availability-board-grid">
-          {DAY_ORDER.map((day) => {
+          {DAY_DISPLAY_ORDER.map((day) => {
             const existing = availabilityByDay[day];
             const existingDay = Boolean(existing);
             const editable = existingDay ? canUpdate : canCreate;

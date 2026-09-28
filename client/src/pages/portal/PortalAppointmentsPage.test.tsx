@@ -111,6 +111,22 @@ describe("PortalAppointmentsPage", () => {
     expect(within(table).getByText("João")).toBeInTheDocument();
   });
 
+  it("uses the shared table surface and status column", async () => {
+    vi.mocked(appointmentsApi.getMyAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureAppointment],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(table.closest(".table-card")).not.toBeNull();
+    expect(
+      within(table).getByRole("columnheader", { name: "Status" }),
+    ).toBeInTheDocument();
+  });
+
   it("shows an error and retry button on load failure", async () => {
     vi.mocked(appointmentsApi.getMyAppointments).mockRejectedValue(
       httpError(500, { message: "Erro interno do servidor." }),

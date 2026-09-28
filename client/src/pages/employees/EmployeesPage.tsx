@@ -190,81 +190,91 @@ export default function EmployeesPage() {
       )}
 
       {!isLoading && !loadError && employees.length > 0 && (
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th scope="col">Funcionário</th>
-                <th scope="col">E-mail</th>
-                <th scope="col">Perfil</th>
-                <th scope="col">Adicionado em</th>
-                {actionsVisible && <th scope="col">Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => {
-                const isSelf = employee.id === currentUser?.id;
-                return (
-                  <tr key={employee.id}>
-                    <td><div className="person-cell"><span className="person-avatar">{initials(employee.name)}</span><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="small text-muted">Você</span>}<small className="d-block text-muted">{employee.email}</small></span></div></td>
-                    <td>{employee.email}</td>
-                    <td><span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>{employee.role}</span><span className={`d-block small mt-1 ${employee.isActive === false ? "text-muted" : "text-success"}`}>{employee.isActive === false ? "Inativo" : "Ativo"}</span></td>
-                    <td>{formatDate(employee.createdAt)}</td>
-                    {actionsVisible && (
+        <div className="card table-card">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead>
+                <tr>
+                  <th scope="col">Funcionário</th>
+                  <th scope="col">E-mail</th>
+                  <th scope="col">Perfil</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Adicionado em</th>
+                  {actionsVisible && <th scope="col">Ações</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((employee) => {
+                  const isSelf = employee.id === currentUser?.id;
+                  return (
+                    <tr key={employee.id}>
+                      <td><div className="person-cell"><span className="person-avatar">{initials(employee.name)}</span><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="table-subline">Você</span>}</span></div></td>
+                      <td>{employee.email}</td>
+                      <td><span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>{employee.role}</span></td>
                       <td>
-                        <div className="d-flex gap-2">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => openEdit(employee)}
-                              disabled={togglingId === employee.id}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {!isSelf && canDeactivate && employee.isActive !== false && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-secondary"
-                              onClick={() => void handleToggle(employee, false)}
-                              disabled={togglingId === employee.id}
-                            >
-                              {togglingId === employee.id
-                                ? "Aguarde..."
-                                : "Desativar"}
-                            </button>
-                          )}
-                          {!isSelf && canActivate && employee.isActive === false && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-success"
-                              onClick={() => void handleToggle(employee, true)}
-                              disabled={togglingId === employee.id}
-                            >
-                              {togglingId === employee.id
-                                ? "Aguarde..."
-                                : "Ativar"}
-                            </button>
-                          )}
-                          {!isSelf && canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingEmployee(employee)}
-                              disabled={togglingId === employee.id}
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
+                        {employee.isActive === false ? (
+                          <span className="badge text-bg-secondary">Inativo</span>
+                        ) : (
+                          <span className="badge text-bg-success">Ativo</span>
+                        )}
                       </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td>{formatDate(employee.createdAt)}</td>
+                      {actionsVisible && (
+                        <td>
+                          <div className="table-actions">
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-primary"
+                                onClick={() => openEdit(employee)}
+                                disabled={togglingId === employee.id}
+                              >
+                                Editar
+                              </button>
+                            )}
+                            {!isSelf && canDeactivate && employee.isActive !== false && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-secondary"
+                                onClick={() => void handleToggle(employee, false)}
+                                disabled={togglingId === employee.id}
+                              >
+                                {togglingId === employee.id
+                                  ? "Aguarde..."
+                                  : "Desativar"}
+                              </button>
+                            )}
+                            {!isSelf && canActivate && employee.isActive === false && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-success"
+                                onClick={() => void handleToggle(employee, true)}
+                                disabled={togglingId === employee.id}
+                              >
+                                {togglingId === employee.id
+                                  ? "Aguarde..."
+                                  : "Ativar"}
+                              </button>
+                            )}
+                            {!isSelf && canDelete && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => setDeletingEmployee(employee)}
+                                disabled={togglingId === employee.id}
+                              >
+                                Excluir
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -239,6 +239,52 @@ describe("DashboardPage", () => {
     expect(within(upcomingCard).getByText("Confirmado")).toBeInTheDocument();
   });
 
+  it("lists the day agenda in chronological order regardless of API order", async () => {
+    // O backend pode devolver os registos por ordem de criação; a agenda do
+    // dia tem de ser lida por ordem cronológica.
+    mockData([
+      makeAppointment({ id: "c", startAt: "2026-09-10T15:00:00.000Z", endAt: "2026-09-10T15:30:00.000Z" }),
+      makeAppointment({ id: "a", startAt: "2026-09-10T08:00:00.000Z", endAt: "2026-09-10T08:30:00.000Z" }),
+      makeAppointment({ id: "b", startAt: "2026-09-10T10:00:00.000Z", endAt: "2026-09-10T10:30:00.000Z" }),
+    ]);
+
+    renderDashboard();
+    await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
+
+    const card = screen
+      .getByRole("heading", { name: "Agenda do dia" })
+      .closest(".card") as HTMLElement;
+    const times = within(card)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => row.querySelectorAll("td")[1]?.textContent);
+
+    expect(times).toEqual(["09:00", "11:00", "16:00"]);
+  });
+
+  it("shows the closest upcoming appointments first", async () => {
+    // "Próximos agendamentos" não pode truncar a lista antes de ordenar, ou o
+    // agendamento mais próximo deixaria de aparecer.
+    mockData([
+      makeAppointment({ id: "far", startAt: "2026-09-18T09:00:00.000Z", endAt: "2026-09-18T09:30:00.000Z", status: "confirmed" }),
+      makeAppointment({ id: "near", startAt: "2026-09-11T10:00:00.000Z", endAt: "2026-09-11T10:30:00.000Z", status: "confirmed" }),
+      makeAppointment({ id: "mid", startAt: "2026-09-15T14:00:00.000Z", endAt: "2026-09-15T14:30:00.000Z", status: "confirmed" }),
+    ]);
+
+    renderDashboard();
+    await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
+
+    const card = screen
+      .getByRole("heading", { name: "Próximos agendamentos" })
+      .closest(".card") as HTMLElement;
+    const times = within(card)
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => row.querySelectorAll("td")[1]?.textContent);
+
+    expect(times).toEqual(["11:00", "15:00", "10:00"]);
+  });
+
   it("shows empty state when there are no appointments", async () => {
     mockData([]);
     renderDashboard();

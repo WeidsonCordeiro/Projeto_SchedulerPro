@@ -444,112 +444,114 @@ export default function AppointmentsPage() {
         !loadError &&
         viewType === "list" &&
         appointments.length > 0 && (
-          <div className="table-responsive">
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th scope="col">Data</th>
-                  <th scope="col">Hora</th>
-                  <th scope="col">Cliente</th>
-                  <th scope="col">Serviço</th>
-                  <th scope="col">Funcionário</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Observações</th>
-                  {hasActions && <th scope="col">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {appointments.map((appointment) => {
-                  const statusActions = canStatus
-                    ? getAppointmentStatusActions(appointment.status)
-                    : [];
-                  const pending =
-                    pendingStatusAction?.id === appointment.id
-                      ? pendingStatusAction.action
-                      : null;
+          <div className="card table-card">
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Hora</th>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Serviço</th>
+                    <th scope="col">Funcionário</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Observações</th>
+                    {hasActions && <th scope="col">Ações</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {appointments.map((appointment) => {
+                    const statusActions = canStatus
+                      ? getAppointmentStatusActions(appointment.status)
+                      : [];
+                    const pending =
+                      pendingStatusAction?.id === appointment.id
+                        ? pendingStatusAction.action
+                        : null;
 
-                  return (
-                    <tr key={appointment.id}>
-                      <td>
-                        {formatAppointmentDate(appointment.startAt, timezone)}
-                      </td>
-                      <td>
-                        {formatAppointmentTime(appointment.startAt, timezone)}
-                        <div className="small text-muted">
-                          até{" "}
-                          {formatAppointmentTime(appointment.endAt, timezone)}
-                        </div>
-                      </td>
-                      <td>{nameFor(clientNames, appointment.clientId)}</td>
-                      <td>{nameFor(serviceNames, appointment.serviceId)}</td>
-                      <td>{nameFor(employeeNames, appointment.employeeId)}</td>
-                      <td>
-                        <span
-                          className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
-                        >
-                          {APPOINTMENT_STATUS_LABELS[appointment.status]}
-                        </span>
-                      </td>
-                      <td>{appointment.notes || "—"}</td>
-                      {hasActions && (
+                    return (
+                      <tr key={appointment.id}>
                         <td>
-                          <div className="d-flex flex-wrap gap-2">
-                            {canUpdate &&
-                              (isInstantInPast(appointment.startAt) ? (
-                                // Agendamento histórico: somente leitura.
+                          {formatAppointmentDate(appointment.startAt, timezone)}
+                        </td>
+                        <td>
+                          {formatAppointmentTime(appointment.startAt, timezone)}
+                          <span className="table-subline">
+                            até{" "}
+                            {formatAppointmentTime(appointment.endAt, timezone)}
+                          </span>
+                        </td>
+                        <td>{nameFor(clientNames, appointment.clientId)}</td>
+                        <td>{nameFor(serviceNames, appointment.serviceId)}</td>
+                        <td>{nameFor(employeeNames, appointment.employeeId)}</td>
+                        <td>
+                          <span
+                            className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
+                          >
+                            {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                          </span>
+                        </td>
+                        <td>{appointment.notes || "—"}</td>
+                        {hasActions && (
+                          <td>
+                            <div className="table-actions">
+                              {canUpdate &&
+                                (isInstantInPast(appointment.startAt) ? (
+                                  // Agendamento histórico: somente leitura.
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => openDetails(appointment)}
+                                    disabled={pending !== null}
+                                  >
+                                    Visualizar
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => openEdit(appointment)}
+                                    disabled={pending !== null}
+                                  >
+                                    Editar
+                                  </button>
+                                ))}
+                              {statusActions.map((action) => (
                                 <button
+                                  key={action}
                                   type="button"
                                   className="btn btn-sm btn-outline-secondary"
-                                  onClick={() => openDetails(appointment)}
+                                  onClick={() =>
+                                    void handleStatusAction(appointment, action)
+                                  }
                                   disabled={pending !== null}
                                 >
-                                  Visualizar
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-primary"
-                                  onClick={() => openEdit(appointment)}
-                                  disabled={pending !== null}
-                                >
-                                  Editar
+                                  {pending === action
+                                    ? "Aguarde..."
+                                    : APPOINTMENT_ACTION_LABELS[action]}
                                 </button>
                               ))}
-                            {statusActions.map((action) => (
-                              <button
-                                key={action}
-                                type="button"
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() =>
-                                  void handleStatusAction(appointment, action)
-                                }
-                                disabled={pending !== null}
-                              >
-                                {pending === action
-                                  ? "Aguarde..."
-                                  : APPOINTMENT_ACTION_LABELS[action]}
-                              </button>
-                            ))}
-                            {canDelete && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() =>
-                                  setDeletingAppointment(appointment)
-                                }
-                                disabled={pending !== null}
-                              >
-                                Excluir
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-danger"
+                                  onClick={() =>
+                                    setDeletingAppointment(appointment)
+                                  }
+                                  disabled={pending !== null}
+                                >
+                                  Excluir
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

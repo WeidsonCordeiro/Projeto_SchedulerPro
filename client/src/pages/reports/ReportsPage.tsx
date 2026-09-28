@@ -431,7 +431,7 @@ export default function ReportsPage() {
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Serviços mais realizados</div>
-                <div className="card-body table-responsive">
+                <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum serviço neste período."
                     headers={["Serviço", "Agend.", "Concl.", "Valor estimado"]}
@@ -448,7 +448,7 @@ export default function ReportsPage() {
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Funcionários</div>
-                <div className="card-body table-responsive">
+                <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum agendamento neste período."
                     headers={[
@@ -481,7 +481,7 @@ export default function ReportsPage() {
                     {formatInteger(clients.recurringCount)} recorrentes
                   </span>
                 </div>
-                <div className="card-body table-responsive">
+                <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum cliente neste período."
                     headers={[
