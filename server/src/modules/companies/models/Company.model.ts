@@ -17,6 +17,7 @@ import {
   DEFAULT_TIMEZONE,
   isValidIanaTimezone,
 } from "../../../utils/timezone";
+import { StoredImage } from "../../../providers/images/types";
 
 /**
  * ==========================================================
@@ -30,6 +31,7 @@ export interface ICompany {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
+  logo?: StoredImage | null;
 }
 
 /**
@@ -71,6 +73,32 @@ const CompanySchema = new Schema<ICompany>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    /**
+     * Logo da empresa.
+     *
+     * Formato único persistido: `StoredImage` ({ url, publicId }),
+     * seguindo o mesmo padrão de `User.avatar` e `Client.avatar`.
+     *
+     * A imagem é gerida exclusivamente pelo `imageProvider`; a
+     * empresa nunca envia uma URL arbitrária.
+     */
+    logo: {
+      type: new Schema(
+        {
+          url: {
+            type: String,
+            required: true,
+          },
+          publicId: {
+            type: String,
+            required: true,
+          },
+        },
+        { _id: false },
+      ),
+      default: null,
     },
 
     deletedAt: {

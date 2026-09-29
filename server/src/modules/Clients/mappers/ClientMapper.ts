@@ -43,6 +43,12 @@ class ClientMapper {
       phone: client.phone,
       companyId: client.companyId.toString(),
       notes: client.notes,
+      avatar: client.avatar
+        ? {
+            url: client.avatar.url,
+            publicId: client.avatar.publicId,
+          }
+        : null,
       isActive: client.isActive,
       portalAccess,
       createdAt: client.createdAt,

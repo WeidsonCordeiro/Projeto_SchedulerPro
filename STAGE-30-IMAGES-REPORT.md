@@ -618,3 +618,591 @@ O padrão repete-se por inteiro:
 9. O `publicId` é devolvido no contrato da API (necessário ao cliente), mas
    nenhum outro metadado do storage é exposto.
 10. A matriz RBAC atual não muda por causa desta funcionalidade.
+
+---
+
+# SchedulerPro — Parte 3: Foto dos Clientes
+
+## Objetivo
+
+Implementar o upload, a substituição e a remoção da foto de um `Client`,
+reutilizando integralmente a infraestrutura de imagens da Parte 1 (provider,
+validação por assinatura binária, limite de 5 MB, `multer.memoryStorage`,
+`uploadSingleImage`) e o padrão de integração da Parte 2. **Backend only.**
+
+## Escopo
+
+- `Client.avatar?: StoredImage | null` (sub-schema, `_id: false`).
+- `POST /api/clients/:id/photo` — envio/substituição via provider.
+- `DELETE /api/clients/:id/photo` — remoção idempotente.
+- Tenant isolation, soft-delete, `CLIENT_UPDATE`, contrato da API com `avatar`.
+- Fora do escopo (ver "Itens não implementados"): frontend, company logo,
+  employee photo, refactors.
+
+## Arquitetura
+
+```
+Route (POST/DELETE /clients/:id/photo)
+  → Controller (ClientController.uploadPhoto/removePhoto)
+    → Service (ClientService.updatePhoto/removePhoto)
+      → Repository (ClientRepository.updateAvatar) → Model (Client.avatar)
+      → ImageProvider (CloudinaryImageProvider.replace/remove)
+```
+
+Somente `providers/images/CloudinaryImageProvider.ts` conhece o SDK do
+Cloudinary. `ClientService`, `ClientController`, `ClientRepository`,
+`ClientRoutes` e `Client.model` **não** importam `cloudinary`.
+
+## Alterações no Model
+
+`server/src/modules/Clients/models/Client.model.ts`:
+
+```ts
+avatar?: StoredImage | null;
+```
+
+Sub-schema Mongoose com `_id: false`, `url` obrigatório, `publicId`
+obrigatório e `default: null`. Reutiliza o tipo `StoredImage` da parte de
+imagens (não duplica). Nada de `avatarUrl`/`avatarPublicId`/`photoUrl`/etc.
+
+## Alterações no Repository
+
+`ClientRepository.updateAvatar(id, companyId, avatar: StoredImage | null)`:
+`findOneAndUpdate` com `{ _id, companyId, deletedAt: null }` (respeita tenant
+e soft-delete), `new: true`, `runValidators: true`. O repository não conhece
+o storage; apenas persiste `StoredImage | null`.
+
+## Alterações no Service
+
+- `findClientForPhoto(id, companyId)`: `findById` (filtra `deletedAt: null`),
+  `!client → 404`; `client.companyId.toString() !== companyId → 403`.
+- `updatePhoto(id, file, companyId)`: chama `imageProvider.replace({ file,
+  entity: ImageEntity.CLIENT, previous: client.avatar ?? null })` e persiste o
+  resultado via `updateAvatar`. Sem sequência manual remove+upload. Se o Mongo
+  não gravar (corrida), loga `orphanPublicId` e devolve 404.
+- `removePhoto(id, companyId)`: idempotente. Sem foto → devolve o cliente sem
+  tocar no storage. Com foto → `imageProvider.remove({ image })` + persistir
+  `avatar: null`. Corrida pós-storage loga `stalePublicId` e devolve 404.
+
+## Alterações no Controller
+
+`uploadPhoto` (400 de segurança quando `req.file` ausente, usando
+`IMAGE_LIMITS.FIELD`) e `removePhoto`. Sem regra de negócio. **Nota:**
+declarados como propriedades `arrow function` do mesmo modo que os restantes
+handlers do controller (os métodos "normais" perderiam o `this` ao serem
+passados por referência ao router).
+
+## Alterações nas Routes
+
+```ts
+POST   /api/clients/:id/photo   → authenticate, validateObjectId, requirePasswordChangeCompleted, hasPermission(CLIENT_UPDATE), uploadSingleImage("photo")
+DELETE /api/clients/:id/photo   → authenticate, validateObjectId, requirePasswordChangeCompleted, hasPermission(CLIENT_UPDATE)
+```
+
+Ordems dos middlewares igual à das rotas de Users. Reutiliza o middleware
+`uploadSingleImage("photo")` existente — nenhum middleware novo para Client.
+
+## RBAC
+
+Permission **existente** `CLIENT_UPDATE` (não foi criada
+`CLIENT_PHOTO_UPDATE`/`CLIENT_IMAGE_UPDATE`/`CLIENT_AVATAR_UPDATE`).
+`rbac.ts`, `roles.ts` e `permissions.ts` **intocados**.
+
+Matriz que se aplica (já existente):
+- **OWNER**, **ADMIN**, **MANAGER** → têm `CLIENT_UPDATE` → podem.
+- **EMPLOYEE**, **CLIENT** → não têm → 403.
+- Sem token → 401 (`hasPermission`).
+
+## Tenant Isolation
+
+```
+findById(id) -> filtra deletedAt: null
+companyId do token != client.companyId -> 403 (CLIENT_ACCESS_DENIED)
+```
+
+O tenant vem sempre de `req.user.companyId` (token). Nunca confiar só no `:id`.
+Os testes garantem 403 para foto de cliente de outra empresa (upload e remoção)
+sem tocar no storage e sem devolver dados do cliente.
+
+## Upload
+
+- `POST /api/clients/:id/photo`, `Content-Type: multipart/form-data`, campo
+  obrigatório `photo`.
+- `uploadSingleImage("photo")`: memory storage, 1 ficheiro, max 5 MB, erros
+  Multer normalizados (400).
+- Validação real por assinatura binária no provider: JPEG/PNG/WebP. Recusa
+  SVG/GIF/AVIF/HEIC/PDF/executáveis/ficheiros renomeados.
+- Nenhuma validação duplicada no `ClientService`.
+
+## Remoção
+
+- Com foto: `imageProvider.remove({ image })` → persistir `avatar: null`.
+- Sem foto: sucesso idempotente, sem chamar o Cloudinary e sem erro.
+- Provider `remove` é idempotente (`not found` não é erro).
+
+## Testes
+
+Novos (46):
+- `tests/unit/clients/ClientService.photo.test.ts` — 17 casos: primeiro envio,
+  substituição (previous null/anterior), `ImageEntity.CLIENT`, nunca remove
+  manualmente, erro do provider propagado, coerência 404 (`orphanPublicId`/
+  `stalePublicId`), tenant 403, inexistente 404, soft-deleted 404; remoção com
+  foto, `avatar: null` persistido, idempotência sem storage, erro do provider
+  mantém referência, tenant 403; contrato: `update` ignora `avatar`.
+- `tests/unit/clients/client-photo.routes.test.ts` — 21 casos: 401 sem token,
+  RBAC real (OWNER/ADMIN/MANAGER OK; EMPLOYEE/CLIENT 403), ObjectId inválido,
+  ficheiro >5 MB, ficheiro ausente, campo multipart inesperado, entrega
+  `req.file`/`companyId` ao serviço, resposta contém `avatar`, propagação do
+  erro do serviço (500) — para POST e DELETE.
+- `tests/unit/clients/ClientMapper.avatar.test.ts` — 5 casos: `avatar: null`,
+  campo ausente, par `{url, publicId}`, projeção sem metadados do storage,
+  preservação do contrato existente do cliente.
+- Adaptado: `tests/integration/routes/object-id.routes.test.ts` recebeu os
+  handlers `uploadPhoto`/`removePhoto` no mock do controller (rotas reais
+  exigem a existência dos handlers).
+
+Testes existentes: todos passaram (628/628). Nenhuma regressão.
+- A validação de formato em si (assinatura binária) é coberta pelos testes do
+  provider (Parte 1) — na cadeia HTTP testa-se o que é da camada HTTP.
+
+## Coverage
+
+- Total da suíte: **Statements 77.9%** (1562/2005) | Branches 76.25% |
+  Functions 65.82% | Lines 78.1%.
+- Subiu face à Parte 2 (77.42% statements) — sem redução.
+- `ClientService.ts`: 84.16% stmts / 85.88% branches (subiu bastante com os
+  testes de foto).
+- `ClientMapper.ts`: 100% stmts (novo teste de contrato + regressão).
+- `ClientController.ts`: 18.75% (herdado: o controller nunca teve teste direto;
+  os testes de rotas exercitam agora os handlers de foto).
+- `ClientRepository.ts`: 0% (pré-existente: os repositórios são mockados em
+  todos os testes; não há suíte direta de repository — não é regressão).
+
+## Typecheck
+
+`npx tsc --noEmit` → sem erros.
+
+## Build
+
+`npm run build` (tsc) → OK.
+
+## Arquivos alterados
+
+- `server/src/modules/Clients/models/Client.model.ts`
+- `server/src/modules/Clients/repositories/ClientRepository.ts`
+- `server/src/modules/Clients/mappers/ClientMapper.ts`
+- `server/src/modules/Clients/services/ClientService.ts`
+- `server/src/modules/Clients/controllers/ClientController.ts`
+- `server/src/modules/Clients/routes/ClientRoutes.ts`
+- `server/src/constants/http-messages.ts` (`CLIENT_ACCESS_DENIED`,
+  `CLIENT_PHOTO_UPDATED`, `CLIENT_PHOTO_REMOVED`)
+- `server/tests/unit/clients/ClientService.photo.test.ts` (novo)
+- `server/tests/unit/clients/client-photo.routes.test.ts` (novo)
+- `server/tests/unit/clients/ClientMapper.avatar.test.ts` (novo)
+- `server/tests/integration/routes/object-id.routes.test.ts` (mock adaptado)
+
+## Decisões técnicas
+
+1. A foto do cliente vive no `Client`, **não** no `User` (separação de
+   domínio; um `Client` pode existir sem conta de acesso).
+2. `StoredImage` é o único contrato persistido; `publicId` obrigatório para
+   permitir a remoção futura no storage.
+3. `replace()` valida a nova antes de destruir a anterior (ordem imposta pelo
+   provider da Parte 1 — mantida, sem alteração).
+4. `remove()` é idempotente.
+5. O endpoint genérico de atualização (`PATCH /clients/:id`) **ignora**
+   `avatar` (DTO/validator/service não o tocam). Foto exclusivamente pelos
+   endpoints de foto.
+6. Soft-delete não apaga a imagem (restauro existe; sem transação).
+7. Estado sem imagem = `null` (nunca string vazia/falso).
+8. Credenciais Cloudinary continuam opcionais: a ausência provoca 500 na
+   operação, detectado pelo provider.
+9. `publicId` aparece na resposta da API; nenhum outro metadado do storage é
+   exposto (projeção explícita no mapper).
+10. Diferença intencional face à Parte 2: aqui a falha de tenant devolve **403**
+    (padrão de segurança de photo, sem revelar a existência do cliente de outro
+    tenant); os restantes fluxos de `ClientService` mantêm o seu padrão 404.
+
+## Limitações
+
+- MANAGER **pode** alterar foto de cliente (tem `CLIENT_UPDATE` já existente).
+- ADMIN/OWNER/MANAGER não conseguem alterar a *própria* foto via estes
+  endpoints (não é o caso de uso desta etapa).
+- Soft-deleted não recebe/remove foto (404 pelo repository ativo).
+- `ClientRepository` sem teste direto (0% — pré-existente).
+- Corridas "storage OK / Mongo falhou" não têm compensação automática; apenas
+  logging (sem transação entre Mongo e Cloudinary).
+
+## Itens não implementados
+
+- Frontend (nenhuma alteração em `client/`; listas, modais, placeholders,
+  iniciais, previews, upload visual).
+- Company Logo (`ImageEntity.COMPANY` intocado; sem `POST/DELETE
+  /companies/:id/logo`).
+- Employee Photo inalterada (`User.avatar` e endpoints `POST/DELETE
+  /users/:id/photo` intactos).
+- Nenhum refactor geral (Client/User/RBAC/ImageProvider), sem limpeza de
+  órfãos, sem transformations/resize/thumbnails/compressão, sem novos
+  papéis/permissions/autenticação.
+
+---
+
+## CONTEXTO PARA A PRÓXIMA IA
+
+### `Client.avatar` a partir desta etapa
+
+```ts
+avatar?: { url: string; publicId: string } | null;
+```
+
+- Sub-schema com `_id: false`, `url` e `publicId` obrigatórios, `default: null`.
+- Reutiliza o tipo `StoredImage` (único formato persistido).
+- A foto pertence ao **Client**, não ao User (User = acesso; Client = cliente
+  de negócio). `User.avatar` (Parte 2) permanece intocado.
+- `UpdateClientDto`/`update-client.validator`/`ClientService.update` **não**
+  tocam `avatar`; o `PATCH /clients/:id` ignora qualquer `avatar` recebido.
+- `ClientMapper.toResponse` projeta apenas `{ url, publicId }` ou `null`
+  (nunca bytes/versão/assinatura do storage).
+
+### Endpoints implementados
+
+- `POST /api/clients/:id/photo` — envio/substituição (`multipart/form-data`,
+  campo `photo`, max 5 MB, JPEG/PNG/WebP por assinatura binária).
+- `DELETE /api/clients/:id/photo` — remoção idempotente (sem foto = sucesso,
+  sem chamar o storage).
+
+### Permission utilizada
+
+- `CLIENT_UPDATE` (existente). Nenhuma permission nova. Matriz RBAC intocada:
+  OWNER/ADMIN/MANAGER podem; EMPLOYEE/CLIENT 403; sem token 401.
+
+### `ImageEntity.CLIENT`
+
+- O provider usa a pasta `schedulerpro/client` (entity `ImageEntity.CLIENT`),
+  passada como `entity` em `replace()`.
+
+### Tenant isolation
+
+```
+findById(id) -> filtra deletedAt: null
+companyId do token != client.companyId -> 403
+```
+
+O `companyId` vem sempre de `req.user` (token). Nunca confiar no `:id`.
+
+### Comportamento de replace
+
+`imageProvider.replace({ file, entity: ImageEntity.CLIENT, previous: client.avatar ?? null })`
+valida a nova imagem **antes** de destruir a anterior, e trata o primeiro
+upload (`previous: null`). Nunca fazer remove+upload manual no service.
+
+### Comportamento de remove
+
+`imageProvider.remove({ image })` é idempotente. `removePhoto` persiste
+`avatar: null` apenas depois do storage confirmar.
+
+### Soft-delete
+
+- Cliente soft-deleted não recebe/remove foto (404 pelo repository ativo,
+  que filtra `deletedAt: null`).
+- O soft-delete **não** apaga a imagem do Cloudinary (existe restauro e não há
+  transação) — mesma decisão da Parte 2.
+
+### Contrato da API
+
+```json
+{ "avatar": { "url": "https://...", "publicId": "schedulerpro/client/..." } }
+```
+ou
+```json
+{ "avatar": null }
+```
+
+### Corridas pós-storage (sem transação)
+
+- Upload: storage OK, Mongo não gravou → log `orphanPublicId` + 404.
+- Remoção: storage removeu, Mongo não gravou → log `stalePublicId` + 404.
+- Nenhuma compensação automática; o log permite localizar órfãos manualmente.
+
+### Testes realizados
+
+- 628/628 testes passam. Novos: `ClientService.photo.test.ts` (17),
+  `client-photo.routes.test.ts` (21), `ClientMapper.avatar.test.ts` (5).
+  `object-id.routes.test.ts` adaptado (handlers de foto no mock).
+- `npx tsc --noEmit` OK; `npm run build` OK; coverage 77.9% statements (subiu).
+- Nenhuma alteração em `client/` (frontend) nem em Company Logo.
+- Git intocado: sem commit/merge/push. Todos os padrões de `/users/:id/photo`
+  foram replicados; para Employee e Company Logo, siga o mesmo fluxo.
+---
+
+# SchedulerPro — Parte 4: Logo da Empresa
+
+> Continuação de `STAGE 30 — IMAGES`. Leia primeiro as Partes 1–2–3 deste mesmo
+> ficheiro (infraestrutura, foto de empregados e foto de clientes).
+
+## Objetivo
+
+Implementar a logo da empresa no backend, movendo para dentro da aplicação aquilo
+que hoje estaria fora (URL arbitrária). Reutiliza 100% da infraestrutura de imagens
+das Partes 1–3 — nada de código novo de storage.
+
+## Arquitetura
+
+Mantém-se o fluxo das Partes 2–3:
+
+```
+multipart -> uploadSingleImage("logo") -> multer em memória (limite 5 MB)
+  -> CompanyController.uploadLogo -> CompanyService.updateLogo
+    -> imageProvider.replace({ file, entity: ImageEntity.COMPANY, previous })
+      -> CompanyRepository.updateLogo(id, logo) -> Mongo
+```
+
+A **empresa é o próprio tenant**: não existe `companyId` na Company; a empresa é
+identificada pelo `_id`, e o `companyId` do token tem de ser igual a esse `_id`.
+A barreira de tenant segue o padrão já existente do módulo Company (404, não 403).
+
+## Alterações no Model
+
+`Company.model.ts`:
+
+- `ICompany.logo?: StoredImage | null`.
+- Sub-schema embutido idêntico ao de `User.avatar`/`Client.avatar`:
+  `{ url: required, publicId: required }` com `_id: false` e `default: null`.
+- Único formato persistido: `StoredImage`. Nenhuma URL arbitrária é aceite.
+
+## Alterações no Repository
+
+`CompanyRepository.ts`:
+
+- `updateLogo(id: string, logo: StoredImage | null)`:
+  `findOneAndUpdate({ _id: id, deletedAt: null }, { logo }, { new: true, runValidators: true })`.
+- O repository não conhece o storage: recebe o `StoredImage | null` pronto a gravar.
+
+## Alterações no Service
+
+`CompanyService.ts`:
+
+- `imageProvider` injetado como field (`CloudinaryImageProvider`).
+- `findCompanyForLogo(id, companyId)`: `ensureTenant(id, companyId)` (off-tenant -> 404)
+  seguido de `findById` (filtra `deletedAt: null`); sem empresa -> 404.
+- `updateLogo(id, file, companyId)`: `replace({ file, entity: ImageEntity.COMPANY, previous: company.logo ?? null })`
+  e depois `updateLogo(id, logo)`. Corrida pós-storage -> `Logger.error` com
+  `orphanPublicId` + 404.
+- `removeLogo(id, companyId)`: idempotente. Sem logo -> devolve a empresa sem tocar
+  no storage. Com logo -> `remove({ image })` e `updateLogo(id, null)`. Corrida ->
+  `Logger.error` com `stalePublicId` + 404.
+- `update` continua a ignorar `logo` (só `name`/`timezone` entram no `updateData`).
+
+## Alterações no Controller
+
+`CompanyController.ts`:
+
+- `uploadLogo(req, res)`: `req.file` obrigatório (rede de segurança, mesma mensagem
+  `IMAGE_FILE_REQUIRED`); delega em `CompanyService.updateLogo`.
+- `removeLogo(req, res)`: delega em `CompanyService.removeLogo`.
+- Segue o estilo do ficheiro: métodos regulares que chamam o singleton
+  `CompanyService` estaticamente (sem `this`), por isso a passagem por referência
+  ao router é segura.
+
+## Alterações nas Routes
+
+`CompanyRoutes.ts`:
+
+- `POST /:id/logo` — `authenticate -> validateObjectId -> requirePasswordChangeCompleted
+  -> hasPermission(COMPANY_UPDATE) -> uploadSingleImage("logo")`.
+- `DELETE /:id/logo` — idem, sem o middleware de upload.
+- Não colide com nenhuma rota existente (métodos/segmentos diferentes de `/:id`,
+  `/activate`, `/deactivate`).
+
+## Alterações no Mapper e mensagens
+
+- `CompanyMapper.toResponse`: projeta `logo: { url, publicId } | null`.
+- `http-messages.ts` (bloco /*Empresa*/): `COMPANY_LOGO_UPDATED`,
+  `COMPANY_LOGO_REMOVED`.
+
+## RBAC
+
+- Reutiliza `Permission.COMPANY_UPDATE` (existente). Matriz RBAC intocada.
+- OWNER e ADMIN têm `COMPANY_UPDATE` -> logo disponível.
+- MANAGER / EMPLOYEE / CLIENT não têm -> 403.
+- Sem token -> 401.
+
+## Tenant Isolation
+
+```
+ensureTenant(id, companyId): id !== companyId -> 404 (padrão Company)
+findById(id) -> filtra deletedAt: null
+```
+
+O `:id` tem de ser a própria empresa do token. Não há exposição de outras empresas:
+off-tenant devolve o mesmo 404 de "não encontrada".
+
+## Upload
+
+- `multipart/form-data`, campo `logo`, max 5 MB (limite do multer + validação real
+  por assinatura binária no provider).
+- Substituição integral: `replace()` valida a nova antes de destruir a anterior;
+  primeiro envio (`previous: null`) não apaga nada.
+
+## Remoção
+
+- Idempotente: sem logo = sucesso sem chamar o storage.
+- `remove()` é idempotente; o campo `logo: null` só é persistido depois do storage confirmar.
+
+## Testes
+
+```
+npm test -> 675/675 passam (60 ficheiros). Novos:
+  - CompanyService.logo.test.ts     (20) tenant(404), soft-delete, replace/remove,
+                                      corridas pós-storage (orphan/stalePublicId),
+                                      contrato "update ignora logo".
+  - company-logo.routes.test.ts     (21) RBAC real (OWNER/ADMIN ok;
+                                      MANAGER/EMPLOYEE/CLIENT 403), 401,
+                                      ObjectId inválido, >5MB, sem ficheiro,
+                                      campo inesperado, propagação de erro.
+  - CompanyMapper.logo.test.ts      (4)  projeção { url, publicId } / null /
+                                      ausente + lista.
+  - CompanyRepository.test.ts       (+2) updateLogo grava logo e logo null (remoção).
+```
+
+Foram usados o router e o controller reais com o `CompanyService` mockado
+(exatamente como `client-photo.routes.test.ts` faz para cliente).
+
+## Coverage
+
+```
+Statements: 78.28% (1597/2040)  Branches: 76.55%  Functions: 66.28%  Lines: 78.48%
+
+Módulo companies:
+  CompanyService.ts     97.06% stmts / 93.75% branches
+  CompanyMapper.ts     100.00%
+  CompanyRoutes.ts     100.00%
+  CompanyRepository.ts  70.00%
+  CompanyController.ts  33.33% (só o logo é exercitado; sem suíte direta, igual a ClientController)
+  Company.model.ts      62.50%
+```
+
+Subiu face aos 77.9% da Parte 3.
+
+## Typecheck / Build
+
+- `npx tsc --noEmit` OK.
+- `npm run build` (`tsc`) OK.
+
+## Arquivos alterados
+
+- `server/src/modules/companies/models/Company.model.ts`
+- `server/src/modules/companies/repositories/CompanyRepository.ts`
+- `server/src/modules/companies/services/CompanyService.ts`
+- `server/src/modules/companies/controllers/CompanyController.ts`
+- `server/src/modules/companies/routes/CompanyRoutes.ts`
+- `server/src/modules/companies/mappers/CompanyMapper.ts`
+- `server/src/constants/http-messages.ts`
+- `server/tests/unit/companies/CompanyService.logo.test.ts` (novo)
+- `server/tests/unit/companies/company-logo.routes.test.ts` (novo)
+- `server/tests/unit/companies/CompanyMapper.logo.test.ts` (novo)
+- `server/tests/unit/companies/CompanyRepository.test.ts`
+
+## Decisões técnicas
+
+- Tenancy 404 (não 403): a empresa é o próprio tenant e `ensureTenant` já é a
+  barreira existente do módulo; manter 403 para Client/Employee (que têm `companyId`
+  próprio) e 404 para Company evita revelar a existência de outra empresa.
+- `logo` NUNCA entra no `PATCH /companies/:id`: o `updateData` no service só
+  propaga `name`/`timezone`, blindado por contrato em teste. Só os endpoints
+  dedicados a logo mexem no campo.
+- `publicId` é exposto na resposta por consistência com `avatar` (Partes 2–3),
+  embora seja tecnicamente um detalhe de storage; decisão já aceite anteriormente.
+- Permissions: nenhuma permission nova. Reutilizou-se `COMPANY_UPDATE`.
+
+## Limitações
+
+- Sem transação: corridas pós-storage são registadas (`orphanPublicId`/`stalePublicId`),
+  sem compensação automática.
+- Soft-delete não apaga a logo do Cloudinary (existe fluxo de restauro; mesma
+  decisão das Partes 2–3).
+- `CompanyController` com 33% de coverage (só os handlers de logo são exercitados
+  pelas rotas; o resto do controller não tem suíte direta — pré-existente).
+
+## Itens não implementados
+
+- Frontend (`client/`) — fora do âmbito.
+- Upload em lote / várias logos / crop server-side.
+- Validação de dimensões (apenas formato/magic bytes e tamanho).
+- Configuração/ambiente do Cloudinary (depende de env, fora do scope).
+
+## CONTEXTO PARA A PRÓXIMA IA
+
+### `Company.logo` a partir desta etapa
+
+```ts
+logo?: { url: string; publicId: string } | null;
+```
+
+- Sub-schema `_id: false`, `url`/`publicId` obrigatórios, `default: null` (mesmo
+  formato de `User.avatar` e `Client.avatar`).
+- `UpdateCompanyDto`/`CompanyService.update` **não** tocam `logo`; o
+  `PATCH /companies/:id` ignora qualquer `logo` recebido no body.
+- `CompanyMapper.toResponse` projeta `logo: { url, publicId } | null`.
+
+### Endpoints implementados
+
+- `POST /api/companies/:id/logo` — envio/substituição (`multipart/form-data`,
+  campo `logo`, max 5 MB, JPEG/PNG/WebP por assinatura binária).
+- `DELETE /api/companies/:id/logo` — remoção idempotente.
+
+### Permission utilizada
+
+- `COMPANY_UPDATE` (existente). OWNER/ADMIN permitem; MANAGER/EMPLOYEE/CLIENT 403;
+  sem token 401. Matriz RBAC intocada.
+
+### `ImageEntity.COMPANY`
+
+- Provider usa a pasta `schedulerpro/company` (entity `ImageEntity.COMPANY`).
+
+### Tenant isolation (padrão Company, 404)
+
+```
+ensureTenant(id, companyId): id !== companyId -> 404 COMPANY_NOT_FOUND
+findById(id) -> filtra deletedAt: null
+```
+
+A empresa É o tenant — não há `companyId` na Company. Diferente de Employee/Client
+(403 quando `companyId` diverge), Company devolve 404 para não revelar outra empresa.
+
+### Comportamento de replace/remove
+
+- `replace({ file, entity: ImageEntity.COMPANY, previous: company.logo ?? null })`
+  valida a nova antes de destruir a anterior; primeiro upload = `previous: null`.
+- `remove({ image })` idempotente; `logo: null` só é persistido após storage confirmar.
+- Nunca fazer remove+upload manual no service.
+
+### Soft-delete
+
+- Empresa soft-deleted não recebe/remove logo (404 pelo repository ativo).
+- O soft-delete **não** apaga a logo do Cloudinary (não há transação com o storage) —
+  mesma decisão das Partes 2–3.
+
+### Contrato da API
+
+```json
+{ "logo": { "url": "https://...", "publicId": "schedulerpro/company/..." } }
+```
+ou
+```json
+{ "logo": null }
+```
+
+### Corridas pós-storage (sem transação)
+
+- Upload: storage OK, Mongo não gravou → log `orphanPublicId` + 404.
+- Remoção: storage removeu, Mongo não gravou → log `stalePublicId` + 404.
+
+### Testes realizados
+
+- 675/675 testes passam. Novos: `CompanyService.logo.test.ts` (20),
+  `company-logo.routes.test.ts` (21), `CompanyMapper.logo.test.ts` (4),
+  `CompanyRepository.test.ts` (+2).
+- `npx tsc --noEmit` OK; `npm run build` OK; coverage 78.28% statements (subiu).
+- Nenhuma alteração em `client/` (frontend). Git intocado: sem commit/merge/push.
+- Para outras entidades, o fluxo é idêntico (as Partes 2–3 serviram de molde).

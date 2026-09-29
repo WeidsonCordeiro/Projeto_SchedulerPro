@@ -18,6 +18,7 @@ import Company, { CompanyDocument } from "../models/Company.model";
 import { CreateCompanyDto, UpdateCompanyDto } from "../types";
 import { Types } from "mongoose";
 import { ClientSession } from "mongoose";
+import { StoredImage } from "../../../providers/images/types";
 
 class CompanyRepository {
   /**
@@ -120,6 +121,25 @@ class CompanyRepository {
     return Company.findOneAndUpdate(
       { _id: id, deletedAt: null },
       data,
+      { new: true, runValidators: true },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Persiste apenas a logo da empresa.
+   *
+   * O repository não conhece o storage: recebe um
+   * `StoredImage | null` pronto a gravar.
+   * ==========================================================
+   */
+  public async updateLogo(
+    id: string,
+    logo: StoredImage | null,
+  ): Promise<CompanyDocument | null> {
+    return Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { logo },
       { new: true, runValidators: true },
     );
   }

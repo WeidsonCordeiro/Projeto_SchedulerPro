@@ -32,6 +32,7 @@ import { updateClientValidator } from "../validators/update-client.validator";
 import { setClientCredentialsValidator } from "../validators/set-client-credentials.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
 
 const router = Router();
 
@@ -92,6 +93,42 @@ router.post(
   setClientCredentialsValidator,
   validateRequest,
   ClientController.setCredentials,
+);
+
+/**
+ * ==========================================================
+ * Enviar ou substituir a foto de um cliente.
+ *
+ * A foto usa a permission `CLIENT_UPDATE` já existente (a
+ * foto faz parte da atualização do cliente). O tenant é
+ * garantido no serviço; a empresa vem do token autenticado.
+ * ==========================================================
+ */
+router.post(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.CLIENT_UPDATE),
+  uploadSingleImage("photo"),
+  ClientController.uploadPhoto,
+);
+
+/**
+ * ==========================================================
+ * Remover a foto de um cliente.
+ *
+ * Idempotente: um cliente sem foto é um estado válido e a
+ * operação devolve sucesso sem chamar o storage.
+ * ==========================================================
+ */
+router.delete(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.CLIENT_UPDATE),
+  ClientController.removePhoto,
 );
 
 /**

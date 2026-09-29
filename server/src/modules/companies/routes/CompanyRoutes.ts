@@ -19,6 +19,7 @@ import PasswordChangeMiddleware from "../../../middlewares/require-password-chan
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import { updateCompanyValidator } from "../validators/update-company.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
+import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
 
 const router = Router();
 
@@ -75,6 +76,43 @@ router.patch(
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_DEACTIVATE),
   CompanyController.deactivate,
+);
+
+/**
+ * ==========================================================
+ * Enviar ou substituir a logo de uma empresa.
+ *
+ * A logo usa a permission `COMPANY_UPDATE` já existente (a
+ * logo faz parte da atualização da empresa). A empresa é a
+ * própria entidade autenticada: o tenant é garantido no
+ * serviço comparando o `:id` com o `companyId` do token.
+ * ==========================================================
+ */
+router.post(
+  "/:id/logo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.COMPANY_UPDATE),
+  uploadSingleImage("logo"),
+  CompanyController.uploadLogo,
+);
+
+/**
+ * ==========================================================
+ * Remover a logo de uma empresa.
+ *
+ * Idempotente: uma empresa sem logo é um estado válido e a
+ * operação devolve sucesso sem chamar o storage.
+ * ==========================================================
+ */
+router.delete(
+  "/:id/logo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.COMPANY_UPDATE),
+  CompanyController.removeLogo,
 );
 
 export default router;
