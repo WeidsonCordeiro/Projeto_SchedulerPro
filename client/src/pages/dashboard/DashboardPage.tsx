@@ -71,7 +71,7 @@ export default function DashboardPage() {
   const loadEmployees = useCallback(async () => {
     const response = await employeesApi.getEmployees();
     setEmployees(
-      (response.data ?? []).filter((employee) => employee.role !== "CLIENT"),
+      (response.data ?? []).filter((employee) => employee.role !== "CLIENT")
     );
   }, []);
 
@@ -101,7 +101,7 @@ export default function DashboardPage() {
     setRelatedError(
       failures.length > 0
         ? `Não foi possível carregar alguns nomes. ${failures.join(" ")}`
-        : null,
+        : null
     );
   }, [loadClients, loadServices, loadEmployees, canListEmployees]);
 
@@ -128,30 +128,30 @@ export default function DashboardPage() {
 
   const clientNames = useMemo(
     () => new Map(clients.map((c) => [c.id, c.name])),
-    [clients],
+    [clients]
   );
   const serviceNames = useMemo(
     () => new Map(services.map((s) => [s.id, s.name])),
-    [services],
+    [services]
   );
   const employeeNames = useMemo(
     () => new Map(employees.map((e) => [e.id, e.name])),
-    [employees],
+    [employees]
   );
 
   const todayKey = useMemo(
     () => formatAppointmentDate(DateTime.now().toISO(), timezone),
-    [timezone],
+    [timezone]
   );
 
   const todayAppointments = useMemo(
     () =>
       appointments
         .filter(
-          (apt) => formatAppointmentDate(apt.startAt, timezone) === todayKey,
+          (apt) => formatAppointmentDate(apt.startAt, timezone) === todayKey
         )
         .sort(byStartAt),
-    [appointments, timezone, todayKey],
+    [appointments, timezone, todayKey]
   );
 
   const upcomingAppointments = useMemo(
@@ -160,11 +160,11 @@ export default function DashboardPage() {
         .filter(
           (apt) =>
             UPCOMING_STATUSES.includes(apt.status) &&
-            new Date(apt.startAt).getTime() > Date.now(),
+            new Date(apt.startAt).getTime() > Date.now()
         )
         .sort(byStartAt)
         .slice(0, MAX_UPCOMING),
-    [appointments],
+    [appointments]
   );
 
   if (isLoading) {
@@ -202,64 +202,74 @@ export default function DashboardPage() {
 
   return (
     <section>
-      <PageHeader title="Bem-vindo ao SchedulerPro" description={greeting} eyebrow="Visão geral" actions={<Link className="btn btn-primary" to="/appointments">Abrir agenda</Link>} />
+      <PageHeader
+        title="Bem-vindo ao SchedulerPro"
+        description={greeting}
+        eyebrow="Visão geral"
+        actions={
+          <Link className="btn btn-primary" to="/appointments">
+            Abrir agenda
+          </Link>
+        }
+      />
       {relatedError && (
         <div className="alert alert-warning mt-3" role="alert">
           {relatedError}
         </div>
       )}
 
-      <div className="dashboard-section-heading"><div><span className="section-kicker">Operação</span><h2 className="h5 mb-0">Resumo do dia</h2></div><span className="text-muted small">Atualizado com os dados da sua agenda</span></div>
+      <div className="dashboard-section-heading">
+        <div>
+          <span className="section-kicker mb-2">Operação</span>
+          <h2 className="h5 mb-2">Resumo do dia</h2>
+          <span className="text-muted small">
+            Atualizado com os dados da sua agenda
+          </span>
+        </div>
+      </div>
       <div className="row g-3 dashboard-kpis">
-        <div className="col-6 col-md-4 col-lg-2">
+        <div className="col-12 col-md-4 col-xl-3">
           <DashboardCard
             title="Hoje"
             value={todayAppointments.length}
             icon="bi-calendar-check"
           />
         </div>
-        <div className="col-6 col-md-4 col-lg-2">
+        <div className="col-12 col-md-4 col-xl-3">
           <DashboardCard
             title="Pendentes"
             value={appointments.filter((a) => a.status === "scheduled").length}
             icon="bi-clock"
           />
         </div>
-        <div className="col-6 col-md-4 col-lg-2">
+        <div className="col-12 col-md-4 col-xl-3">
           <DashboardCard
             title="Confirmados"
             value={appointments.filter((a) => a.status === "confirmed").length}
             icon="bi-check-circle"
           />
         </div>
-        <div className="col-6 col-md-4 col-lg-2">
-          <DashboardCard
-            title="Clientes"
-            value={clients.length}
-            icon="bi-people"
-          />
-        </div>
-        <div className="col-6 col-md-4 col-lg-2">
-          <DashboardCard
-            title="Serviços"
-            value={services.length}
-            icon="bi-gear"
-          />
-        </div>
-        {canListEmployees && (
-          <div className="col-6 col-md-4 col-lg-2">
-            <DashboardCard
-              title="Funcionários"
-              value={employees.length}
-              icon="bi-person-badge"
-            />
-          </div>
-        )}
       </div>
 
       <div className="dashboard-agenda-grid">
-        <DashboardAppointments appointments={todayAppointments} clientNames={clientNames} serviceNames={serviceNames} employeeNames={employeeNames} timezone={timezone} title="Agenda do dia" emptyMessage="Nenhum agendamento para hoje." />
-        <DashboardAppointments appointments={upcomingAppointments} clientNames={clientNames} serviceNames={serviceNames} employeeNames={employeeNames} timezone={timezone} title="Próximos agendamentos" emptyMessage="Nenhum agendamento próximo." />
+        <DashboardAppointments
+          appointments={todayAppointments}
+          clientNames={clientNames}
+          serviceNames={serviceNames}
+          employeeNames={employeeNames}
+          timezone={timezone}
+          title="Agenda do dia"
+          emptyMessage="Nenhum agendamento para hoje."
+        />
+        <DashboardAppointments
+          appointments={upcomingAppointments}
+          clientNames={clientNames}
+          serviceNames={serviceNames}
+          employeeNames={employeeNames}
+          timezone={timezone}
+          title="Próximos agendamentos"
+          emptyMessage="Nenhum agendamento próximo."
+        />
       </div>
     </section>
   );

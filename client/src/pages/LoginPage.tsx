@@ -27,7 +27,7 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const sessionExpirationMessage = useAppSelector(
-    (state) => state.auth.sessionExpirationMessage,
+    (state) => state.auth.sessionExpirationMessage
   );
 
   // Feedback de sessão encerrada pelo backend (inatividade, duração máxima ou
@@ -73,8 +73,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="row justify-content-center">
-      <div className="col-sm-8 col-md-6 col-lg-4">
+    <div className="row">
+      <div className="col-12">
         <h1 className="h3 mb-3">Entrar</h1>
 
         {errorMessage && (
@@ -92,7 +92,9 @@ export default function LoginPage() {
               id="login-email"
               type="email"
               autoComplete="email"
-              className={`form-control ${fieldErrors.email ? "is-invalid" : ""}`}
+              className={`form-control ${
+                fieldErrors.email ? "is-invalid" : ""
+              }`}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -109,7 +111,9 @@ export default function LoginPage() {
               id="login-password"
               type="password"
               autoComplete="current-password"
-              className={`form-control ${fieldErrors.password ? "is-invalid" : ""}`}
+              className={`form-control ${
+                fieldErrors.password ? "is-invalid" : ""
+              }`}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -118,7 +122,11 @@ export default function LoginPage() {
             )}
           </div>
 
-          <button type="submit" className="btn btn-primary w-100" disabled={isLoading}>
+          <button
+            type="submit"
+            className="btn btn-primary w-100"
+            disabled={isLoading}
+          >
             {isLoading ? (
               <>
                 <span

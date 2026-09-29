@@ -38,7 +38,7 @@ function validate(
   password: string,
   confirmPassword: string,
   companyName: string,
-  companyTimezone: string,
+  companyTimezone: string
 ): FieldErrors {
   const errors: FieldErrors = {};
 
@@ -103,7 +103,7 @@ export default function RegisterPage() {
       password,
       confirmPassword,
       companyName,
-      companyTimezone,
+      companyTimezone
     );
     setFieldErrors(errors);
 
@@ -137,8 +137,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="row justify-content-center">
-      <div className="col-sm-8 col-md-6 col-lg-5">
+    <div className="row">
+      <div className="col-12">
         <h1 className="h3 mb-3">Criar conta</h1>
 
         {errorMessage && (
@@ -173,7 +173,9 @@ export default function RegisterPage() {
               id="register-email"
               type="email"
               autoComplete="email"
-              className={`form-control ${fieldErrors.email ? "is-invalid" : ""}`}
+              className={`form-control ${
+                fieldErrors.email ? "is-invalid" : ""
+              }`}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
@@ -190,7 +192,9 @@ export default function RegisterPage() {
               id="register-password"
               type="password"
               autoComplete="new-password"
-              className={`form-control ${fieldErrors.password ? "is-invalid" : ""}`}
+              className={`form-control ${
+                fieldErrors.password ? "is-invalid" : ""
+              }`}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -207,7 +211,9 @@ export default function RegisterPage() {
               id="register-confirm-password"
               type="password"
               autoComplete="new-password"
-              className={`form-control ${fieldErrors.confirmPassword ? "is-invalid" : ""}`}
+              className={`form-control ${
+                fieldErrors.confirmPassword ? "is-invalid" : ""
+              }`}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
             />
@@ -225,7 +231,9 @@ export default function RegisterPage() {
             <input
               id="register-company-name"
               type="text"
-              className={`form-control ${fieldErrors.companyName ? "is-invalid" : ""}`}
+              className={`form-control ${
+                fieldErrors.companyName ? "is-invalid" : ""
+              }`}
               value={companyName}
               onChange={(event) => setCompanyName(event.target.value)}
             />
@@ -240,7 +248,9 @@ export default function RegisterPage() {
             </label>
             <select
               id="register-company-timezone"
-              className={`form-select ${fieldErrors.companyTimezone ? "is-invalid" : ""}`}
+              className={`form-select ${
+                fieldErrors.companyTimezone ? "is-invalid" : ""
+              }`}
               value={companyTimezone}
               onChange={(event) => setCompanyTimezone(event.target.value)}
             >

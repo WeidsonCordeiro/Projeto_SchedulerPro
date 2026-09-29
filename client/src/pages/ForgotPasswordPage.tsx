@@ -47,8 +47,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="row justify-content-center">
-      <div className="col-sm-8 col-md-6 col-lg-4">
+    <div className="row">
+      <div className="col-12">
         <h1 className="h3 mb-3">Recuperar senha</h1>
 
         {submitted ? (

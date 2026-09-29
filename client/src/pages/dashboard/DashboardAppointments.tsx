@@ -45,7 +45,15 @@ export default function DashboardAppointments({
         </div>
       ) : (
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
+          <table className="table table-hover align-middle mb-0 dashboard-table">
+            <colgroup>
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "10%" }} />
+              <col style={{ width: "31%" }} />
+              <col style={{ width: "19%" }} />
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "11%" }} />
+            </colgroup>
             <thead className="table-light">
               <tr>
                 <th scope="col">Dia</th>
@@ -70,7 +78,9 @@ export default function DashboardAppointments({
                   <td>{nameFor(employeeNames, apt.employeeId)}</td>
                   <td>
                     <span
-                      className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[apt.status]}`}
+                      className={`badge status-badge-80 ${
+                        APPOINTMENT_STATUS_BADGE_CLASS[apt.status]
+                      }`}
                     >
                       {APPOINTMENT_STATUS_LABELS[apt.status]}
                     </span>
