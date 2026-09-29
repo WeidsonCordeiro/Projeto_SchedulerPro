@@ -41,6 +41,30 @@ describe("CompanyRepository", () => {
     );
   });
 
+  it("updateLogo grava apenas a logo e preserva o filtro de empresa ativa", async () => {
+    company.findOneAndUpdate.mockResolvedValue({});
+    const logo = {
+      url: "https://res.cloudinary.com/demo/image/upload/v1/schedulerpro/company/logo",
+      publicId: "schedulerpro/company/logo",
+    };
+    await CompanyRepository.updateLogo(id, logo);
+    expect(company.findOneAndUpdate).toHaveBeenCalledWith(
+      activeFilter,
+      { logo },
+      { new: true, runValidators: true },
+    );
+  });
+
+  it("updateLogo persiste logo null (remoção)", async () => {
+    company.findOneAndUpdate.mockResolvedValue({});
+    await CompanyRepository.updateLogo(id, null);
+    expect(company.findOneAndUpdate).toHaveBeenCalledWith(
+      activeFilter,
+      { logo: null },
+      { new: true, runValidators: true },
+    );
+  });
+
   it.each([
     ["activate", () => CompanyRepository.activate(id), { isActive: true }],
     ["deactivate", () => CompanyRepository.deactivate(id), { isActive: false }],

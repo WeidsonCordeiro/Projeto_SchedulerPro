@@ -20,6 +20,13 @@ import UserRepository from "../../users/repositories/UserRepository";
 import { UpdateUserData } from "../../users/types";
 import { ClientDocument } from "../models/Client.model";
 import PasswordProvider from "../../../providers/security/PasswordProvider";
+import Logger from "../../../providers/logger";
+import imageProvider from "../../../providers/images/CloudinaryImageProvider";
+import {
+  ImageEntity,
+  type StoredImage,
+  type UploadedFile,
+} from "../../../providers/images/types";
 import { Role } from "../../../constants/roles";
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
@@ -29,6 +36,7 @@ class ClientService {
   private readonly clientRepository = ClientRepository;
   private readonly userRepository = UserRepository;
   private readonly passwordProvider = PasswordProvider;
+  private readonly imageProvider = imageProvider;
 
   /**
    * ==========================================================
@@ -281,6 +289,162 @@ class ClientService {
     }
 
     await this.clientRepository.softDelete(id, companyId);
+  }
+
+  /**
+   * ==========================================================
+   * Localiza um cliente para uma operação de imagem.
+   *
+   * Aplica, pela ordem, as barreiras:
+   *
+   * 1. existe e não está soft-deleted (o repository filtra por
+   *    `deletedAt: null`);
+   * 2. pertence à empresa do utilizador autenticado (tenant —
+   *    nunca confiar apenas no `:id`).
+   *
+   * O erro de empresa é 403 para não revelar a existência do
+   * registo de outro tenant.
+   * ==========================================================
+   */
+  private async findClientForPhoto(
+    id: string,
+    companyId: string,
+  ): Promise<ClientDocument> {
+    const client = await this.clientRepository.findById(id);
+
+    if (!client) {
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (client.companyId.toString() !== companyId) {
+      throw new AppError(
+        HttpMessages.CLIENT_ACCESS_DENIED,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return client;
+  }
+
+  /**
+   * ==========================================================
+   * Envia ou substitui a foto de um cliente.
+   *
+   * Delega a substituição ao `imageProvider.replace()`, que
+   * valida o ficheiro novo ANTES de destruir o anterior e
+   * trata a primeira foto (quando `previous` é null).
+   *
+   * Não existe sequência manual remove+upload aqui: isso
+   * duplicaria a lógica do provider.
+   * ==========================================================
+   */
+  public async updatePhoto(
+    id: string,
+    file: UploadedFile,
+    companyId: string,
+  ) {
+    const client = await this.findClientForPhoto(id, companyId);
+
+    const avatar = await this.imageProvider.replace({
+      file,
+      entity: ImageEntity.CLIENT,
+      previous: client.avatar ?? null,
+    });
+
+    const updatedClient = await this.clientRepository.updateAvatar(
+      id,
+      companyId,
+      avatar,
+    );
+
+    if (!updatedClient) {
+      /**
+       * A imagem já foi enviada para o storage mas não foi
+       * possível associá-la ao registo. O `publicId` fica
+       * registado no log para não se tornar um órfão
+       * silencioso.
+       */
+      Logger.error("Foto enviada mas cliente não foi atualizado", {
+        clientId: id,
+        companyId,
+        orphanPublicId: avatar.publicId,
+      });
+
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    Logger.upload(`Foto do cliente ${id} atualizada`, {
+      clientId: id,
+      companyId,
+      publicId: avatar.publicId,
+    });
+
+    return ClientMapper.toResponse(
+      updatedClient,
+      await this.resolvePortalAccess(id, companyId),
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Remove a foto de um cliente.
+   *
+   * Idempotente: um cliente sem foto é um estado válido,
+   * devolve o cliente e não chama o storage. Nunca se limita
+   * a apagar o campo no MongoDB deixando o recurso no
+   * Cloudinary.
+   * ==========================================================
+   */
+  public async removePhoto(id: string, companyId: string) {
+    const client = await this.findClientForPhoto(id, companyId);
+
+    if (!client.avatar) {
+      Logger.info(`Cliente ${id} não possui foto para remover`, {
+        clientId: id,
+        companyId,
+      });
+
+      return ClientMapper.toResponse(
+        client,
+        await this.resolvePortalAccess(id, companyId),
+      );
+    }
+
+    const image: StoredImage = client.avatar;
+
+    await this.imageProvider.remove({ image });
+
+    const updatedClient = await this.clientRepository.updateAvatar(
+      id,
+      companyId,
+      null,
+    );
+
+    if (!updatedClient) {
+      /**
+       * A imagem já saiu do storage, mas o campo do MongoDB
+       * continua a apontar para ela. Sem este log, a
+       * referência ficaria quebrada sem rasto.
+       */
+      Logger.error("Foto removida mas cliente não foi atualizado", {
+        clientId: id,
+        companyId,
+        stalePublicId: image.publicId,
+      });
+
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    Logger.upload(`Foto do cliente ${id} removida`, {
+      clientId: id,
+      companyId,
+      publicId: image.publicId,
+    });
+
+    return ClientMapper.toResponse(
+      updatedClient,
+      await this.resolvePortalAccess(id, companyId),
+    );
   }
 
   /**

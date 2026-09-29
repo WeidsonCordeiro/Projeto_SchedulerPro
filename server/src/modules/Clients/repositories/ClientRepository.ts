@@ -15,6 +15,7 @@ import { Types } from "mongoose";
 import Client, { ClientDocument } from "../models/Client.model";
 import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
+import { StoredImage } from "../../../providers/images/types";
 
 class ClientRepository {
   /**
@@ -95,6 +96,33 @@ class ClientRepository {
         deletedAt: null,
       },
       data,
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Persiste apenas a foto do cliente.
+   *
+   * O repository não conhece o storage: recebe um
+   * `StoredImage | null` pronto a gravar.
+   * ==========================================================
+   */
+  public async updateAvatar(
+    id: string,
+    companyId: string | Types.ObjectId,
+    avatar: StoredImage | null,
+  ): Promise<ClientDocument | null> {
+    return Client.findOneAndUpdate(
+      {
+        _id: id,
+        companyId,
+        deletedAt: null,
+      },
+      { avatar },
       {
         new: true,
         runValidators: true,

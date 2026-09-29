@@ -66,6 +66,8 @@ export const HttpMessages = {
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
+  COMPANY_LOGO_UPDATED: "Logo da empresa atualizada com sucesso.",
+  COMPANY_LOGO_REMOVED: "Logo da empresa removida com sucesso.",
 
   /*Serviço*/
   SERVICE_FOUND: "Serviço encontrado.",
@@ -95,6 +97,9 @@ export const HttpMessages = {
     "Esta conta de acesso ao portal não está vinculada a um cliente.",
   CLIENT_ROLE_FORBIDDEN:
     "O acesso de um cliente ao portal deve ser criado pelo fluxo de credenciais.",
+  CLIENT_ACCESS_DENIED: "Não tem permissão para aceder a este cliente.",
+  CLIENT_PHOTO_UPDATED: "Foto do cliente atualizada com sucesso.",
+  CLIENT_PHOTO_REMOVED: "Foto do cliente removida com sucesso.",
   MY_APPOINTMENTS_FOUND: "Meus agendamentos encontrados.",
 
   /*Agendamentos*/
