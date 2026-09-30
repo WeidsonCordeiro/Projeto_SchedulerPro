@@ -5,7 +5,9 @@ import { httpError } from "../../test/http";
 vi.mock("../apiClient", () => ({
   apiClient: {
     get: vi.fn(),
+    post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -109,6 +111,33 @@ describe("companyApi", () => {
     await expect(companyApi.getCompany()).rejects.toMatchObject({
       response: { status: 500 },
     });
+  });
+
+  it("posts /companies/:id/logo as multipart with the logo field", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+    const file = new File([new Uint8Array([1, 2, 3])], "logo.png", {
+      type: "image/png",
+    });
+
+    await companyApi.uploadCompanyLogo("abc123", file);
+
+    const calls = vi.mocked(apiClient.post).mock.calls;
+    const [url, body] = calls[calls.length - 1];
+    expect(url).toBe("/companies/abc123/logo");
+    expect(body).toBeInstanceOf(FormData);
+    expect((body as FormData).get("logo")).toBe(file);
+  });
+
+  it("deletes /companies/:id/logo", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+
+    await companyApi.removeCompanyLogo("abc123");
+
+    expect(apiClient.delete).toHaveBeenCalledWith("/companies/abc123/logo");
   });
 
   it("propagates validation errors during update", async () => {

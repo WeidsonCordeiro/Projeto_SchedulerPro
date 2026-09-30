@@ -2,11 +2,13 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import employeesApi from "../../api/endpoints/employees.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import ImageUploader from "../common/ImageUploader";
 import {
   canAssignEmployeeRole,
   getAssignableEmployeeRoles,
 } from "../../config/employeePermissions";
 import type { Employee } from "../../types/employee";
+import type { StoredImage } from "../../types/image";
 import type { Role } from "../../types/auth";
 
 interface FieldErrors {
@@ -23,6 +25,8 @@ interface EmployeeFormProps {
   currentUserId: string | null;
   onClose: () => void;
   onSaved: (employee: Employee) => void;
+  /** Notifica o pai após alterar a foto (para atualizar a lista sem reload). */
+  onPhotoUpdated?: (employee: Employee) => void;
 }
 
 const NAME_MIN = 3;
@@ -75,6 +79,7 @@ export default function EmployeeForm({
   currentUserId,
   onClose,
   onSaved,
+  onPhotoUpdated,
 }: EmployeeFormProps) {
   const isEdit = Boolean(employee);
   const isSelf = isEdit && employee!.id === currentUserId;
@@ -93,6 +98,7 @@ export default function EmployeeForm({
   const [role, setRole] = useState<Role>(initialRole);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [photo, setPhoto] = useState<StoredImage | null>(employee?.avatar ?? null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,6 +112,24 @@ export default function EmployeeForm({
 
   function handleClose() {
     onClose();
+  }
+
+  async function handlePhotoUpload(file: File) {
+    const response = await employeesApi.uploadEmployeePhoto(employee!.id, file);
+    const updated = response.data;
+    if (updated) {
+      setPhoto(updated.avatar ?? null);
+      onPhotoUpdated?.(updated);
+    }
+  }
+
+  async function handlePhotoRemove() {
+    const response = await employeesApi.removeEmployeePhoto(employee!.id);
+    const updated = response.data;
+    if (updated) {
+      setPhoto(updated.avatar ?? null);
+      onPhotoUpdated?.(updated);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -196,6 +220,19 @@ export default function EmployeeForm({
               <div className="alert alert-danger" role="alert">
                 {errorMessage}
               </div>
+            )}
+
+            {isEdit && employee && (
+              <ImageUploader
+                id="employee-photo"
+                name={name || employee.name}
+                image={photo}
+                canManage
+                upload={handlePhotoUpload}
+                remove={handlePhotoRemove}
+                successUploadMessage="Foto atualizada com sucesso."
+                successRemoveMessage="Foto removida com sucesso."
+              />
             )}
 
             <form onSubmit={handleSubmit} noValidate>

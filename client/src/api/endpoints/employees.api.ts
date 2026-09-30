@@ -51,6 +51,29 @@ export const employeesApi = {
     const { data } = await apiClient.delete<ApiResponse<null>>(`/users/${id}`);
     return data;
   },
+
+  /**
+   * POST /users/:id/photo (multipart/form-data, campo "photo").
+   * Envia/substitui a foto do funcionário. O backend valida formato e tamanho.
+   * Não definimos Content-Type: o axios gera o boundary do multipart sozinho.
+   */
+  async uploadEmployeePhoto(id: string, file: File) {
+    const formData = new FormData();
+    formData.append("photo", file);
+    const { data } = await apiClient.post<ApiResponse<Employee>>(
+      `/users/${id}/photo`,
+      formData,
+    );
+    return data;
+  },
+
+  /** DELETE /users/:id/photo. Remove a foto (idempotente no backend). */
+  async removeEmployeePhoto(id: string) {
+    const { data } = await apiClient.delete<ApiResponse<Employee>>(
+      `/users/${id}/photo`,
+    );
+    return data;
+  },
 };
 
 export default employeesApi;

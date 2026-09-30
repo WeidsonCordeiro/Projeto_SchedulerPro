@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import clientsApi from "../../api/endpoints/clients.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import ImageUploader from "../common/ImageUploader";
 import type { Client } from "../../types/client";
+import type { StoredImage } from "../../types/image";
 
 interface FieldErrors {
   name?: string;
@@ -16,6 +18,8 @@ interface ClientFormProps {
   client: Client | null;
   onClose: () => void;
   onSaved: (client: Client) => void;
+  /** Notifica o pai após alterar a foto (para atualizar a lista sem reload). */
+  onPhotoUpdated?: (client: Client) => void;
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -56,18 +60,38 @@ export default function ClientForm({
   client,
   onClose,
   onSaved,
+  onPhotoUpdated,
 }: ClientFormProps) {
   const isEdit = Boolean(client);
   const [name, setName] = useState(client?.name ?? "");
   const [email, setEmail] = useState(client?.email ?? "");
   const [phone, setPhone] = useState(client?.phone ?? "");
   const [notes, setNotes] = useState(client?.notes ?? "");
+  const [photo, setPhoto] = useState<StoredImage | null>(client?.avatar ?? null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClose() {
     onClose();
+  }
+
+  async function handlePhotoUpload(file: File) {
+    const response = await clientsApi.uploadClientPhoto(client!.id, file);
+    const updated = response.data;
+    if (updated) {
+      setPhoto(updated.avatar ?? null);
+      onPhotoUpdated?.(updated);
+    }
+  }
+
+  async function handlePhotoRemove() {
+    const response = await clientsApi.removeClientPhoto(client!.id);
+    const updated = response.data;
+    if (updated) {
+      setPhoto(updated.avatar ?? null);
+      onPhotoUpdated?.(updated);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -130,6 +154,19 @@ export default function ClientForm({
               <div className="alert alert-danger" role="alert">
                 {errorMessage}
               </div>
+            )}
+
+            {isEdit && client && (
+              <ImageUploader
+                id="client-photo"
+                name={name || client.name}
+                image={photo}
+                canManage
+                upload={handlePhotoUpload}
+                remove={handlePhotoRemove}
+                successUploadMessage="Foto atualizada com sucesso."
+                successRemoveMessage="Foto removida com sucesso."
+              />
             )}
 
             <form onSubmit={handleSubmit} noValidate>

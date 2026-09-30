@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { setCompany } from "../../store/slices/companySlice";
 import type { Company } from "../../types/company";
 import PageHeader from "../../components/common/PageHeader";
+import ImageAvatar from "../../components/common/ImageAvatar";
 
 export default function CompanyPage() {
   const dispatch = useAppDispatch();
@@ -49,6 +50,11 @@ export default function CompanyPage() {
     setSuccessMessage("Empresa atualizada com sucesso.");
     setCompanyData(saved);
     dispatch(setCompany(saved));
+  }
+
+  function handleLogoChanged(updated: Company) {
+    setCompanyData(updated);
+    dispatch(setCompany(updated));
   }
 
   if (!canView) {
@@ -115,14 +121,31 @@ export default function CompanyPage() {
             </dl>
 
             {canUpdate ? (
-              <CompanyForm company={company} onSaved={handleSaved} />
+              <CompanyForm
+                company={company}
+                onSaved={handleSaved}
+                onLogoChanged={handleLogoChanged}
+              />
             ) : (
-              <dl className="row mb-0">
-                <dt className="col-sm-3">Nome</dt>
-                <dd className="col-sm-9">{company.name}</dd>
-                <dt className="col-sm-3">Timezone</dt>
-                <dd className="col-sm-9">{company.timezone}</dd>
-              </dl>
+              <>
+                <div className="d-flex align-items-center gap-3 mb-3">
+                  <ImageAvatar
+                    image={company.logo}
+                    name={company.name}
+                    kind="company"
+                    size="md"
+                    shape="rounded"
+                    alt=""
+                  />
+                  <span className="fw-semibold">{company.name}</span>
+                </div>
+                <dl className="row mb-0">
+                  <dt className="col-sm-3">Nome</dt>
+                  <dd className="col-sm-9">{company.name}</dd>
+                  <dt className="col-sm-3">Timezone</dt>
+                  <dd className="col-sm-9">{company.timezone}</dd>
+                </dl>
+              </>
             )}
           </div>
         </div>

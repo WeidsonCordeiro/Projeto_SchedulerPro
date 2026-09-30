@@ -1,3 +1,5 @@
+import type { StoredImage } from "./image";
+
 export type EmployeeRole =
   | "OWNER"
   | "ADMIN"
@@ -9,6 +11,12 @@ export interface Employee {
   id: string;
   name: string;
   email: string;
+  /**
+   * Foto do funcionário. `null`/ausente quando a entidade não tem imagem.
+   * Opcional para tolerar respostas parciais; o backend devolve sempre
+   * `{ url, publicId } | null`.
+   */
+  avatar?: StoredImage | null;
   role: EmployeeRole;
   isActive: boolean;
   companyId: string;

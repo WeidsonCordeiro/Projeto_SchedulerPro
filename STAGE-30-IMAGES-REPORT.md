@@ -1206,3 +1206,783 @@ ou
 - `npx tsc --noEmit` OK; `npm run build` OK; coverage 78.28% statements (subiu).
 - Nenhuma alteração em `client/` (frontend). Git intocado: sem commit/merge/push.
 - Para outras entidades, o fluxo é idêntico (as Partes 2–3 serviram de molde).
+---
+
+# STAGE 30 — IMAGES (PARTE 5) — RELATÓRIO
+
+**Data:** 29/09/2026
+**Âmbito:** Frontend apenas (`client/`). Backend, Models, Services, Controllers,
+Routes, RBAC, contratos HTTP e Cloudinary **intactos**.
+**Estado:** Concluído e validado (testes, typecheck, build e coverage executados).
+
+---
+
+## 1. OBJETIVO
+
+Entregar a experiência frontend completa de imagens do SchedulerPro, consumindo
+os endpoints já existentes das Partes 1–4:
+
+- **Foto do Funcionário** (`User.avatar`) — visualizar, placeholder com iniciais,
+  enviar, substituir e remover.
+- **Foto do Cliente** (`Client.avatar`) — idêntico, na área staff.
+- **Logótipo da Empresa** (`Company.logo`) — idêntico, na área staff e no shell
+  (barra lateral).
+
+Com entrega de: validação imediata no cliente, pré-visualização, estados de
+carregamento/erro/sucesso, acessibilidade, responsividade e suíte de testes
+Vitest. Sem qualquer alteração de backend.
+
+---
+
+## 2. ÂMBITO, RESTRIÇÕES E NÃO-OBJETIVOS
+
+Restrições respeitadas integralmente:
+
+| Restrição | Cumprimento |
+| --- | --- |
+| Só frontend (`client/`) | Sim — `git status` só mostra `client/**` + este relatório |
+| Sem alterar backend/DB/permissões/contratos | Sim — nenhum ficheiro em `server/` foi tocado |
+| Sem criar endpoints/permissões | Sim — apenas consumidos os 6 endpoints existentes |
+| Sem `localStorage`/`sessionStorage` para imagens | Sim — apenas `FormData` e URLs do Cloudinary |
+| `multipart/form-data` via `apiClient` (já tem `withCredentials`) | Sim — sem `Content-Type` manual (boundary do axios) |
+| Sem `git add/commit/merge/push` | Sim — Git intocado |
+| Sem corrigir problemas pré-existentes não relacionados | Sim — documentados, não "arremendados" |
+| Sem refatorações/redesenho do shell/calendário/dashboard | Sim — apenas mediações mínimas |
+
+Não objetivos (fora do âmbito): crop/rotação/redimensionamento no cliente,
+compressão no cliente, drag & drop, barra de progresso, cache offline, múltiplas
+imagens por entidade, galeria, zoom/modal de pré-visualização, edição da foto
+pelo próprio cliente no portal.
+
+---
+
+## 3. AUDITORIA PRÉVIA DO FRONTEND
+
+Estado encontrado antes da implementação:
+
+| Item | Estado encontrado | Decisão |
+| --- | --- | --- |
+| `types/employee.ts` / `client.ts` / `company.ts` | Sem qualquer campo de imagem | Adicionado `avatar`/`logo` |
+| `AuthUser.avatar` | **Já existia** como `string` (inconsistente com o backend, que devolve `{ url, publicId } \| null`) | Corrigido para `StoredImage \| null` |
+| `api/endpoints/employees.api.ts` | Só CRUD + activate/deactivate | Adicionado upload/remove photo |
+| `api/endpoints/clients.api.ts` | Só CRUD + credentials + `getClientMe` | Adicionado upload/remove photo |
+| `api/endpoints/company.api.ts` | Só `getCompany` + `updateCompany` | Adicionado upload/remove logo |
+| `EmployeesPage` / `ClientsPage` | Iniciais calculadas à mão (`initials()` local em `EmployeesPage`) | Substituído por `ImageAvatar` reutilizável |
+| `Sidebar` | `<div className="sidebar-context-mark">{inicial}</div>` | `ImageAvatar kind="company"` (mostra a logo) |
+| `Navbar` | Sem avatar do utilizador | `ImageAvatar` com `AuthUser.avatar` |
+| `PortalProfilePage` | Sem foto do cliente | `ImageAvatar` (leitura) no cartão "Dados cadastrais" |
+| CSS | `.person-avatar` (iniciais) e `.sidebar-context-mark` (inicial) | Substituídos por `.entity-avatar*`; regras mortas removidas |
+| Componente de imagem reutilizável | **Não existia nenhum** | Criados `ImageAvatar` + `ImageUploader` |
+| `URL.createObjectURL` em jsdom | Não implementado (quebraria qualquer teste de pré-visualização) | Shim defensivo em `test/setup.ts` |
+
+---
+
+## 4. CONTRATO BACKEND CONSUMIDO (imutável)
+
+Verificado diretamente no código do servidor antes de escrever qualquer linha:
+
+| Entidade | Upload | Remoção | Campo multipart | Middleware |
+| --- | --- | --- | --- | --- |
+| Funcionário | `POST /users/:id/photo` | `DELETE /users/:id/photo` | `photo` | `uploadSingleImage("photo")` (`UserRoutes.ts:116`) |
+| Cliente | `POST /clients/:id/photo` | `DELETE /clients/:id/photo` | `photo` | `uploadSingleImage("photo")` (`ClientRoutes.ts:113`) |
+| Empresa | `POST /companies/:id/logo` | `DELETE /companies/:id/logo` | `logo` | `uploadSingleImage("logo")` (`CompanyRoutes.ts:97`) |
+
+- Todos os `POST` são **envio/substituição** (não existe endpoint dedicado de
+  "replace").
+- Todos os `POST`/`DELETE` devolvem **`ApiResponse<Entidade>` completa** (não um
+  `{ publicId }` solto): `UserController.uploadPhoto/removePhoto`,
+  `ClientController.uploadPhoto/removePhoto`,
+  `CompanyController.uploadLogo/removeLogo` → os `*Mapper.toResponse` já projetam
+  `avatar`/`logo: { url, publicId } | null`.
+- Limites: 5 MB, JPEG/PNG/WebP validados por **assinatura binária** no backend
+  (`server/src/providers/images/types.ts`).
+- Permissões: as mesmas do CRUD da entidade (`USER_UPDATE`, `CLIENT_UPDATE`,
+  `COMPANY_UPDATE`). O frontend nunca envia `companyId` — o backend filtra pela
+  sessão.
+
+Consequência prática: como o `POST` já substitui, o frontend **não** faz
+`remove` + `upload` (que geraria estado intermédio inconsistente e o risco de
+ficar sem imagem).
+
+---
+
+## 5. ARQUITETURA DA SOLUÇÃO
+
+Três camadas, com responsabilidades estritas:
+
+```
+config/imageUpload.ts     -> regras de validação (fonte única, sem UI nem API)
+components/common/        -> ImageAvatar (apresentação) + ImageUploader (ações)
+api/endpoints/*.api.ts    -> 1 método por endpoint (FormData, sem UI)
+forms / pages             -> liga as três camadas e atualiza o estado
+```
+
+Regras de desenho aplicadas:
+
+1. **`ImageAvatar` é puramente visual** — não conhece a API, nem o Redux, nem
+   faz pedidos. Pode ser usado em qualquer lista, formulário ou shell.
+2. **`ImageUploader` não sabe qual entidade é** — recebe `upload(file)` e
+   `remove()` como callbacks. Quem chama decide a API e a atualização de estado.
+3. **O componente controlado pelo pai** — depois do sucesso, o pai passa a
+   entidade devolvida pelo backend; o preview local é sempre descartado. Não
+   existe estado de imagem "otimista" que possa divergir do servidor.
+4. **O backend é a autoridade** — a validação do cliente é UX (evita ida/volta
+   inútil), não segurança.
+
+---
+
+## 6. MODELO DE DADOS NO FRONTEND
+
+Novo ficheiro `client/src/types/image.ts`:
+
+```ts
+export interface StoredImage {
+  url: string;
+  publicId: string;
+}
+```
+
+Propagado para:
+
+```ts
+// types/employee.ts e types/client.ts
+avatar?: StoredImage | null;
+
+// types/company.ts
+logo?: StoredImage | null;
+
+// types/auth.ts (antes: avatar?: string)
+avatar?: StoredImage | null;
+```
+
+**Decisão: campos opcionais (`?`) e não obrigatórios.** O backend garante sempre
+`avatar`/`logo` em `toResponse`, mas tornar o campo obrigatório no tipo
+obrigaria a adicionar `avatar: null`/`logo: null` a ~17 ficheiros de
+fixtures/factories e mocks de testes, além de qualquer consumidor futuro que
+construa entidades literais. `?` é mais fiel ao formato real do payload
+(`string | null` vs. campo ausente é irrelevante na leitura) e mantém
+retrocompatibilidade. `AuthUser.avatar` **já** era opcional — a correção de
+`string` para `StoredImage` eliminou a inconsistência com o backend.
+
+`publicId` não é usado na UI (serve para o storage) mas é tipado para que o
+objeto seja um espelho exato da resposta do backend.
+
+---
+
+## 7. CONFIGURAÇÃO E VALIDAÇÃO DE IMAGENS
+
+`client/src/config/imageUpload.ts` (fonte única, espelha `types.ts` do backend):
+
+```ts
+ACCEPTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
+MAX_IMAGE_SIZE_BYTES     = 5 * 1024 * 1024
+IMAGE_FILE_ACCEPT        = "image/jpeg,image/png,image/webp"
+IMAGE_FORMAT_HINT        = "Formatos aceitos: JPEG, PNG ou WebP. Tamanho máximo: 5 MB."
+IMAGE_ERRORS = {
+  empty:    "O ficheiro selecionado está vazio.",
+  format:   "Formato não suportado. Utilize JPEG, PNG ou WebP.",
+  tooLarge: "A imagem deve ter no máximo 5 MB.",
+}
+```
+
+`validateImageFile(file)` devolve a mensagem ou `null`, com **ordem fixa**
+(vazio → formato → tamanho) e sem efeitos colaterais. Aceita
+`Pick<File, "type" | "size">` para ser testável sem ficheiros reais.
+
+O `accept` do `<input type="file">` restringe o seletor nativo, mas **não** é
+considerado segurança: a validação em JS continua a ser executada (um
+`accept` pode ser contornado, um `type`Mentido também).
+
+---
+
+## 8. COMPONENTE `ImageAvatar`
+
+`client/src/components/common/ImageAvatar.tsx` — 103 linhas, sem dependências
+externas além de `StoredImage`.
+
+| Prop | Tipo | Efeito |
+| --- | --- | --- |
+| `image` | `StoredImage \| null` | Se ausente/`null` → placeholder |
+| `name` | `string` | Iniciais / inicial e alt por omissão |
+| `alt` | `string` | `""` marca a imagem como decorativa |
+| `kind` | `"person" \| "company"` | `person` → 2 iniciais; `company` → 1 inicial |
+| `size` | `"sm" \| "md" \| "lg"` | 2.25rem / 3.25rem / 5rem |
+| `shape` | `"rounded" \| "circle"` | 0.65rem / 50% |
+| `className` | `string` | Permite reusar a classe no shell |
+| `fallbackIcon` | `ReactNode` | Alternativa às iniciais |
+
+Comportamento de robustez:
+
+- **`onError` permanente** — se a URL falhar ao carregar, o estado
+  `hasFailed` passa a `true` e o componente volta ao placeholder. O efeito
+  `useEffect([url])` só reverte quando a **URL muda**, portanto nunca existe
+  ciclo de recarregamento de uma imagem quebrada.
+- **Acessibilidade sem duplicação** — o `<img>` recebe o `alt`; o placeholder é
+  um `<span role="img" aria-label="...">` quando há rótulo, e
+  `aria-hidden="true"` quando `alt=""` (decorativo). Nunca existem dois nós com
+  o mesmo papel acessível.
+- **`getInitials(name)` exportado** — 2 primeiras palavras, `trim` + split por
+  espaço, uppercase (`"Ana Maria Silva"` → `"AM"`, `"  ana   silva  "` → `"AS"`).
+  Devolve `""` para nome vazio, caso em que o componente usa `fallbackIcon` ou `"?"`.
+
+---
+
+## 9. COMPONENTE `ImageUploader`
+
+`client/src/components/common/ImageUploader.tsx` — 204 linhas.
+
+Contrato: recebe `image`, `canManage`, `upload(file)`, `remove()` e rótulos
+(opcionais, com omissões em português). Não sabe se é foto ou logótipo.
+
+Comportamento:
+
+1. **Pré-visualização instantânea** — `URL.createObjectURL(file)` é show de
+   imediato (a perceived latency é quase nula). A object URL é revogada em
+   `finally` (sucesso **e** erro) e no `unmount` (`useEffect(() => revokePreview, [])`),
+   para não vazar memória.
+2. **Feedback de sucesso inline** — `<p role="status">` com
+   "Foto/Logo atualizado(a) com sucesso." / "removido(a) com sucesso.".
+3. **Feedback de erro inline** — `<p role="alert">` com
+   `getFriendlyErrorMessage(getApiError(e))` (mesma camada usada no resto da
+   aplicação, logo as mensagens são consistentes com 400/401/403/404/409/5xx e
+   com falhas de rede).
+4. **Bloqueio de ações duplicadas** — `isBusy = isUploading || isRemoving`
+   desativa o botão, o input e o botão de remover. O spinner entra dentro do
+   botão, mantendo a largura estável.
+5. **Recomeçar o mesmo ficheiro** — `event.target.value = ""` permite escolher
+   de novo exatamente o mesmo ficheiro numa tentativa seguinte (sem isso o
+   `change` não dispararia).
+6. **`canManage=false`** — mostra apenas a imagem/placeholder, sem input, sem
+   botões, sem dica (modo leitura).
+7. **Input `visually-hidden`** com `aria-label` dinâmico ("Adicionar foto" /
+   "Substituir foto"), para que o fluxo continue a ser testável e acessível por
+   teclado; o botão visível apenas faz `inputRef.current?.click()`.
+
+---
+
+## 10. FLUXO DE UPLOAD (passo a passo)
+
+1. Utilizador clica "Adicionar foto"/"Adicionar logo" → abre o seletor nativo.
+2. `onChange` → se não houver ficheiro, nada acontece (testado).
+3. `event.target.value = ""` (permite reescolher o mesmo ficheiro).
+4. `validateImageFile(file)` → se inválido, mensagem `role="alert"` e **zero
+   pedidos HTTP**.
+5. `URL.createObjectURL` → pré-visualização imediata; `isUploading = true`.
+6. `await upload(file)` → o pai chama a API e faz `setState` com a entidade
+   devolvida.
+7a. Sucesso → mensagem de sucesso, preview revogado, preview volta à imagem do
+   servidor (ou placeholder se a resposta trouxer `null`).
+7b. Erro → mensagem de erro; o preview é revogado e a imagem anterior continua
+   intacta (a operação é atómica do ponto de vista do utilizador).
+
+---
+
+## 11. FLUXO DE REMOÇÃO
+
+1. Só aparece quando existe imagem (`hasImage`), para não oferecer uma ação
+   inútil.
+2. `await remove()` → o pai chama `DELETE` e atualiza o estado com a entidade
+   devolvida (`avatar`/`logo` = `null`).
+3. Sucesso → "Foto/Logo removido(a) com sucesso." e a imagem passa a
+   placeholder.
+4. Erro → mensagem de erro; a imagem continua visível (o backend é a
+   autoridade, a UI não mente sobre o estado real).
+
+O `DELETE` é idempotente no backend, mas a UI nunca o chama sem imagem
+existente, evitando pedidos inúteis.
+
+---
+
+## 12. CAMADAS DE API
+
+Seis métodos novos, todos com o mesmo padrão (`FormData`, sem `Content-Type`
+manual, devolvendo `ApiResponse<Entidade>`):
+
+```ts
+// employees.api.ts
+async uploadEmployeePhoto(id: string, file: File)   // POST   /users/:id/photo
+async removeEmployeePhoto(id: string)               // DELETE /users/:id/photo
+// clients.api.ts
+async uploadClientPhoto(id: string, file: File)     // POST   /clients/:id/photo
+async removeClientPhoto(id: string)                 // DELETE /clients/:id/photo
+// company.api.ts
+async uploadCompanyLogo(id: string, file: File)     // POST   /companies/:id/logo
+async removeCompanyLogo(id: string)                 // DELETE /companies/:id/logo
+```
+
+Todos usam `formData.append("photo"|"logo", file)` — o nome do campo foi
+confirmado nos middlewares do servidor (`UserRoutes.ts:116`,
+`ClientRoutes.ts:113`, `CompanyRoutes.ts:97`). Nenhum envia `companyId`.
+
+---
+
+## 13. INTEGRAÇÃO — FUNCIONÁRIOS
+
+- `EmployeeForm`: novo estado `photo` (inicializado com `employee?.avatar`) e
+  `onPhotoUpdated?`. `ImageUploader` só é renderizado em modo edição (não faz
+  sentido enviar foto antes de o funcionário existir). `handlePhotoUpload` /
+  `handlePhotoRemove` chamam a API e fazem `setPhoto(updated.avatar ?? null)`
+  + `onPhotoUpdated?.(updated)`.
+- `EmployeesPage`: `handlePhotoUpdated` faz `map` sobre a lista e substitui
+  **apenas o `avatar`** da linha afetada — **sem reload** (mantém scroll, foco
+  e evita um `GET /users` extra). A célula "Funcionário" usa
+  `<ImageAvatar image={employee.avatar} name={employee.name} size="sm" shape="rounded" alt="" />`
+  (decorativo, porque o nome já está em texto forte ao lado).
+
+---
+
+## 14. INTEGRAÇÃO — CLIENTES
+
+Espelha exatamente a integração dos funcionários:
+
+- `ClientForm`: estado `photo`, `onPhotoUpdated?`, `ImageUploader` só em edição.
+- `ClientsPage`: `handlePhotoUpdated` atualiza a linha sem reload; célula com
+  `ImageAvatar`.
+- O `POST /clients/:id/credentials` **não** foi tocado (a foto do cliente não
+  é a foto do utilizador de portal — são entidades diferentes).
+
+---
+
+## 15. INTEGRAÇÃO — EMPRESA (LOGÓTIPO)
+
+- `CompanyForm`: estado `logo` (inicializado com `company.logo`), callbacks
+  `uploadCompanyLogo`/`removeCompanyLogo` e `onLogoChanged?`. O `ImageUploader`
+  é montado **no topo do formulário** (é a identidade visual da empresa), com
+  `kind="company"` (placeholder = inicial) e rótulos próprios: "Adicionar logo",
+  "Substituir logo", "Remover logo".
+- `CompanyPage`:
+  - `handleLogoChanged` faz `setCompanyData(updated)` **e**
+    `dispatch(setCompany(updated))` — o `companySlice` global passa a ser a
+    fonte de verdade, portanto a barra lateral reflete a logo imediatamente,
+    sem novo `GET /companies`.
+  - `handleSaved` (PATCH de nome/timezone) continua a atualizar o slice — e o
+    `PATCH` **ignora** `logo` (o backend nunca o toca), pelo que não há risco
+    de overwrite.
+  - O ramo de leitura (sem `COMPANY_UPDATE`) mostra a logo com `ImageAvatar`
+    em vez de apenas texto.
+
+Nota de RBAC: `getCompanyAbilities` devolve `canView` e `canUpdate` para
+OWNER/ADMIN, pelo que o ramo `canView && !canUpdate` é defensivo (inalcançável
+com os papéis atuais) — manteve-se por simetria com o resto da página.
+
+---
+
+## 16. INTEGRAÇÃO — SHELL E PORTAL
+
+- `Sidebar`: `sidebar-context-mark` (div com inicial) →
+  `<ImageAvatar image={company?.logo} name={company?.name ?? "S"} kind="company" size="sm" shape="rounded" alt="" className="sidebar-context-avatar" />`.
+  Usa `selectCompany` (já existente), com fallback seguro quando o slice está
+  vazio (roles sem `COMPANY_READ`). Reaproveita a classe `.sidebar-context-avatar`
+  (2rem, raio 0.5rem) para não alterar o layout do shell.
+- `Navbar`: avatar do utilizador autenticado
+  (`user.avatar`, `size="sm"`, `shape="circle"`, `className navbar-user-avatar`),
+  com `flex-shrink-0` para não ser esmagado em ecrãs estreitos. Fixtures
+  existentes com `avatar: null` continuam a renderizar o placeholder.
+- `PortalProfilePage`: avatar do cliente autenticado (leitura) no cartão "Dados
+  cadastrais", com `alt={`Foto de ${profile.name}`}`. Sem ações — o cliente não
+  tem endpoint próprio para a própria foto.
+
+---
+
+## 17. CSS E DESIGN TOKENS
+
+Adicionado ao fim de `client/src/index.css` (1371→1469 linhas), sem tocar nas
+regras existentes:
+
+| Classe | Papel |
+| --- | --- |
+| `.entity-avatar` | Base do avatar/logo (flex, `overflow: hidden`, fundo `#eaf0ff`, `var(--sp-primary)`, uppercase) |
+| `.entity-avatar-sm/md/lg` | 2.25rem / 3.25rem / 5rem |
+| `.entity-avatar-rounded/circle` | 0.65rem / 50% |
+| `.entity-avatar-img` | `object-fit: cover`, 100%×100% |
+| `.sidebar-context-avatar` | 2rem, raio 0.5rem (substitui `.sidebar-context-mark`) |
+| `.navbar-user-avatar` | Fundo translúcido sobre a navbar escura |
+| `.image-uploader` + `-body/-actions/-hint/-success/-error` | Bloco de upload, dica e mensagens |
+| `@media (max-width: 575.98px)` | Alinha ao topo, botões a largura total e `flex: 1 1 auto` |
+
+Limpeza de CSS morto introduzido pela migração: `.person-avatar` e
+`.sidebar-context-mark` foram removidos e o seletor
+`.person-cell > :not(.person-avatar)` passou a `:not(.entity-avatar)` (para que
+o `min-width: 0` continue a aplicar-se **apenas** ao contentor textual).
+
+---
+
+## 18. ACESSIBILIDADE
+
+| Aspeto | Implementação |
+| --- | --- |
+| Imagem significativa | `alt` explícito; nos avatares decorativos `alt=""` |
+| Placeholder | `role="img"` + `aria-label` (nome) ou `aria-hidden` (decorativo) |
+| Ficheiro | `<input type="file">` com `aria-label` = ação corrente; o botão é que é visível |
+| Botões | `<button type="button">` com rótulo textual (não só ícone) |
+| Sucesso | `role="status"` (polite, não interrompe) |
+| Erro | `role="alert"` (assertivo) |
+| Foco | Nada é movido programaticamente; os botões entram na ordem natural |
+| Contraste | `#b42318` (erro) e `#1a7f52` (sucesso) sobre fundo branco |
+| Texto | `text-transform: uppercase` só no placeholder (iniciais), nunca no `alt` |
+
+---
+
+## 19. RESPONSIVIDADE
+
+- `ImageUploader` usa `flex-wrap`, por isso o preview (5rem) e o bloco de ações
+  quebram para baixo em ecrãs estreitos.
+- Abaixo de 576px: `align-items: flex-start` e botões a `width: 100%` com
+  `flex: 1 1 auto` (alvos de toque confortáveis).
+- Avatares têm tamanho fixo por variante e `flex: 0 0 auto` — nunca esticam nem
+  encolhem com o texto ao lado.
+- `object-fit: cover` garante que fotos verticais ou panorâmicas não deformam o
+  círculo/quadrado.
+- `min-width: 0` no contentor textual da `.person-cell` mantém nomes longos de
+  funcional/cliente de partir a tabela.
+
+---
+
+## 20. SEGURANÇA, PRIVACIDADE E LIMITES
+
+- **Nada de `localStorage`/`sessionStorage`/`base64`**: o URL do Cloudinary fica
+  apenas em memória (estado React/Redux). Não há cópia do binário no browser.
+- **Sem credenciais no pedido**: o `apiClient` já envia `withCredentials: true`;
+  nada foi alterado nesse sentido.
+- **Sem `Content-Type` manual** no multipart — deixar o axios gerar o `boundary`
+  evita o bug clássico de ficheiros enviados como `multipart/form-data` sem
+  boundary.
+- **RBAC só como UX**: a interface esconde/mostra ações, mas quem autoriza é o
+  `permission.middleware` do backend. Um `EMPLOYEE` sem `USER_UPDATE` recebe
+  403 mesmo que force o pedido pela DevTools.
+- **Isolamento de tenant**: o frontend nunca envia `companyId`; os ids vêm do
+  estado/da lista devolvida pelo servidor.
+- **Validação dupla por desenho**: o cliente evita a ida/volta; o backend
+  valida assinatura binária e tamanho e é a autoridade.
+- **Nenhum segredo** (nem `CLOUDINARY_*`) exposto no frontend: as upload
+  signatures não são usadas — o upload passa pelo backend.
+- **Preview revogado** sempre, evitando retenção de memória com blobs.
+
+---
+
+## 21. ESTADOS DE UI E FEEDBACK
+
+| Estado | Onde | Comportamento |
+| --- | --- | --- |
+| Sem imagem | Listas, shell, portal, formulários | Placeholder com iniciais (empresa: inicial) |
+| Imagem carregada | Toda a parte | `<img object-fit: cover>` |
+| URL inválida/404 | `ImageAvatar` | Fallback permanente para placeholder (sem loop) |
+| A enviar | `ImageUploader` | Spinner no botão + `disabled` (botões e input) |
+| A remover | `ImageUploader` | Spinner no botão de remover + `disabled` |
+| Sucesso | `ImageUploader` | `role="status"` verde |
+| Erro | `ImageUploader` | `role="alert"` vermelho, mensagem amigável |
+| Erro de validação | `ImageUploader` | `role="alert"` sem pedido HTTP |
+| Sem permissão | Páginas | Puxões já existentes (`canEdit`/`canUpdate`); o uploader só aparece em edição |
+| Shell sem empresa | `Sidebar`/`Navbar` | Placeholder com fallback (`"S"`) |
+
+---
+
+## 22. TESTES AUTOMATIZADOS
+
+**56 testes novos** (de 864 → 920), todos em arquivos dedicados (exceto as
+adições aos 3 ficheiros de API existentes), sem alterar o comportamento dos
+testes anteriores.
+
+| Ficheiro | Testes | Cobre |
+| --- | --- | --- |
+| `config/imageUpload.test.ts` | 5 | JPEG/PNG/WebP aceitos, vazio, MIME não suportado/vazio, >5 MB, constantes |
+| `components/common/ImageAvatar.test.tsx` | 9 | `getInitials` (2/1 palavras, espaços, vazio), imagem com `alt`, iniciais, inicial de empresa, tamanho/formato/`className`, `fallbackIcon`, `onError` permanente, `alt=""` decorativo |
+| `components/common/ImageUploader.test.tsx` | 14 | placeholder vs. imagem, `canManage=false`, upload válido, `change` sem ficheiro, clique abre o picker, vazio/formato/5 MB sem pedido, erro de upload, substituir/remover presentes, remoção com sucesso, erro de remoção, bloqueio de upload duplicado, limpeza de preview no unmount |
+| `api/endpoints/employees.api.test.ts` | +2 | `POST /users/:id/photo` (URL + `FormData` + campo `photo` = o `File`), `DELETE` |
+| `api/endpoints/clients.api.test.ts` | +2 | idem para `/clients/:id/photo` |
+| `api/endpoints/company.api.test.ts` | +2 | idem para `/companies/:id/logo` (campo `logo`) |
+| `components/employees/EmployeeForm.photo.test.tsx` | 5 | sem uploader em criação, upload + `onPhotoUpdated`, remoção + `avatar: null`, formato inválido, erro de upload |
+| `components/clients/ClientForm.photo.test.tsx` | 4 | criação sem uploader, upload, remoção, ficheiro >5 MB |
+| `components/company/CompanyForm.logo.test.tsx` | 3 | upload (`kind="company"`), substituir/remover com logo existente, formato inválido |
+| `pages/employees/EmployeesPage.photo.test.tsx` | 3 | foto na lista, iniciais sem `avatar`, **upload reflete na lista sem reload** (`getEmployees` chamado 1×) |
+| `pages/clients/ClientsPage.photo.test.tsx` | 3 | idem para clientes |
+| `pages/company/CompanyPage.logo.test.tsx` | 2 | upload propaga ao `companySlice` global, remoção limpa o slice |
+| `components/layout/Sidebar.logo.test.tsx` | 2 | logo na barra lateral, inicial sem logo |
+
+Infra de teste: shim de `URL.createObjectURL`/`revokeObjectURL` em
+`src/test/setup.ts` (só se ausentes), porque o jsdom não os implementa.
+
+**Resultado:** 918/920 testes passam. As 2 falhas são **pré-existentes** (ver
+secção 25).
+
+---
+
+## 23. COVERAGE, TYPECHECK E BUILD
+
+```
+TESTES:   918/920 (2 falhas pré-existentes, nenhuma regressão)
+TYPECHECK: PASS  (tsc -b --noEmit)
+BUILD:     PASS  (tsc -b && vite build)
+COVERAGE:  Statements 96.24% | Branches 90.29% | Functions 96.56% | Lines 96.42%
+```
+
+Cobertura por ficheiro novo/alterado (lido de `coverage/coverage-final.json`):
+
+| Ficheiro | Stmts | Branches | Functions |
+| --- | --- | --- | --- |
+| `types/image.ts` (sem runtime) | — | — | — |
+| `config/imageUpload.ts` | 100% | 100% | 100% |
+| `components/common/ImageAvatar.tsx` | 100% | 100% | 100% |
+| `components/common/ImageUploader.tsx` | 100% | 100% | 100% |
+| `components/employees/EmployeeForm.tsx` | 100% | 91.7% | 100% |
+| `components/clients/ClientForm.tsx` | 100% | 94.1% | 100% |
+| `components/company/CompanyForm.tsx` | 98.1% | 86.4% | 100% |
+| `pages/employees/EmployeesPage.tsx` | 100% | 89.5% | 100% |
+| `pages/clients/ClientsPage.tsx` | 93.0% | 93.8% | 90.9% |
+| `pages/company/CompanyPage.tsx` | 100% | 88% | 100% |
+| `components/layout/Sidebar.tsx` | 100% | 100% | 100% |
+| `components/layout/Navbar.tsx` | 100% | 100% | 100% |
+| `pages/portal/PortalProfilePage.tsx` | 94.4% | 80% | 80% |
+| `api/endpoints/{employees,clients,company}.api.ts` | 100% | 100% | 100% |
+
+Linhas por baixo dos 100% **não são código novo**: `CompanyForm.tsx:35`
+(timezone obrigatório), `ClientsPage.tsx:103-107,253`
+(`SetClientCredentialsModal`), `PortalProfilePage.tsx:54` (perfil não
+encontrado) — ramos pré-existentes sem suíte.
+
+Nota: o baseline de coverage do **frontend** não foi medido antes desta parte
+(as Partes 1–4 registaram apenas o backend, 78.28%). O número acima é a
+medição final.
+
+O `vite build` emite o aviso padrão de *chunk > 500 kB* (544 kB) — pré-existente
+e não introduzido aqui.
+
+---
+
+## 24. FICHEIROS ALTERADOS E DECISÕES TÉCNICAS
+
+**Criados (14):**
+
+```
+client/src/types/image.ts
+client/src/config/imageUpload.ts
+client/src/config/imageUpload.test.ts
+client/src/components/common/ImageAvatar.tsx
+client/src/components/common/ImageAvatar.test.tsx
+client/src/components/common/ImageUploader.tsx
+client/src/components/common/ImageUploader.test.tsx
+client/src/components/employees/EmployeeForm.photo.test.tsx
+client/src/components/clients/ClientForm.photo.test.tsx
+client/src/components/company/CompanyForm.logo.test.tsx
+client/src/components/layout/Sidebar.logo.test.tsx
+client/src/pages/employees/EmployeesPage.photo.test.tsx
+client/src/pages/clients/ClientsPage.photo.test.tsx
+client/src/pages/company/CompanyPage.logo.test.tsx
+```
+
+**Alterados (21):**
+
+```
+client/src/types/{auth,employee,client,company}.ts
+client/src/api/endpoints/{employees,clients,company}.api.ts
+client/src/api/endpoints/{employees,clients,company}.api.test.ts
+client/src/components/employees/EmployeeForm.tsx
+client/src/components/clients/ClientForm.tsx
+client/src/components/company/CompanyForm.tsx
+client/src/components/layout/Sidebar.tsx
+client/src/components/layout/Navbar.tsx
+client/src/pages/employees/EmployeesPage.tsx
+client/src/pages/clients/ClientsPage.tsx
+client/src/pages/company/CompanyPage.tsx
+client/src/pages/portal/PortalProfilePage.tsx
+client/src/index.css
+client/src/test/setup.ts
+STAGE-30-IMAGES-REPORT.md
+```
+
+**Backend:** `server/` **intacto**.
+
+Decisões técnicas (com o porquê):
+
+1. **Campos opcionais** em vez de obrigatórios — evita churn em ~17 fixtures e
+   é mais fiel ao payload real.
+2. **`ImageUploader` controlado pelo pai** — o componente não mantém a imagem
+   "oficialmente"; quem sabe é o estado do pai, alimentado pela resposta do
+   servidor. Evita divergência entre o que se vê e o que está gravado.
+3. **Sem `remove` + `upload` manual ao substituir** — o `POST` já substitui
+   (Partes 1–4). Fazer os dois criaria um estado intermédio sem imagem e o
+   risco de ficar sem foto se a segunda chamada falhasse.
+4. **Sucesso por operação, não por entidade** — após a foto, a mensagem é
+   "Foto atualizada com sucesso."; o formulário continua aberto (não faz
+   sentido fechar um modal por causa de uma foto).
+5. **Atualização local da lista em vez de reload** — o `POST`/`DELETE` já
+   devolve a entidade completa, logo não há necessidade de um `GET` extra
+   (testado explicitamente: `getEmployees` chamado exatamente 1×).
+6. **`companySlice` reutilizado** para a logo — a barra lateral passa a ser
+   automaticamente consistente, sem store novo nem fetch.
+7. **Testes em ficheiros separados (`*.photo.test.tsx` / `*.logo.test.tsx`)** —
+   não é preciso tocar nos mocks dos testes de formulário existentes, o que
+   torna o diff mais seguro e o histórico mais legível.
+8. **CSS morto removido** (`.person-avatar`, `.sidebar-context-mark`) — limpo o
+   que a migração deixou órfão, com o `:not()` ajustado para não regredir o
+   `min-width: 0` do texto.
+
+---
+
+## 25. PROBLEMAS, LIMITAÇÕES E ITENS NÃO IMPLEMENTADOS
+
+### Problemas pré-existentes (não introduzidos, não corrigidos)
+
+1. **`DashboardPage.test.tsx` — 2 falhas determinísticas.** O teste espera 6
+   elementos `data-testid="card-value"` (`["1","2","1","1","1","1"]`) mas
+   `DashboardPage.tsx` renderiza **3** `DashboardCard` (Hoje/Pendentes/
+   Confirmados, `DashboardPage.tsx:230-252`). Teste e componente estão
+   desalinhados **desde antes desta parte** (`git status` confirma que nenhum
+   dos dois ficheiros foi tocado nesta parte; a falha reproduz-se em execuções
+   isoladas). Não corrigido por estar fora do âmbito.
+2. **`AvailabilityPage.test.tsx` — flake sob carga.** Numa das execuções
+   paralelas, "loads and renders the exceptions of the selected employee" falhou
+   (`getAvailabilityExceptions` com 0 chamadas). Em isolamento passa 22/22 e
+   passou em 2 das 3 execuções completas — é instabilidade de timing do teste
+   (`maxWorkers: 3` + ambiente jsdom lento), não uma regressão: nenhum
+   ficheiro de disponibilidade foi alterado.
+
+### Problemas introduzidos
+
+**Nenhum.**
+
+### Limitações
+
+- Sem compressão/redimensionamento no cliente: um PNG de 4,9 MB segue para o
+  servidor (que é quem valida).
+- Sem barra de progresso de upload (`XMLHttpRequest`/axios progress) — só
+  spinner. Consistente com o resto da aplicação.
+- O preview é criado com `createObjectURL` e descartado no fim: em ligações
+  muito lentas o utilizador vê a pré-visualização "saltar" para o URL do
+  Cloudinary no fim (por conceção — o servidor é a autoridade).
+- O cliente do portal **não** pode enviar a própria foto (não existe endpoint
+  próprio; `POST /clients/:id/photo` exige `CLIENT_UPDATE` da empresa). O
+  frontend mostra-a em leitura.
+- `ImageAvatar` não faz cache em disco nem revalidação: URLs antigos do
+  Cloudinary que já não existam caem no placeholder.
+- Sem MÉTRICA de acessibilidade automática (Lighthouse/axe) — a conformidade
+  foi verificada por leitura do markup e por asserções em testes.
+
+### Itens não implementados (deliberadamente)
+
+- Drag & drop, colar imagem do clipboard, webcamera.
+- Crop/rotação, remover fundo, filtro.
+- Galeria de várias imagens, imagem de capa + galeria.
+- Modal de pré-visualização em ecrã grande (lightbox) / zoom.
+- Envio em lote.
+- Compressão/redimensionamento no cliente (`canvas`).
+- Exif orientation/remoção de metadados.
+- Avatares no dashboard/calendário (fora do âmbito desta parte; hoje mostram
+  apenas texto).
+
+---
+
+## CONTEXTO PARA A PRÓXIMA IA
+
+### O que existe agora (frontend)
+
+- `client/src/types/image.ts` → `StoredImage { url: string; publicId: string }`.
+- `Employee.avatar?: StoredImage | null`, `Client.avatar?: StoredImage | null`,
+  `Company.logo?: StoredImage | null`, `AuthUser.avatar?: StoredImage | null`
+  (era `string` — corrigido).
+- `client/src/config/imageUpload.ts` → `ACCEPTED_IMAGE_MIME_TYPES`,
+  `MAX_IMAGE_SIZE_BYTES` (5 MB), `IMAGE_FILE_ACCEPT`, `IMAGE_FORMAT_HINT`,
+  `IMAGE_ERRORS`, `validateImageFile(file)`.
+- `client/src/components/common/ImageAvatar.tsx` → props `image`, `name`,
+  `alt`, `kind` (`person|company`), `size` (`sm|md|lg`), `shape`
+  (`rounded|circle`), `className`, `fallbackIcon`; exporta `getInitials`.
+  100% coberto. `onError` → placeholder **permanente**.
+- `client/src/components/common/ImageUploader.tsx` → props `id`, `name`,
+  `image`, `kind`, `size`, `canManage`, `upload`, `remove`, rótulos
+  opcionais. 100% coberto. Controlado pelo pai; preview com `createObjectURL`
+  revogado em `finally` + `unmount`; `role="status"`/`role="alert"`.
+- APIs: `uploadEmployeePhoto`/`removeEmployeePhoto` (campo `photo`),
+  `uploadClientPhoto`/`removeClientPhoto` (campo `photo`),
+  `uploadCompanyLogo`/`removeCompanyLogo` (campo `logo`). Sem `Content-Type`
+  manual; sem `companyId`.
+- CSS: `.entity-avatar*`, `.sidebar-context-avatar`, `.navbar-user-avatar`,
+  `.image-uploader*` (+ media query 575.98px). `.person-avatar` e
+  `.sidebar-context-mark` removidos (morto).
+
+### Padrão a seguir para nova entidade com imagem
+
+1. `types/<x>.ts`: `<x>Image?: StoredImage | null` (nome do campo igual ao do
+   backend).
+2. `api/endpoints/<x>.api.ts`: `upload<X>Image(id, file)` com
+   `formData.append("<campo do middleware>", file)` + `remove<X>Image(id)`,
+   ambos a devolver `ApiResponse<X>`.
+3. No formulário: `useState<XImage>(entity?.<campo> ?? null)` + handlers que
+   fazem `setXImage(response.data.<campo> ?? null)` e chamam
+   `onXImageChanged?.(entity)`.
+4. Na página: handler que faz `map` na lista **sem reload**, passando a
+   entidade ao formulário.
+5. Na lista: `<ImageAvatar image={entity.<campo>} name={entity.name} size="sm" shape="rounded" alt="" />`.
+6. Se for exibida no shell, usar `selectCompany`/slice equivalente em vez de
+   criar store novo.
+
+### Contratos HTTP consumidos (inalteráveis)
+
+```
+POST   /api/users/:id/photo      multipart campo "photo"  -> ApiResponse<Employee>
+DELETE /api/users/:id/photo                            -> ApiResponse<Employee>
+POST   /api/clients/:id/photo    multipart campo "photo"  -> ApiResponse<Client>
+DELETE /api/clients/:id/photo                          -> ApiResponse<Client>
+POST   /api/companies/:id/logo    multipart campo "logo"   -> ApiResponse<Company>
+DELETE /api/companies/:id/logo                          -> ApiResponse<Company>
+```
+
+Resposta da imagem (quando existe):
+`{ "avatar": { "url": "https://...", "publicId": "schedulerpro/user/..." } }` ou
+`{ "avatar": null }`.
+
+Limites (frontend espelha, backend autoritativo): 5 MB, JPEG/PNG/WebP por
+assinatura binária.
+
+### Notas de implementação para a próxima
+
+- O upload **substitui** (o `POST` é idempotente quanto ao anterior): nunca
+  chamar `remove` antes de `upload`.
+- `ImageUploader` é **controlado**: se uma entidade nova precisar de preview
+  otimista permanente, criar uma variante ou estender as props com cuidado
+  (não introduzir estado de imagem dentro do componente sem decidir onde fica
+  a fonte de verdade).
+- Mensagens de sucesso/erro do uploader são independentes do `errorMessage` do
+  formulário (que é para o `PATCH`/`POST` de dados).
+- `URL.createObjectURL` não existe no jsdom: o shim está em
+  `client/src/test/setup.ts` — não remover.
+- Ao testar páginas com avatares, preferir
+  `container.querySelector(".person-cell img")` — o `alt` é `""` (decorativo)
+  para não duplicar o nome que já está em texto na célula.
+- Os mocks de API dos testes existentes foram deixados intactos; os testes de
+  imagem vivem em `*.photo.test.tsx`/`*.logo.test.tsx`/`*.avatar*.test.tsx` com
+  os seus próprios mocks.
+
+### Estado do Git
+
+Nenhum `commit`, `merge` ou `push`. `git status` mostra 14 ficheiros novos e 21
+alterados, todos em `client/` (mais este relatório). `server/` intacto.
+
+### Pendências conhecidas para o futuro
+
+1. Corrigir o desalinhamento `DashboardPage.test.tsx` vs `DashboardPage.tsx`
+   (6 cartões esperados vs 3 renderizados) — pré-existente.
+2. Estabilizar o timing de `AvailabilityPage.test.tsx` (flake sob carga).
+3. Opcional: endpoint para o cliente do portal enviar a própria foto.
+4. Opcional: avatares no dashboard/calendário (mesmo componente, sem trabalho
+   de backend).
+
+---
+
+### Bloco final
+
+```
+TESTES: 918/920 (2 falhas PRÉ-EXISTENTES em DashboardPage.test.tsx; nenhuma
+        regressão. 89 ficheiros de teste. 56 testes novos.)
+TYPECHECK: PASS (tsc -b --noEmit)
+BUILD: PASS (tsc -b && vite build)
+COVERAGE: Statements 96.24% | Branches 90.29% | Functions 96.56% | Lines 96.42%
+          (ficheiros novos: 100% em stmts/branches/functions)
+ARQUIVOS ALTERADOS: 14 criados + 21 alterados, todos em client/ (+ este relatório)
+PROBLEMAS PREEXISTENTES: DashboardPage.test.tsx (2 falhas, desalinhamento
+          teste/componente) e flake de timing em AvailabilityPage.test.tsx sob
+          carga paralela. NÃO corrigidos (fora do âmbito).
+PROBLEMAS INTRODUZIDOS: nenhum
+LIMITAÇÕES: sem compressão/cliente, sem progresso de upload, sem drag&drop, sem
+          crop/lightbox, sem múltiplas imagens; o cliente do portal não envia a
+          própria foto; sem MÉTRICA automática de acessibilidade.
+```
