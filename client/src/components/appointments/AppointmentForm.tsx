@@ -6,6 +6,7 @@ import appointmentsApi from "../../api/endpoints/appointments.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentCalendar from "./AppointmentCalendar";
 import AvailableTimeSlots from "./AvailableTimeSlots";
+import EmployeeAvatarPicker from "./EmployeeAvatarPicker";
 import {
   APPOINTMENT_TIMEZONE,
   formatAppointmentEndTime,
@@ -469,26 +470,25 @@ export default function AppointmentForm({
               </div>
 
               <div className="mb-3">
-                <label htmlFor="appointment-employee" className="form-label">
+                <span id="appointment-employee-label" className="form-label d-block">
                   Funcionário
-                </label>
-                <select
-                  id="appointment-employee"
-                  className={`form-select ${fieldErrors.employeeId ? "is-invalid" : ""}`}
+                </span>
+                <EmployeeAvatarPicker
+                  employees={employeeOptions}
                   value={employeeId}
-                  onChange={(event) => setEmployeeId(event.target.value)}
+                  onChange={setEmployeeId}
                   disabled={readOnlyView}
-                >
-                  <option value="">Selecione o funcionário</option>
-                  {employeeOptions.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name}
-                      {employee.role === "CLIENT" ? " (sem perfil de funcionário)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  invalid={Boolean(fieldErrors.employeeId)}
+                  label="Funcionário"
+                  labelId="appointment-employee-label"
+                  describedById={
+                    fieldErrors.employeeId ? "appointment-employee-error" : undefined
+                  }
+                />
                 {fieldErrors.employeeId && (
-                  <div className="invalid-feedback">{fieldErrors.employeeId}</div>
+                  <div id="appointment-employee-error" className="invalid-feedback">
+                    {fieldErrors.employeeId}
+                  </div>
                 )}
               </div>
 

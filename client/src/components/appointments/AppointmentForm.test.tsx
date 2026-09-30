@@ -152,10 +152,13 @@ function getDialog() {
   return screen.getByRole("dialog");
 }
 
-async function selectEmployeeAndWaitForCalendar(employeeId: string, dialog: HTMLElement) {
-  fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-    target: { value: employeeId },
-  });
+/** Cartão de funcionário, localizado pelo nome acessível (foto + nome). */
+function getEmployeeOption(dialog: HTMLElement, name: string) {
+  return within(dialog).getByRole("radio", { name });
+}
+
+async function selectEmployeeAndWaitForCalendar(name: string, dialog: HTMLElement) {
+  fireEvent.click(getEmployeeOption(dialog, name));
   await screen.findByRole("button", { name: "2026-09-15" });
 }
 
@@ -199,7 +202,9 @@ describe("AppointmentForm", () => {
 
     expect(screen.queryByRole("option", { name: "Cliente Inativo" })).not.toBeInTheDocument();
     expect(screen.queryByRole("option", { name: "Serviço Inativo" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Usuário Cliente" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("radio", { name: "Usuário Cliente (sem perfil de funcionário)" }),
+    ).not.toBeInTheDocument();
   });
 
   it("keeps a now-inactive client/service visible when editing an appointment", async () => {
@@ -237,9 +242,7 @@ describe("AppointmentForm", () => {
     ).toBeInTheDocument();
 
     const dialog = getDialog();
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(getEmployeeOption(dialog, "Ana Lima"));
     await screen.findByRole("button", { name: "2026-09-15" });
 
     expect(
@@ -256,9 +259,7 @@ describe("AppointmentForm", () => {
 
     renderForm();
     const dialog = getDialog();
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(getEmployeeOption(dialog, "Ana Lima"));
 
     expect(within(dialog).getByText("Carregando disponibilidade...")).toBeInTheDocument();
 
@@ -273,9 +274,7 @@ describe("AppointmentForm", () => {
 
     renderForm();
     const dialog = getDialog();
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(getEmployeeOption(dialog, "Ana Lima"));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Disponibilidade indisponível");
 
@@ -291,9 +290,7 @@ describe("AppointmentForm", () => {
 
     renderForm();
     const dialog = getDialog();
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(getEmployeeOption(dialog, "Ana Lima"));
 
     expect(
       await screen.findByText("Este funcionário não possui disponibilidade cadastrada."),
@@ -314,7 +311,7 @@ describe("AppointmentForm", () => {
     const dialog = getDialog();
     fireEvent.change(within(dialog).getByLabelText("Cliente"), { target: { value: "client1" } });
     fireEvent.change(within(dialog).getByLabelText("Serviço"), { target: { value: "service1" } });
-    await selectEmployeeAndWaitForCalendar("employee1", dialog);
+    await selectEmployeeAndWaitForCalendar("Ana Lima", dialog);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     expect(within(dialog).getByText("Terça-feira, 15 de setembro")).toBeInTheDocument();
@@ -412,9 +409,7 @@ describe("AppointmentForm", () => {
     ).toBeDisabled();
 
     // Trocar de funcionário em edição limpa data/horário e remove o chip.
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee2" },
-    });
+    fireEvent.click(getEmployeeOption(dialog, "Bruno Dias"));
     await waitFor(() =>
       expect(
         within(dialog).queryByText("10:00 (horário atual do agendamento)"),
@@ -446,7 +441,7 @@ describe("AppointmentForm", () => {
     const dialog = getDialog();
     fireEvent.change(within(dialog).getByLabelText("Cliente"), { target: { value: "client1" } });
     fireEvent.change(within(dialog).getByLabelText("Serviço"), { target: { value: "service1" } });
-    await selectEmployeeAndWaitForCalendar("employee1", dialog);
+    await selectEmployeeAndWaitForCalendar("Ana Lima", dialog);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
 
@@ -477,7 +472,7 @@ describe("AppointmentForm", () => {
     renderForm();
     const dialog = getDialog();
     fireEvent.change(within(dialog).getByLabelText("Serviço"), { target: { value: "service1" } });
-    await selectEmployeeAndWaitForCalendar("employee1", dialog);
+    await selectEmployeeAndWaitForCalendar("Ana Lima", dialog);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
 
@@ -497,7 +492,7 @@ describe("AppointmentForm", () => {
     const dialog = getDialog();
     fireEvent.change(within(dialog).getByLabelText("Cliente"), { target: { value: "client1" } });
     fireEvent.change(within(dialog).getByLabelText("Serviço"), { target: { value: "service1" } });
-    await selectEmployeeAndWaitForCalendar("employee1", dialog);
+    await selectEmployeeAndWaitForCalendar("Ana Lima", dialog);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "10:00" }));
@@ -506,9 +501,7 @@ describe("AppointmentForm", () => {
       "true",
     );
 
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee2" },
-    });
+    fireEvent.click(getEmployeeOption(dialog, "Bruno Dias"));
 
     await waitFor(() =>
       expect(within(dialog).queryByText("Horários disponíveis")).not.toBeInTheDocument(),
@@ -535,7 +528,7 @@ describe("AppointmentForm", () => {
     const dialog = getDialog();
     fireEvent.change(within(dialog).getByLabelText("Cliente"), { target: { value: "client1" } });
     fireEvent.change(within(dialog).getByLabelText("Serviço"), { target: { value: "service1" } });
-    await selectEmployeeAndWaitForCalendar("employee1", dialog);
+    await selectEmployeeAndWaitForCalendar("Ana Lima", dialog);
 
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "10:00" }));
@@ -603,7 +596,7 @@ describe("AppointmentForm", () => {
     });
 
     // O funcionário veio pré-selecionado do clique no calendário.
-    expect(within(dialog).getByLabelText("Funcionário")).toHaveValue("employee1");
+    expect(getEmployeeOption(dialog, "Ana Lima")).toHaveAttribute("aria-checked", "true");
     // O dia/horário vieram pré-preenchidos.
     expect(
       within(dialog).getByRole("button", { name: "2026-09-15" }),
@@ -652,5 +645,74 @@ describe("AppointmentForm", () => {
     expect(vi.mocked(appointmentsApi.createAppointment).mock.calls[0][0].startAt).toBe(
       "2026-09-15T08:00:00.000Z", // 09:00 em Europe/Lisbon
     );
+  });
+
+  describe("identificação visual do funcionário", () => {
+    it("shows the professional photo and name when choosing who will do the service", () => {
+      renderForm({
+        employees: [
+          makeEmployee({
+            avatar: {
+              url: "https://res.cloudinary.com/demo/ana.jpg",
+              publicId: "avatars/ana",
+            },
+          }),
+          makeEmployee({ id: "employee2", name: "Bruno Dias" }),
+        ],
+      });
+
+      const dialog = getDialog();
+      const withPhoto = getEmployeeOption(dialog, "Ana Lima");
+      expect(withPhoto.querySelector("img")).toHaveAttribute(
+        "src",
+        "https://res.cloudinary.com/demo/ana.jpg",
+      );
+      expect(within(withPhoto).getByText("Ana Lima")).toBeInTheDocument();
+
+      // Sem foto, o cartão continua identificável pelas iniciais.
+      expect(within(getEmployeeOption(dialog, "Bruno Dias")).getByText("BD")).toBeInTheDocument();
+    });
+
+    it("marks the chosen professional as selected", () => {
+      renderForm({
+        employees: [
+          makeEmployee(),
+          makeEmployee({ id: "employee2", name: "Bruno Dias" }),
+        ],
+      });
+
+      const dialog = getDialog();
+      expect(getEmployeeOption(dialog, "Ana Lima")).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+
+      fireEvent.click(getEmployeeOption(dialog, "Bruno Dias"));
+
+      expect(getEmployeeOption(dialog, "Bruno Dias")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(
+        within(getEmployeeOption(dialog, "Bruno Dias")).getByText("✓"),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the chosen professional checked when the form is pre-filled", async () => {
+      renderForm({ appointment: makeAppointment(), employees });
+
+      await screen.findByRole("button", { name: "2026-09-15" });
+
+      expect(getEmployeeOption(getDialog(), "Ana Lima")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+    });
+
+    it("disables the professional cards in the read-only view", () => {
+      renderForm({ appointment: makeAppointment({ startAt: "2020-01-01T09:00:00.000Z" }), readOnly: true });
+
+      expect(getEmployeeOption(getDialog(), "Ana Lima")).toBeDisabled();
+    });
   });
 });

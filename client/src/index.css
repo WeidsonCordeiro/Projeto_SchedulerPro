@@ -1444,3 +1444,93 @@ button,
   }
 }
 
+/* =========================================================
+   Seleção de funcionário (cartões com avatar)
+   ========================================================= */
+/* `min()` no mínimo da coluna evita transbordo em ecrãs muito estreitos:
+   abaixo de 13rem a coluna passa a ocupar a largura disponível. */
+.employee-picker {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+}
+
+.employee-option {
+  align-items: center;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  color: var(--sp-ink);
+  cursor: pointer;
+  display: flex;
+  gap: 0.7rem;
+  min-height: 4rem;
+  padding: 0.6rem 0.75rem;
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.employee-option:hover:not(:disabled) {
+  background: #f7f9ff;
+  border-color: #c3cff5;
+}
+
+.employee-option:focus-visible {
+  border-color: var(--sp-primary);
+  box-shadow: 0 0 0 0.2rem rgba(49, 87, 213, 0.25);
+  outline: 2px solid transparent;
+}
+
+.employee-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* O estado selecionado não depende só da cor: o cartão ganha uma borda
+  espessa, um fundo distinto e o selo "✓" no canto. */
+.employee-option.is-selected {
+  background: #eef2ff;
+  border-color: var(--sp-primary);
+  border-width: 2px;
+  box-shadow: 0 0 0 1px var(--sp-primary);
+  font-weight: 600;
+  padding: calc(0.6rem - 1px) calc(0.75rem - 1px);
+}
+
+.employee-option-check {
+  align-items: center;
+  background: var(--sp-primary);
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  height: 1.25rem;
+  justify-content: center;
+  margin-left: auto;
+  width: 1.25rem;
+}
+
+.employee-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.employee-option-name {
+  color: var(--sp-ink);
+  overflow-wrap: anywhere;
+}
+
+.employee-option-hint {
+  color: var(--sp-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.employee-picker.is-invalid {
+  border-radius: var(--sp-radius);
+  box-shadow: 0 0 0 1px #d92d20;
+}
+

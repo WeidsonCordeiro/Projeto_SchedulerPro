@@ -431,9 +431,7 @@ describe("AppointmentsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Serviço"), {
       target: { value: "service1" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Ana Lima" }));
     await screen.findByRole("button", { name: "2026-09-15" });
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "11:00" }));
@@ -478,9 +476,7 @@ describe("AppointmentsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Serviço"), {
       target: { value: "service1" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Ana Lima" }));
     await screen.findByRole("button", { name: "2026-09-15" });
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "11:00" }));
