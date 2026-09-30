@@ -22,6 +22,10 @@ import CompanyRoutes from "../modules/companies/routes/CompanyRoutes";
 import serviceRoutes from "../modules/services/routes/ServiceRoutes";
 import ClientRoutes from "../modules/Clients/routes/ClientRoutes";
 import appointmentRoutes from "../modules/appointments/routes/AppointmentRoutes";
+import availabilityRoutes from "../modules/availability/routes/AvailabilityRoutes";
+import availabilityExceptionRoutes from "../modules/availability/routes/AvailabilityExceptionRoutes";
+import reportRoutes from "../modules/reports/routes/ReportRoutes";
+import notificationRoutes from "../modules/notifications/routes/NotificationRoutes";
 
 const router = Router();
 
@@ -31,13 +35,17 @@ router.use("/companies", CompanyRoutes);
 router.use("/services", serviceRoutes);
 router.use("/clients", ClientRoutes);
 router.use("/appointments", appointmentRoutes);
+router.use("/availability", availabilityRoutes);
+router.use("/availability-exceptions", availabilityExceptionRoutes);
+router.use("/reports", reportRoutes);
+router.use("/notifications", notificationRoutes);
 
 /**
  * Health Check
  * ==========================================================
  * Para verificar se a API está viva.
  */
-router.get("/health", (req, res) => {
+router.get("/health", (_req, res) => {
   return ResponseHandler.success(
     res,
 

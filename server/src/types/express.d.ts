@@ -22,7 +22,10 @@ declare global {
         userId: string;
         companyId: string;
         role: Role;
+        clientId?: string;
+        sessionId?: string;
       };
+      requestId?: string;
     }
   }
 }

@@ -17,9 +17,35 @@ import Appointment, { AppointmentDocument } from "../models/Appointment.model";
 import { CreateAppointmentData, UpdateAppointmentData } from "../index";
 import { AppointmentStatus } from "../../../constants/appointment-status";
 
+/**
+ * Janela opcional de consulta por período. Quando informada, apenas os
+ * agendamentos que SObrepõem a janela são devolvidos:
+ *
+ *   agendamento.startAt < janela.endAt && agendamento.endAt > janela.startAt
+ *
+ * As datas são instantes UTC (mesmo contrato de startAt/endAt dos
+ * agendamentos). A janela é calculada pelo frontend no timezone da empresa
+ * e convertida para UTC antes da chamada.
+ */
+export interface AppointmentListRange {
+  startAt?: Date;
+  endAt?: Date;
+}
+
+/**
+ * Campos do documento usados na persistência dos lembretes.
+ *
+ * Os nomes vêm do enum `ReminderType` (módulo reminders) e são
+ * mapeados aqui para os campos correspondentes no modelo.
+ */
+export interface ReminderFields {
+  sentField: string;
+  leaseField: string;
+}
+
 class AppointmentRepository {
   /**
-
+  
 * ==========================================================
 * Busca um agendamento pelo ID.
 * ==========================================================
@@ -34,18 +60,36 @@ class AppointmentRepository {
   }
 
   /**
-
+  
 * ==========================================================
-* Busca todos os agendamentos de uma empresa.
+* Busca os agendamentos de uma empresa.
+*
+* Quando clientId é informado, apenas os agendamentos
+* daquele cliente (mesma empresa) são devolvidos.
 * ==========================================================
   */
   public async findByCompanyId(
     companyId: string | Types.ObjectId,
+    range?: AppointmentListRange,
+    clientId?: string | Types.ObjectId,
   ): Promise<AppointmentDocument[]> {
-    return Appointment.find({
+    const query: Record<string, unknown> = {
       companyId,
       deletedAt: null,
-    }).sort({
+    };
+
+    if (clientId) {
+      query.clientId = clientId;
+    }
+
+    if (range?.startAt) {
+      query.endAt = { $gt: range.startAt };
+    }
+    if (range?.endAt) {
+      query.startAt = { $lt: range.endAt };
+    }
+
+    return Appointment.find(query).sort({
       startAt: 1,
     });
   }
@@ -72,7 +116,7 @@ class AppointmentRepository {
     id: string | Types.ObjectId,
     data: UpdateAppointmentData,
   ): Promise<AppointmentDocument | null> {
-    return Appointment.findByIdAndUpdate(id, data, {
+    return Appointment.findOneAndUpdate({ _id: id, deletedAt: null }, data, {
       new: true,
       runValidators: true,
     });
@@ -88,8 +132,8 @@ class AppointmentRepository {
     id: string | Types.ObjectId,
     status: AppointmentStatus,
   ): Promise<AppointmentDocument | null> {
-    return Appointment.findByIdAndUpdate(
-      id,
+    return Appointment.findOneAndUpdate(
+      { _id: id, deletedAt: null },
       { status },
       {
         new: true,
@@ -183,6 +227,142 @@ class AppointmentRepository {
   }
 
   /**
+   * ==========================================================
+   * Busca agendamentos futuros aptos a receber lembretes.
+   *
+   * Retorna apenas agendamentos ativos (scheduled/confirmed),
+   * sem soft delete, que começam depois de `now` e até
+   * `now + lookaheadMs`. O lookahead cobre a janela mais longa
+   * (24h + tolerância) e o serviço de lembretes decide, item a
+   * item, qual lembrete está dentro da janela válida.
+   *
+   * A consulta é global (todas as empresas); o isolamento por
+   * empresa acontece nas buscas de company/client do serviço,
+   * sempre usando o companyId do próprio agendamento.
+   * ==========================================================
+   */
+  public async findUpcomingForReminders(
+    now: Date,
+    lookaheadMs: number,
+  ): Promise<AppointmentDocument[]> {
+    return Appointment.find({
+      deletedAt: null,
+      status: {
+        $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+      },
+      startAt: {
+        $gt: now,
+        $lte: new Date(now.getTime() + lookaheadMs),
+      },
+    }).sort({ startAt: 1 });
+  }
+
+  /**
+   * ==========================================================
+   * Reivindica (claim) um lembrete de forma atômica.
+   *
+   * Só atualiza se o lembrete ainda não foi enviado
+   * (`sentField: null`) e a trava atual está livre ou expirada.
+   * Essa condição torna a operação idempotente sob concorrência:
+   * apenas uma execução do job consegue fazer o claim de cada
+   * lembrete por vez.
+   *
+   * O status é revalidado para garantir que agendamentos
+   * cancelados/no-show/completed/soft-deleted entre a consulta
+   * e o claim não recebam lembrete.
+   * ==========================================================
+   */
+  public async claimReminder(
+    id: string | Types.ObjectId,
+    fields: ReminderFields,
+    leaseUntil: Date,
+    now: Date,
+  ): Promise<{ modifiedCount?: number }> {
+    return Appointment.updateOne(
+      {
+        _id: id,
+        deletedAt: null,
+        status: {
+          $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+        },
+        [fields.sentField]: null,
+        $or: [
+          { [fields.leaseField]: null },
+          { [fields.leaseField]: { $lte: now } },
+        ],
+      },
+      { $set: { [fields.leaseField]: leaseUntil } },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Marca um lembrete como enviado e libera a trava.
+   *
+   * Chamado apenas depois do e-mail ser enviado com sucesso.
+   * ==========================================================
+   */
+  public async markReminderSent(
+    id: string | Types.ObjectId,
+    fields: ReminderFields,
+    sentAt: Date,
+  ): Promise<{ modifiedCount?: number }> {
+    return Appointment.updateOne(
+      { _id: id },
+      {
+        $set: {
+          [fields.sentField]: sentAt,
+          [fields.leaseField]: null,
+        },
+      },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Libera a trava de um lembrete sem marcar como enviado.
+   *
+   * Usado quando o envio falha, para que uma execução posterior
+   * tente novamente.
+   * ==========================================================
+   */
+  public async releaseReminderLease(
+    id: string | Types.ObjectId,
+    leaseField: string,
+  ): Promise<{ modifiedCount?: number }> {
+    return Appointment.updateOne(
+      { _id: id },
+      { $set: { [leaseField]: null } },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Cancela agendamentos com status "scheduled" cujo início
+   * já passou.
+   *
+   * Apenas o status "scheduled" é afetado; os demais
+   * (confirmed, completed, cancelled, no-show) permanecem.
+   * ==========================================================
+   */
+  public async cancelOverdueScheduled(
+    companyId: string | Types.ObjectId,
+    now: Date,
+  ): Promise<number> {
+    const result = await Appointment.updateMany(
+      {
+        companyId,
+        deletedAt: null,
+        status: AppointmentStatus.SCHEDULED,
+        startAt: { $lt: now },
+      },
+      { $set: { status: AppointmentStatus.CANCELLED } },
+    );
+
+    return result.modifiedCount ?? 0;
+  }
+
+  /**
 
 * ==========================================================
 * Remove um agendamento.
@@ -191,7 +371,7 @@ class AppointmentRepository {
 * ==========================================================
   */
   public async softDelete(id: string | Types.ObjectId): Promise<void> {
-    await Appointment.findByIdAndUpdate(id, {
+    await Appointment.findOneAndUpdate({ _id: id, deletedAt: null }, {
       deletedAt: new Date(),
     });
   }

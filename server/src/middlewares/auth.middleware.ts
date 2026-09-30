@@ -22,18 +22,25 @@
 import { NextFunction, Request, Response } from "express";
 
 import JwtProvider from "../providers/security/JwtProvider";
+import UserRepository from "../modules/users/repositories/UserRepository";
 import { AppError } from "../errors/AppError";
 import { HttpMessages } from "../constants/http-messages";
 import { HttpStatus } from "../constants/http-status";
+import { TokenType } from "../constants/token-type";
+import { Role } from "../constants/roles";
+import SessionService from "../modules/auth/services/SessionService";
+import { ErrorCode } from "../constants/error-codes";
 
 class AuthMiddleware {
   private readonly jwtProvider = JwtProvider;
 
-  public authenticate = (
+  private readonly sessionService = SessionService;
+
+  public authenticate = async (
     req: Request,
     _: Response,
     next: NextFunction
-  ): void => {
+  ): Promise<void> => {
     const token = req.cookies?.accessToken;
 
     if (!token) {
@@ -42,10 +49,64 @@ class AuthMiddleware {
 
     const payload = this.jwtProvider.verifyAccessToken(token);
 
+    if (payload.type !== TokenType.ACCESS || !payload.userId) {
+      throw new AppError(HttpMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
+    }
+
+    if (!payload.sessionId) {
+      throw new AppError(
+        HttpMessages.INVALID_SESSION,
+        HttpStatus.UNAUTHORIZED,
+        undefined,
+        ErrorCode.INVALID_SESSION,
+      );
+    }
+
+    await this.sessionService.validate(payload.sessionId, payload.userId);
+
+    const user = await UserRepository.findByIdForAccessControl(payload.userId);
+
+    if (!user) {
+      throw new AppError(HttpMessages.UNAUTHORIZED, HttpStatus.UNAUTHORIZED);
+    }
+
+    if (!user.isActive) {
+      throw new AppError(HttpMessages.USER_DISABLED, HttpStatus.FORBIDDEN);
+    }
+
+    if (user.lockUntil != null && user.lockUntil.getTime() > Date.now()) {
+      throw new AppError(HttpMessages.USER_BLOCKED, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * A conta precisa ter o e-mail verificado antes de usar qualquer
+     * acesso autenticado. O login já bloqueia contas não verificadas;
+     * este controle fecha o loop do fluxo público de registro.
+     */
+    if (!user.emailVerified) {
+      throw new AppError(HttpMessages.EMAIL_NOT_VERIFIED, HttpStatus.FORBIDDEN);
+    }
+
+    /**
+     * FAIL CLOSED: uma conta CLIENT precisa obrigatoriamente ter um
+     * vínculo com um cliente. Contas inconsistentes (sem clientId) são
+     * bloqueadas em vez de obter acesso não escopado.
+     */
+    if (user.role === Role.CLIENT && !user.clientId) {
+      throw new AppError(
+        HttpMessages.CLIENT_LINK_REQUIRED,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    await this.sessionService.touch(payload.sessionId);
+
     req.user = {
-      userId: payload.userId,
-      companyId: payload.companyId,
-      role: payload.role,
+      userId: user._id.toString(),
+      companyId: user.companyId.toString(),
+      role: user.role,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
+      sessionId: payload.sessionId,
     };
 
     next();

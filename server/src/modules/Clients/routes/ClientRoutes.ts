@@ -24,9 +24,15 @@ import ClientController from "../controllers/ClientController";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
+import { authorize } from "../../../middlewares/role.middleware";
 import { Permission } from "../../../constants/permissions";
+import { Role } from "../../../constants/roles";
 import { createClientValidator } from "../validators/create-client.validator";
 import { updateClientValidator } from "../validators/update-client.validator";
+import { setClientCredentialsValidator } from "../validators/set-client-credentials.validator";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
 
 const router = Router();
 
@@ -38,6 +44,7 @@ const router = Router();
 router.post(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.CLIENT_CREATE),
   createClientValidator,
   validateRequest,
@@ -52,8 +59,76 @@ router.post(
 router.get(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.CLIENT_READ),
   ClientController.findAll,
+);
+
+/**
+ * ==========================================================
+ * Perfil do cliente autenticado no portal.
+ *
+ * Precisa estar registada antes de "/:id".
+ * ==========================================================
+ */
+router.get(
+  "/me",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  authorize(Role.CLIENT),
+  ClientController.findMe,
+);
+
+/**
+ * ==========================================================
+ * Definir credenciais de acesso do cliente ao portal.
+ * ==========================================================
+ */
+router.post(
+  "/:id/credentials",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
+  hasPermission(Permission.CLIENT_UPDATE),
+  setClientCredentialsValidator,
+  validateRequest,
+  ClientController.setCredentials,
+);
+
+/**
+ * ==========================================================
+ * Enviar ou substituir a foto de um cliente.
+ *
+ * A foto usa a permission `CLIENT_UPDATE` já existente (a
+ * foto faz parte da atualização do cliente). O tenant é
+ * garantido no serviço; a empresa vem do token autenticado.
+ * ==========================================================
+ */
+router.post(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.CLIENT_UPDATE),
+  uploadSingleImage("photo"),
+  ClientController.uploadPhoto,
+);
+
+/**
+ * ==========================================================
+ * Remover a foto de um cliente.
+ *
+ * Idempotente: um cliente sem foto é um estado válido e a
+ * operação devolve sucesso sem chamar o storage.
+ * ==========================================================
+ */
+router.delete(
+  "/:id/photo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.CLIENT_UPDATE),
+  ClientController.removePhoto,
 );
 
 /**
@@ -64,6 +139,8 @@ router.get(
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_READ),
   ClientController.findById,
 );
@@ -76,6 +153,8 @@ router.get(
 router.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   updateClientValidator,
   validateRequest,
@@ -90,6 +169,8 @@ router.patch(
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.deactivate,
 );
@@ -102,6 +183,8 @@ router.patch(
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.activate,
 );
@@ -116,6 +199,8 @@ router.patch(
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.CLIENT_DELETE),
   ClientController.delete,
 );

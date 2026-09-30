@@ -12,28 +12,129 @@
 
 import { Types } from "mongoose";
 import ClientRepository from "../repositories/ClientRepository";
-import ClientMapper from "../mappers/ClientMapper";
+import ClientMapper, { ClientPortalAccess } from "../mappers/ClientMapper";
 import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
+import { SetClientCredentialsDto } from "../dto/SetClientCredentials.dto";
+import UserRepository from "../../users/repositories/UserRepository";
+import { UpdateUserData } from "../../users/types";
+import { ClientDocument } from "../models/Client.model";
+import PasswordProvider from "../../../providers/security/PasswordProvider";
+import Logger from "../../../providers/logger";
+import imageProvider from "../../../providers/images/CloudinaryImageProvider";
+import {
+  ImageEntity,
+  type StoredImage,
+  type UploadedFile,
+} from "../../../providers/images/types";
+import { Role } from "../../../constants/roles";
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
 
 class ClientService {
   private readonly clientRepository = ClientRepository;
+  private readonly userRepository = UserRepository;
+  private readonly passwordProvider = PasswordProvider;
+  private readonly imageProvider = imageProvider;
+
+  /**
+   * ==========================================================
+   * Resolve o estado de acesso ao portal de um cliente.
+   *
+   * A busca é limitada à empresa do cliente para garantir o
+   * isolamento: um cliente da Company A nunca resolve (nem
+   * escreve em) um usuário da Company B.
+   * ==========================================================
+   */
+  private async resolvePortalAccess(
+    clientId: string,
+    companyId: string,
+  ): Promise<ClientPortalAccess> {
+    const user = await this.userRepository.findByClientIdIncludingDeleted(
+      clientId,
+      companyId,
+    );
+
+    if (!user) {
+      return { exists: false, isActive: false };
+    }
+
+    return {
+      exists: true,
+      isActive: user.isActive === true && user.deletedAt == null,
+    };
+  }
+
+  /**
+   * ==========================================================
+   * Resolve o estado de acesso de uma lista de clientes em lote.
+   * ==========================================================
+   */
+  private async resolvePortalAccessMap(
+    clients: ClientDocument[],
+    companyId: string,
+  ): Promise<Map<string, ClientPortalAccess>> {
+    const map = new Map<string, ClientPortalAccess>();
+
+    for (const client of clients) {
+      map.set(client._id.toString(), { exists: false, isActive: false });
+    }
+
+    const users = await this.userRepository.findByClientIdsAndCompanyIncludingDeleted(
+      clients.map((client) => client._id),
+      companyId,
+    );
+
+    for (const user of users) {
+      if (!user.clientId) {
+        continue;
+      }
+
+      map.set(user.clientId.toString(), {
+        exists: true,
+        isActive: user.isActive === true && user.deletedAt == null,
+      });
+    }
+
+    return map;
+  }
 
   /**
    * ==========================================================
    * Cria um novo cliente.
+   *
+   * Quando um e-mail é informado, verifica-se conflito global
+   * com a coleção User (incluindo soft-deleted, pois o índice
+   * unique de email é global). Conflito => 409 antes de gravar:
+   * o Client não é criado e nenhum User é tocado.
+   *
+   * Cliente pode existir sem conta de acesso; a unicidade do
+   * e-mail com User vale independentemente disso.
    * ==========================================================
    */
   public async create(dto: CreateClientDto, companyId: string) {
+    const email = dto.email?.trim().toLowerCase();
+
+    if (email) {
+      const emailUser = await this.userRepository.findByEmailIncludingDeleted(
+        email,
+      );
+
+      if (emailUser) {
+        throw new AppError(
+          HttpMessages.EMAIL_ALREADY_EXISTS,
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
     const client = await this.clientRepository.create({
       ...dto,
       companyId: new Types.ObjectId(companyId),
     });
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(client, { exists: false, isActive: false });
   }
 
   /**
@@ -43,8 +144,14 @@ class ClientService {
    */
   public async findAll(companyId: string) {
     const clients = await this.clientRepository.findByCompanyId(companyId);
+    const portalAccessMap = await this.resolvePortalAccessMap(clients, companyId);
 
-    return clients.map(ClientMapper.toResponse);
+    return clients.map((client) =>
+      ClientMapper.toResponse(
+        client,
+        portalAccessMap.get(client._id.toString()),
+      ),
+    );
   }
 
   /**
@@ -62,22 +169,106 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(client._id.toString(), companyId),
+    );
   }
 
   /**
    * ==========================================================
    * Atualiza um cliente.
+   *
+   * Quando o cliente possui conta de acesso (User CLIENT
+   * vinculado por clientId), os campos de identidade name e
+   * email são sincronizados nessa conta. Nenhum dado sensível é
+   * tocado: passwordHash, role, clientId, companyId e isActive
+   * da conta permanecem inalterados.
+   *
+   * O vínculo é sempre buscado de forma isolada (mesma empresa)
+   * e contas soft-deleted não são sincronizadas. A validação de
+   * conflito de e-mail com User vale também para clientes sem
+   * conta de acesso.
    * ==========================================================
    */
   public async update(id: string, dto: UpdateClientDto, companyId: string) {
-    const client = await this.clientRepository.update(id, companyId, dto);
+    const updateData: UpdateClientDto = {};
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) {
+      updateData.email = dto.email.trim().toLowerCase();
+    }
+    if (dto.phone !== undefined) updateData.phone = dto.phone;
+    if (dto.notes !== undefined) updateData.notes = dto.notes;
+
+    const linkedUser = await this.userRepository.findByClientIdIncludingDeleted(
+      id,
+      companyId,
+    );
+
+    /**
+     * Conflito de e-mail: o índice unique de email do User é
+     * global, então a checagem considera qualquer empresa e até
+     * contas soft-deleted (que seguem reservando o e-mail).
+     *
+     * Vale também para clientes sem conta de acesso (Client sem
+     * User vinculado não pode usar um e-mail já reservado). O
+     * próprio e-mail da conta vinculada é permitido.
+     */
+    if (
+      updateData.email !== undefined &&
+      updateData.email !== linkedUser?.email
+    ) {
+      const owner = await this.userRepository.findByEmailIncludingDeleted(
+        updateData.email,
+      );
+
+      if (owner && owner._id.toString() !== linkedUser?._id.toString()) {
+        throw new AppError(
+          HttpMessages.EMAIL_ALREADY_EXISTS,
+          HttpStatus.CONFLICT,
+        );
+      }
+    }
+
+    const client = await this.clientRepository.update(id, companyId, updateData);
 
     if (!client) {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    /**
+     * Sincroniza apenas a identidade (name e/ou email) na conta
+     * de acesso ativa. Conta soft-deleted não é restaurada nem
+     * alterada por esta operação.
+     */
+    if (linkedUser && linkedUser.deletedAt == null) {
+      const userUpdate: UpdateUserData = {};
+
+      if (updateData.name !== undefined && client.name !== linkedUser.name) {
+        userUpdate.name = client.name;
+      }
+
+      if (
+        updateData.email !== undefined &&
+        client.email !== null &&
+        client.email !== linkedUser.email
+      ) {
+        userUpdate.email = client.email;
+      }
+
+      if (Object.keys(userUpdate).length > 0) {
+        await this.userRepository.update(linkedUser._id.toString(), userUpdate);
+      }
+    }
+
+    const portalAccess: ClientPortalAccess = linkedUser
+      ? {
+          exists: true,
+          isActive: linkedUser.isActive === true && linkedUser.deletedAt == null,
+        }
+      : { exists: false, isActive: false };
+
+    return ClientMapper.toResponse(client, portalAccess);
   }
 
   /**
@@ -102,6 +293,162 @@ class ClientService {
 
   /**
    * ==========================================================
+   * Localiza um cliente para uma operação de imagem.
+   *
+   * Aplica, pela ordem, as barreiras:
+   *
+   * 1. existe e não está soft-deleted (o repository filtra por
+   *    `deletedAt: null`);
+   * 2. pertence à empresa do utilizador autenticado (tenant —
+   *    nunca confiar apenas no `:id`).
+   *
+   * O erro de empresa é 403 para não revelar a existência do
+   * registo de outro tenant.
+   * ==========================================================
+   */
+  private async findClientForPhoto(
+    id: string,
+    companyId: string,
+  ): Promise<ClientDocument> {
+    const client = await this.clientRepository.findById(id);
+
+    if (!client) {
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (client.companyId.toString() !== companyId) {
+      throw new AppError(
+        HttpMessages.CLIENT_ACCESS_DENIED,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    return client;
+  }
+
+  /**
+   * ==========================================================
+   * Envia ou substitui a foto de um cliente.
+   *
+   * Delega a substituição ao `imageProvider.replace()`, que
+   * valida o ficheiro novo ANTES de destruir o anterior e
+   * trata a primeira foto (quando `previous` é null).
+   *
+   * Não existe sequência manual remove+upload aqui: isso
+   * duplicaria a lógica do provider.
+   * ==========================================================
+   */
+  public async updatePhoto(
+    id: string,
+    file: UploadedFile,
+    companyId: string,
+  ) {
+    const client = await this.findClientForPhoto(id, companyId);
+
+    const avatar = await this.imageProvider.replace({
+      file,
+      entity: ImageEntity.CLIENT,
+      previous: client.avatar ?? null,
+    });
+
+    const updatedClient = await this.clientRepository.updateAvatar(
+      id,
+      companyId,
+      avatar,
+    );
+
+    if (!updatedClient) {
+      /**
+       * A imagem já foi enviada para o storage mas não foi
+       * possível associá-la ao registo. O `publicId` fica
+       * registado no log para não se tornar um órfão
+       * silencioso.
+       */
+      Logger.error("Foto enviada mas cliente não foi atualizado", {
+        clientId: id,
+        companyId,
+        orphanPublicId: avatar.publicId,
+      });
+
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    Logger.upload(`Foto do cliente ${id} atualizada`, {
+      clientId: id,
+      companyId,
+      publicId: avatar.publicId,
+    });
+
+    return ClientMapper.toResponse(
+      updatedClient,
+      await this.resolvePortalAccess(id, companyId),
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Remove a foto de um cliente.
+   *
+   * Idempotente: um cliente sem foto é um estado válido,
+   * devolve o cliente e não chama o storage. Nunca se limita
+   * a apagar o campo no MongoDB deixando o recurso no
+   * Cloudinary.
+   * ==========================================================
+   */
+  public async removePhoto(id: string, companyId: string) {
+    const client = await this.findClientForPhoto(id, companyId);
+
+    if (!client.avatar) {
+      Logger.info(`Cliente ${id} não possui foto para remover`, {
+        clientId: id,
+        companyId,
+      });
+
+      return ClientMapper.toResponse(
+        client,
+        await this.resolvePortalAccess(id, companyId),
+      );
+    }
+
+    const image: StoredImage = client.avatar;
+
+    await this.imageProvider.remove({ image });
+
+    const updatedClient = await this.clientRepository.updateAvatar(
+      id,
+      companyId,
+      null,
+    );
+
+    if (!updatedClient) {
+      /**
+       * A imagem já saiu do storage, mas o campo do MongoDB
+       * continua a apontar para ela. Sem este log, a
+       * referência ficaria quebrada sem rasto.
+       */
+      Logger.error("Foto removida mas cliente não foi atualizado", {
+        clientId: id,
+        companyId,
+        stalePublicId: image.publicId,
+      });
+
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    Logger.upload(`Foto do cliente ${id} removida`, {
+      clientId: id,
+      companyId,
+      publicId: image.publicId,
+    });
+
+    return ClientMapper.toResponse(
+      updatedClient,
+      await this.resolvePortalAccess(id, companyId),
+    );
+  }
+
+  /**
+   * ==========================================================
    * Ativa um cliente.
    * ==========================================================
    */
@@ -112,7 +459,10 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(id, companyId),
+    );
   }
 
   /**
@@ -127,7 +477,134 @@ class ClientService {
       throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    return ClientMapper.toResponse(client);
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(id, companyId),
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Perfil do cliente autenticado no portal.
+   *
+   * Apenas o vínculo da sessão (clientId) é aceite; não há
+   * parâmetro vindo da requisição.
+   * ==========================================================
+   */
+  public async findMe(clientId: string, companyId: string) {
+    const client = await this.clientRepository.findByIdAndCompany(
+      clientId,
+      companyId,
+    );
+
+    if (!client) {
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    return ClientMapper.toResponse(
+      client,
+      await this.resolvePortalAccess(clientId, companyId),
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Define as credenciais de acesso de um cliente ao portal.
+   *
+   * Cria (ou atualiza) o utilizador com role CLIENT vinculado
+   * ao cliente. A senha é armazenada apenas como hash e a
+   * alteração é forçada no primeiro login.
+   *
+   * O e-mail da conta é o e-mail cadastrado no cliente.
+   * ==========================================================
+   */
+  public async setCredentials(
+    id: string,
+    companyId: string,
+    dto: SetClientCredentialsDto,
+  ) {
+    const client = await this.clientRepository.findByIdAndCompany(
+      id,
+      companyId,
+    );
+
+    if (!client) {
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!client.email) {
+      throw new AppError(
+        HttpMessages.CLIENT_EMAIL_REQUIRED,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const email = client.email;
+
+    /**
+     * O índice unique de email do MongoDB continua reservando o e-mail
+     * mesmo para documentos soft-deleted. A checagem precisa considerar
+     * esses documentos para evitar E11000 (HTTP 500) e duplicação.
+     */
+    const emailUser = await this.userRepository.findByEmailIncludingDeleted(
+      email,
+    );
+
+    if (
+      emailUser &&
+      emailUser.clientId?.toString() !== client._id.toString()
+    ) {
+      throw new AppError(HttpMessages.EMAIL_ALREADY_EXISTS, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * Recupera o vínculo CLIENT (se existir), inclusive soft-deleted.
+     * Quando o usuário do e-mail é o próprio vínculo, reaproveita a
+     * referência para evitar consultas redundantes.
+     */
+    const linkedUser =
+      emailUser?.clientId?.toString() === client._id.toString()
+        ? emailUser
+        : await this.userRepository.findByClientIdIncludingDeleted(client._id);
+
+    const passwordHash = await this.passwordProvider.hash(dto.password);
+
+    if (linkedUser) {
+      /**
+       * Conta já existe (ativa, ou soft-deleted): restaura/atualiza o
+       * vínculo em vez de criar uma segunda conta com o mesmo e-mail.
+       */
+      const updateData: UpdateUserData = {
+        passwordHash,
+        mustChangePassword: true,
+        emailVerified: true,
+        isActive: true,
+        deletedAt: null,
+      };
+
+      if (linkedUser.email !== email) {
+        updateData.email = email;
+      }
+
+      await this.userRepository.updateIncludingDeleted(
+        linkedUser._id.toString(),
+        updateData,
+      );
+    } else {
+      await this.userRepository.create({
+        name: client.name,
+        email,
+        passwordHash,
+        companyId: new Types.ObjectId(companyId),
+        role: Role.CLIENT,
+        clientId: client._id,
+        mustChangePassword: true,
+        isActive: true,
+        emailVerified: true,
+      });
+    }
+
+    return ClientMapper.toResponse(client, { exists: true, isActive: true });
   }
 }
 

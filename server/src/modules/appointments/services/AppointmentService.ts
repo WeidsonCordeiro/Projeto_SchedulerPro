@@ -26,8 +26,22 @@ import UserRepository from "../../users/repositories/UserRepository";
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
+import Logger from "../../../providers/logger/Logger";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
+import AvailabilityService from "../../availability/services/AvailabilityService";
+import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
+import { NotificationType } from "../../notifications";
+import { AppointmentDocument } from "../models/Appointment.model";
+
+/**
+ * Janela opcional de consulta por período. Repassada ao repositório para
+ * filtrar agendamentos que se sobrepõem à janela.
+ */
+export interface AppointmentListFilter {
+  startAt?: Date;
+  endAt?: Date;
+}
 
 class AppointmentService {
   private readonly appointmentRepository = AppointmentRepository;
@@ -36,12 +50,50 @@ class AppointmentService {
   private readonly userRepository = UserRepository;
 
   /**
+   * ==========================================================
+   * Dispara as notificações de um evento de agendamento.
+   *
+   * As notificações (e-mail ao cliente + notificações internas)
+   * são "best effort": falhas são registadas e NUNCA alteram o
+   * resultado do agendamento já persistido.
+   * ==========================================================
+   */
+  private async dispatchAppointmentNotification(
+    appointment: AppointmentDocument,
+    type: NotificationType,
+  ): Promise<void> {
+    try {
+      await NotificationDispatcher.dispatchAppointmentEvent({
+        companyId: appointment.companyId.toString(),
+        appointmentId: appointment._id.toString(),
+        type,
+        clientId: appointment.clientId.toString(),
+        serviceId: appointment.serviceId.toString(),
+        employeeId: appointment.employeeId.toString(),
+        startAt: appointment.startAt,
+        notes: appointment.notes,
+      });
+    } catch (error) {
+      Logger.error("Falha ao disparar notificações de agendamento", {
+        appointmentId: appointment._id.toString(),
+        companyId: appointment.companyId.toString(),
+        type,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
 
 * ==========================================================
 * Cria um novo agendamento.
 * ==========================================================
   */
-  public async create(dto: CreateAppointmentDto, companyId: string) {
+  public async create(
+    dto: CreateAppointmentDto,
+    companyId: string,
+    now: Date = new Date(),
+  ) {
     /**
 
   * ---
@@ -109,6 +161,20 @@ class AppointmentService {
 
     /**
      * ----------------------------------------------------------
+     * Não permite criar agendamentos no passado.
+     * ----------------------------------------------------------
+     */
+    if (startAt.getTime() <= now.getTime()) {
+      throw new AppError(
+        HttpMessages.APPOINTMENT_START_IN_PAST,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await AvailabilityService.ensureEmployeeAvailable(companyId, dto.employeeId, startAt, endAt);
+
+    /**
+     * ----------------------------------------------------------
      * Verifica conflito de horário do funcionário.
      * ----------------------------------------------------------
      */
@@ -157,6 +223,11 @@ class AppointmentService {
       notes: dto.notes ?? null,
     });
 
+    await this.dispatchAppointmentNotification(
+      appointment,
+      NotificationType.APPOINTMENT_CREATED,
+    );
+
     return AppointmentMapper.toResponse(appointment);
   }
 
@@ -166,11 +237,49 @@ class AppointmentService {
 * Lista todos os agendamentos da empresa.
 * ==========================================================
   */
-  public async findAll(companyId: string) {
+  public async findAll(
+    companyId: string,
+    filter: AppointmentListFilter = {},
+    clientScope?: string,
+    now: Date = new Date(),
+  ) {
+    /**
+     * ----------------------------------------------------------
+     * Agendamento "scheduled" cujo início já passou é
+     * automaticamente cancelado antes da consulta.
+     *
+     * A expiração é global da empresa e não é disparada em
+     * consultas escopadas a um cliente (portal).
+     * ----------------------------------------------------------
+     */
+    if (!clientScope) {
+      await this.expireOverdueScheduled(companyId, now);
+    }
+
     const appointments =
-      await this.appointmentRepository.findByCompanyId(companyId);
+      await this.appointmentRepository.findByCompanyId(
+        companyId,
+        filter,
+        clientScope,
+      );
 
     return appointments.map(AppointmentMapper.toResponse);
+  }
+
+  /**
+   * ==========================================================
+   * Cancela agendamentos com status "scheduled" e início no
+   * passado.
+   *
+   * Apenas o status "scheduled" é afetado; os demais
+   * permanecem inalterados.
+   * ==========================================================
+   */
+  public async expireOverdueScheduled(
+    companyId: string,
+    now: Date = new Date(),
+  ): Promise<number> {
+    return this.appointmentRepository.cancelOverdueScheduled(companyId, now);
   }
 
   /**
@@ -179,14 +288,58 @@ class AppointmentService {
 * Busca um agendamento pelo ID.
 * ==========================================================
   */
-  public async findById(id: string, companyId: string) {
+  public async findById(id: string, companyId: string, clientScope?: string) {
     const appointment = await this.appointmentRepository.findById(id);
 
     if (!appointment || appointment.companyId.toString() !== companyId) {
       throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
     }
 
+    if (clientScope && appointment.clientId.toString() !== clientScope) {
+      throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
+    }
+
     return AppointmentMapper.toResponse(appointment);
+  }
+
+  /**
+   * ==========================================================
+   * Lista os agendamentos do cliente autenticado no portal.
+   *
+   * Apenas o vínculo da sessão (clientId) é aceite e a
+   * consulta é sempre restrita à empresa da sessão. Os nomes
+   * do serviço e do funcionário são anexados para exibição,
+   * já que o portal não consulta esses recursos diretamente.
+   * ==========================================================
+   */
+  public async findMine(
+    clientId: string,
+    companyId: string,
+    filter: AppointmentListFilter = {},
+  ) {
+    const appointments =
+      await this.appointmentRepository.findByCompanyId(
+        companyId,
+        filter,
+        clientId,
+      );
+
+    return Promise.all(
+      appointments.map(async (appointment) => {
+        const service = appointment.serviceId
+          ? await this.serviceRepository.findById(appointment.serviceId)
+          : null;
+        const employee = appointment.employeeId
+          ? await this.userRepository.findById(appointment.employeeId)
+          : null;
+
+        return {
+          ...AppointmentMapper.toResponse(appointment),
+          serviceName: service?.name ?? null,
+          employeeName: employee?.name ?? null,
+        };
+      }),
+    );
   }
 
   /**
@@ -199,6 +352,7 @@ class AppointmentService {
     id: string,
     dto: UpdateAppointmentDto,
     companyId: string,
+    now: Date = new Date(),
   ) {
     const appointment = await this.appointmentRepository.findById(id);
 
@@ -301,6 +455,18 @@ class AppointmentService {
      */
     if (dto.startAt) {
       startAt = new Date(dto.startAt);
+
+      /**
+       * ----------------------------------------------------------
+       * Não permite mover um agendamento para o passado.
+       * ----------------------------------------------------------
+       */
+      if (startAt.getTime() <= now.getTime()) {
+        throw new AppError(
+          HttpMessages.APPOINTMENT_START_IN_PAST,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
 
     /**
@@ -318,6 +484,8 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     const endAt = new Date(startAt.getTime() + service!.duration * 60 * 1000);
+
+    await AvailabilityService.ensureEmployeeAvailable(companyId, employeeId, startAt, endAt);
 
     /**
      * ----------------------------------------------------------
@@ -373,6 +541,11 @@ class AppointmentService {
       notes,
     });
 
+    await this.dispatchAppointmentNotification(
+      updatedAppointment!,
+      NotificationType.APPOINTMENT_UPDATED,
+    );
+
     return AppointmentMapper.toResponse(updatedAppointment!);
   }
 
@@ -415,6 +588,13 @@ class AppointmentService {
       throw new AppError(
         HttpMessages.STATUS_UPDATE_FAILED,
         HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (newStatus === AppointmentStatus.CANCELLED) {
+      await this.dispatchAppointmentNotification(
+        updatedAppointment,
+        NotificationType.APPOINTMENT_CANCELLED,
       );
     }
 

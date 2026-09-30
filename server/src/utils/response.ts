@@ -41,12 +41,14 @@ export class ResponseHandler {
     res: Response,
     message: string = "Erro.",
     statusCode: number = HttpStatus.BAD_REQUEST,
-    errors?: ValidationError[]
+    errors?: ValidationError[],
+    code?: string
   ) {
     const response: ApiResponse = {
       success: false,
       message,
       errors,
+      code,
     };
 
     return res.status(statusCode).json(response);

@@ -39,7 +39,10 @@ class AuthController {
 
     CookieProvider.setRefreshToken(res, result.tokens.refreshToken);
 
-    return ResponseHandler.success(res, result.user);
+    return ResponseHandler.success(res, {
+      ...result.user,
+      mustChangePassword: result.mustChangePassword,
+    }, HttpMessages.CREATED, HttpStatus.CREATED);
   }
 
   /**
@@ -92,7 +95,10 @@ class AuthController {
 
     CookieProvider.setRefreshToken(res, result.tokens.refreshToken);
 
-    return ResponseHandler.success(res, result.user, HttpMessages.SUCCESS);
+    return ResponseHandler.success(res, {
+      ...result.user,
+      mustChangePassword: result.mustChangePassword,
+    }, HttpMessages.SUCCESS);
   }
 
   /**
@@ -100,7 +106,9 @@ class AuthController {
    * Realiza o logout do usuário.
    * ======================================================
    */
-  public async logout(_: Request, res: Response): Promise<Response> {
+  public async logout(req: Request, res: Response): Promise<Response> {
+    await AuthService.logout(req.user?.sessionId);
+
     CookieProvider.clearAuth(res);
 
     return ResponseHandler.success(res, null, HttpMessages.LOGOUT_SUCCESS);

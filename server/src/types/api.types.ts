@@ -48,4 +48,9 @@ export interface ApiResponse<T = unknown> {
    * Lista de erros de validação.
    */
   errors?: ValidationError[];
+
+  /**
+   * Código de erro de domínio opcional.
+   */
+  code?: string;
 }

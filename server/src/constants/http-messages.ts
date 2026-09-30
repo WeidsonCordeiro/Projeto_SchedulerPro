@@ -10,9 +10,15 @@ export const HttpMessages = {
   INVALID_TOKEN: "Token inválido.",
   INVALID_REFRESH_TOKEN: "Refresh Token inválido.",
   TOKEN_EXPIRED: "Token expirado.",
+  INVALID_SESSION: "Sessão inválida.",
+  SESSION_IDLE_TIMEOUT:
+    "Sessão expirada por inatividade. Faça login novamente.",
+  SESSION_ABSOLUTE_TIMEOUT:
+    "Sessão expirada por tempo máximo de uso. Faça login novamente.",
   UNAUTHORIZED: "Não autenticado.",
   INVALID_CREDENTIALS: "Email ou senha inválidos.",
   PASSWORD_CHANGE_REQUIRED: "É necessário alterar a senha antes de prosseguir.",
+  TIMEZONE_INVALID: "Timezone IANA inválido.",
 
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
@@ -47,6 +53,7 @@ export const HttpMessages = {
   PASSWORD_CHANGE_FAILED: "Falha ao alterar a senha.",
   PASSWORD_RESET_TOKEN_INVALID: "Token de redefinição de senha inválido.",
   PASSWORD_RESET_TOKEN_EXPIRED: "Token de redefinição de senha expirado.",
+  EMAIL_SEND_FAILED: "Falha ao enviar o e-mail. Tente novamente mais tarde.",
 
   /*Empresa*/
   COMPANY_FOUND: "Empresa encontrada.",
@@ -59,6 +66,8 @@ export const HttpMessages = {
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
+  COMPANY_LOGO_UPDATED: "Logo da empresa atualizada com sucesso.",
+  COMPANY_LOGO_REMOVED: "Logo da empresa removida com sucesso.",
 
   /*Serviço*/
   SERVICE_FOUND: "Serviço encontrado.",
@@ -79,6 +88,19 @@ export const HttpMessages = {
   CLIENT_ACTIVATED: "Cliente ativado com sucesso.",
   CLIENT_DEACTIVATED: "Cliente desativado com sucesso.",
   CLIENT_NOT_FOUND: "Cliente não encontrado.",
+  CLIENT_EMAIL_REQUIRED:
+    "O cliente precisa de um e-mail para receber credenciais de acesso.",
+  CLIENT_CREDENTIALS_SET:
+    "Credenciais de acesso do cliente definidas com sucesso.",
+  CLIENT_PROFILE_FOUND: "Perfil do cliente encontrado.",
+  CLIENT_LINK_REQUIRED:
+    "Esta conta de acesso ao portal não está vinculada a um cliente.",
+  CLIENT_ROLE_FORBIDDEN:
+    "O acesso de um cliente ao portal deve ser criado pelo fluxo de credenciais.",
+  CLIENT_ACCESS_DENIED: "Não tem permissão para aceder a este cliente.",
+  CLIENT_PHOTO_UPDATED: "Foto do cliente atualizada com sucesso.",
+  CLIENT_PHOTO_REMOVED: "Foto do cliente removida com sucesso.",
+  MY_APPOINTMENTS_FOUND: "Meus agendamentos encontrados.",
 
   /*Agendamentos*/
   APPOINTMENT_CREATED: "Agendamento criado com sucesso.",
@@ -96,4 +118,67 @@ export const HttpMessages = {
   STATUS_TRANSITION_NOT_ALLOWED:
     "Não é possível alterar o status deste agendamento.",
   STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
+  APPOINTMENT_START_IN_PAST: "Não é possível agendar em um horário que já passou.",
+
+  /*Disponibilidade de funcionários*/
+  AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",
+  AVAILABILITY_UPDATED:
+    "Disponibilidade do funcionário atualizada com sucesso.",
+  AVAILABILITY_DELETED: "Disponibilidade do funcionário removida com sucesso.",
+  AVAILABILITY_FOUND: "Disponibilidade do funcionário encontrada.",
+  AVAILABILITIES_FOUND: "Disponibilidades do funcionário encontradas.",
+  AVAILABILITY_NOT_FOUND: "Disponibilidade do funcionário não encontrada.",
+
+  /*Exceções de disponibilidade (bloqueios/férias/feriados)*/
+  AVAILABILITY_EXCEPTION_CREATED:
+    "Exceção de disponibilidade criada com sucesso.",
+  AVAILABILITY_EXCEPTION_UPDATED:
+    "Exceção de disponibilidade atualizada com sucesso.",
+  AVAILABILITY_EXCEPTION_DELETED:
+    "Exceção de disponibilidade removida com sucesso.",
+  AVAILABILITY_EXCEPTION_FOUND: "Exceção de disponibilidade encontrada.",
+  AVAILABILITY_EXCEPTIONS_FOUND:
+    "Exceções de disponibilidade encontradas.",
+  AVAILABILITY_EXCEPTION_NOT_FOUND:
+    "Exceção de disponibilidade não encontrada.",
+  EXCEPTION_APPOINTMENT_CONFLICT:
+    "Não é possível aplicar esta exceção porque existe um agendamento ativo nesse período.",
+
+  EMPLOYEE_NOT_AVAILABLE: "O funcionário não está disponível neste horário.",
+
+  /*Relatórios*/
+  REPORT_OVERVIEW_FOUND: "Visão geral de agendamentos gerada com sucesso.",
+  REPORT_REVENUE_FOUND: "Receita estimada calculada com sucesso.",
+  REPORT_TOP_SERVICES_FOUND: "Ranking de serviços gerado com sucesso.",
+  REPORT_EMPLOYEES_FOUND: "Ranking de funcionários gerado com sucesso.",
+  REPORT_CLIENTS_FOUND: "Clientes recorrentes gerados com sucesso.",
+  REPORT_CANCELLATIONS_FOUND: "Relatório de cancelamentos gerado com sucesso.",
+
+  /*Notificações*/
+  NOTIFICATIONS_FOUND: "Notificações encontradas.",
+  NOTIFICATION_NOT_FOUND: "Notificação não encontrada.",
+  NOTIFICATION_READ: "Notificação marcada como lida.",
+  NOTIFICATIONS_READ: "Todas as notificações foram marcadas como lidas.",
+  NOTIFICATION_UNREAD_COUNT_FOUND:
+    "Quantidade de notificações não lidas obtida com sucesso.",
+
+  /*Imagens*/
+  IMAGE_UPLOADED: "Imagem enviada com sucesso.",
+  IMAGE_UPDATED: "Imagem atualizada com sucesso.",
+  IMAGE_REMOVED: "Imagem removida com sucesso.",
+  EMPLOYEE_PHOTO_UPDATED: "Foto do funcionário atualizada com sucesso.",
+  EMPLOYEE_PHOTO_REMOVED: "Foto do funcionário removida com sucesso.",
+  USER_NOT_EMPLOYEE:
+    "A operação só está disponível para o perfil de funcionário.",
+  IMAGE_FILE_REQUIRED: "É necessário enviar um ficheiro de imagem.",
+  IMAGE_FILE_EMPTY: "O ficheiro de imagem enviado está vazio.",
+  IMAGE_FILE_TOO_LARGE: "A imagem excede o tamanho máximo de 5 MB.",
+  IMAGE_FORMAT_NOT_ALLOWED: "Formato de imagem não permitido.",
+  IMAGE_FORMAT_ACCEPTED: "Formatos aceites",
+  IMAGE_UPLOAD_FAILED:
+    "Falha ao enviar a imagem. Tente novamente mais tarde.",
+  IMAGE_REMOVE_FAILED:
+    "Falha ao remover a imagem. Tente novamente mais tarde.",
+  IMAGE_NOT_CONFIGURED:
+    "O armazenamento de imagens não está configurado neste ambiente.",
 } as const;

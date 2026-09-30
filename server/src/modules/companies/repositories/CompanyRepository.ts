@@ -18,6 +18,7 @@ import Company, { CompanyDocument } from "../models/Company.model";
 import { CreateCompanyDto, UpdateCompanyDto } from "../types";
 import { Types } from "mongoose";
 import { ClientSession } from "mongoose";
+import { StoredImage } from "../../../providers/images/types";
 
 class CompanyRepository {
   /**
@@ -55,8 +56,11 @@ class CompanyRepository {
    * Busca todas as empresas.
    * ==========================================================
    */
-  public async findAll(): Promise<CompanyDocument[]> {
+  public async findAll(
+    companyId: string | Types.ObjectId,
+  ): Promise<CompanyDocument[]> {
     return Company.find({
+      _id: companyId,
       deletedAt: null,
     });
   }
@@ -66,8 +70,14 @@ class CompanyRepository {
    * Ativa uma empresa.
    * ==========================================================
    */
-  public async activate(id: string): Promise<CompanyDocument | null> {
-    return Company.findByIdAndUpdate(id, { isActive: true }, { new: true });
+  public async activate(
+    id: string,
+  ): Promise<CompanyDocument | null> {
+    return Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { isActive: true },
+      { new: true },
+    );
   }
 
   /**
@@ -75,8 +85,14 @@ class CompanyRepository {
    * Desativa uma empresa.
    * ==========================================================
    */
-  public async deactivate(id: string): Promise<CompanyDocument | null> {
-    return Company.findByIdAndUpdate(id, { isActive: false }, { new: true });
+  public async deactivate(
+    id: string,
+  ): Promise<CompanyDocument | null> {
+    return Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { isActive: false },
+      { new: true },
+    );
   }
 
   /**
@@ -102,10 +118,30 @@ class CompanyRepository {
     id: string,
     data: UpdateCompanyDto,
   ): Promise<CompanyDocument | null> {
-    return Company.findByIdAndUpdate(id, data, {
-      new: true,
-      runValidators: true,
-    });
+    return Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      data,
+      { new: true, runValidators: true },
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Persiste apenas a logo da empresa.
+   *
+   * O repository não conhece o storage: recebe um
+   * `StoredImage | null` pronto a gravar.
+   * ==========================================================
+   */
+  public async updateLogo(
+    id: string,
+    logo: StoredImage | null,
+  ): Promise<CompanyDocument | null> {
+    return Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { logo },
+      { new: true, runValidators: true },
+    );
   }
 
   /**
@@ -113,10 +149,13 @@ class CompanyRepository {
    * Remove logicamente uma empresa.
    * ==========================================================
    */
-  public async softDelete(id: string): Promise<void> {
-    await Company.findByIdAndUpdate(id, {
-      deletedAt: "",
-    });
+  public async softDelete(
+    id: string,
+  ): Promise<void> {
+    await Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { deletedAt: new Date() },
+    );
   }
 }
 

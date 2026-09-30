@@ -19,7 +19,7 @@
 
 export enum TokenExpiration {
   ACCESS_TOKEN = 15 * 60 * 1000,
-  REFRESH_TOKEN = 7 * 24 * 60 * 60 * 1000,
+  REFRESH_TOKEN = 8 * 60 * 60 * 1000,
   RESET_PASSWORD_TOKEN = 15 * 60 * 1000,
   EMAIL_VERIFICATION_TOKEN = 24 * 60 * 60 * 1000,
 }

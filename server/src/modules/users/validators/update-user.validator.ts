@@ -30,5 +30,9 @@ export const updateUserValidator = [
     .optional()
     .isIn(Object.values(Role))
     .withMessage("Perfil inválido."),
-  body("avatar").optional().isString().withMessage("Avatar inválido."),
+  /**
+   * `avatar` não é validado aqui porque não é aceite neste
+   * pedido: é ignorado e a alteração da foto é feita
+   * exclusivamente pelo endpoint de foto (via imageProvider).
+   */
 ];

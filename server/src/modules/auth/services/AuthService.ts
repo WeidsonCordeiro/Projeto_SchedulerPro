@@ -65,6 +65,9 @@ import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-p
 import { welcomeTemplate } from "../../../providers/mail/templates/welcome.template";
 import { env } from "../../../config/env";
 import mongoose, { ClientSession } from "mongoose";
+import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
+import SessionService from "./SessionService";
+import { ErrorCode } from "../../../constants/error-codes";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -73,12 +76,16 @@ class AuthService {
   private readonly companyRepository = CompanyRepository;
   private readonly passwordResetRepository = PasswordResetRepository;
   private readonly resendProvider = ResendProvider;
+  private readonly sessionService = SessionService;
 
   // ==========================================================
   // Métodos Públicos
   // ==========================================================
 
   public async register(dto: RegisterDto): Promise<LoginResult> {
+    if (dto.company.timezone && !isValidIanaTimezone(dto.company.timezone)) {
+      throw new AppError(HttpMessages.TIMEZONE_INVALID, HttpStatus.BAD_REQUEST);
+    }
     Logger.auth("Tentativa de registro.", {
       name: dto.name,
       email: dto.email,
@@ -104,7 +111,7 @@ class AuthService {
 
       await this.sendWelcomeEmail(user, company);
 
-      return this.authenticate(user);
+      return this.authenticateWithSession(user);
     } catch (error) {
       Logger.error("Erro ao registar usuário.", {
         name: dto.name,
@@ -129,15 +136,22 @@ class AuthService {
 
     this.validateUserStatus(user);
 
-    return this.authenticate(user);
+    return this.authenticateWithSession(user);
   }
 
   // ==========================================================
   // Fluxo de Autenticação
   // ==========================================================
 
-  private async authenticate(user: UserDocument): Promise<LoginResult> {
-    const tokens = this.generateTokens(user);
+  private async authenticateWithSession(
+    user: UserDocument,
+    existingSessionId?: string,
+  ): Promise<LoginResult> {
+    const sessionId =
+      existingSessionId ??
+      (await this.sessionService.start(user.id))._id.toString();
+
+    const tokens = this.generateTokens(user, sessionId);
 
     await this.updateLoginInfo(user);
 
@@ -148,12 +162,13 @@ class AuthService {
     };
   }
 
-  private generateTokens(user: UserDocument): AuthTokens {
+  private generateTokens(user: UserDocument, sessionId: string): AuthTokens {
     const accessToken = this.jwtProvider.generateAccessToken({
       userId: user.id,
       companyId: user.companyId.toString(),
       role: user.role,
       type: TokenType.ACCESS,
+      sessionId,
     });
 
     const refreshToken = this.jwtProvider.generateRefreshToken({
@@ -161,6 +176,7 @@ class AuthService {
       companyId: user.companyId.toString(),
       role: user.role,
       type: TokenType.REFRESH,
+      sessionId,
     });
 
     return {
@@ -195,6 +211,17 @@ class AuthService {
       userId: payload.userId,
     });
 
+    if (!payload.sessionId) {
+      throw new AppError(
+        HttpMessages.INVALID_SESSION,
+        HttpStatus.UNAUTHORIZED,
+        undefined,
+        ErrorCode.INVALID_SESSION,
+      );
+    }
+
+    await this.sessionService.validate(payload.sessionId, payload.userId);
+
     const user = await this.userRepository.findById(payload.userId);
 
     if (!user) {
@@ -207,7 +234,16 @@ class AuthService {
 
     this.validateUserStatus(user);
 
-    return this.authenticate(user);
+    return this.authenticateWithSession(user, payload.sessionId);
+  }
+
+  /**
+   * ==========================================================
+   * Encerra a sessão atual.
+   * ==========================================================
+   */
+  public async logout(sessionId?: string): Promise<void> {
+    await this.sessionService.revoke(sessionId);
   }
 
   // ==========================================================
@@ -326,6 +362,8 @@ class AuthService {
       role: user.role,
       companyId: user.companyId.toString(),
       isActive: user.isActive,
+      mustChangePassword: user.mustChangePassword,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };
   }
 
@@ -396,6 +434,7 @@ class AuthService {
     return this.companyRepository.create(
       {
         name: dto.company.name,
+        timezone: dto.company.timezone ?? DEFAULT_TIMEZONE,
       },
       session,
     );
@@ -456,13 +495,29 @@ class AuthService {
       resetUrl,
     });
 
-    await this.resendProvider.send({
-      to: user.email,
-      subject: "Recuperação de palavra-passe",
-      html,
-    });
+    /**
+     * A falha do provider não é silenciosamente ignorada: o erro é
+     * registado (com detalhe) para diagnóstico. A resposta HTTP
+     * continua a ser 200 (anti-enumeração), preservando o desenho
+     * existente do fluxo de recuperação.
+     */
+    try {
+      await this.resendProvider.send({
+        to: user.email,
+        subject: "Recuperação de palavra-passe",
+        html,
+      });
 
-    Logger.auth(`Token de recuperação enviado para ${user.email}`);
+      Logger.auth(`Token de recuperação enviado para ${user.email}`);
+    } catch (error) {
+      Logger.error(
+        `Falha ao enviar e-mail de recuperação para ${user.email}`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          userId: user._id.toString(),
+        },
+      );
+    }
   }
 
   /**

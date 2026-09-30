@@ -13,7 +13,7 @@
 
 import { Types } from "mongoose";
 import User from "../models/User.model";
-import { CreateUserDTO, UpdateUserDTO } from "../types";
+import { CreateUserData, UpdateUserData } from "../types";
 import { UserDocument } from "../models/User.model";
 import { ClientSession } from "mongoose";
 
@@ -22,7 +22,7 @@ class UserRepository {
    * Busca por ID.
    */
   public async findById(id: string | Types.ObjectId) {
-    return User.findById(id);
+    return User.findOne({ _id: id, deletedAt: null });
   }
 
   /**
@@ -53,7 +53,7 @@ class UserRepository {
    * Cria usuário.
    */
   public async create(
-    data: CreateUserDTO,
+    data: CreateUserData,
     session?: ClientSession,
   ): Promise<UserDocument> {
     const [user] = await User.create([data], { session });
@@ -64,8 +64,8 @@ class UserRepository {
   /**
    * Atualiza usuário.
    */
-  public async update(id: string, data: UpdateUserDTO) {
-    return User.findByIdAndUpdate(id, data, {
+  public async update(id: string, data: UpdateUserData) {
+    return User.findOneAndUpdate({ _id: id, deletedAt: null }, data, {
       new: true,
       runValidators: true,
     });
@@ -75,7 +75,7 @@ class UserRepository {
    * Soft Delete.
    */
   public async softDelete(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       deletedAt: new Date(),
     });
   }
@@ -84,7 +84,7 @@ class UserRepository {
    * Atualiza data do último login.
    */
   public async updateLastLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       lastLogin: new Date(),
     });
   }
@@ -93,7 +93,7 @@ class UserRepository {
    * Reseta tentativas de login.
    */
   public async resetFailedLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       failedLoginAttempts: 0,
       lockUntil: null,
     });
@@ -103,7 +103,7 @@ class UserRepository {
    * Incrementa tentativas de login.
    */
   public async incrementFailedLogin(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       $inc: {
         failedLoginAttempts: 1,
       },
@@ -114,7 +114,7 @@ class UserRepository {
    * Bloqueia usuário.
    */
   public async lockUser(id: string, until: Date): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       lockUntil: until,
     });
   }
@@ -139,7 +139,11 @@ class UserRepository {
    * ==========================================================
    */
   public async activate(id: string) {
-    return User.findByIdAndUpdate(id, { isActive: true }, { new: true });
+    return User.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { isActive: true },
+      { new: true },
+    );
   }
 
   /**
@@ -148,7 +152,11 @@ class UserRepository {
    * ==========================================================
    */
   public async deactivate(id: string) {
-    return User.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    return User.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { isActive: false },
+      { new: true },
+    );
   }
 
   /**
@@ -157,7 +165,7 @@ class UserRepository {
    * ==========================================================
    */
   public async updatePassword(id: string, passwordHash: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       passwordHash,
       mustChangePassword: false,
       passwordChangedAt: new Date(),
@@ -171,7 +179,7 @@ class UserRepository {
   public async findByIdWithPassword(
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
-    return User.findById(id).select("+passwordHash");
+    return User.findOne({ _id: id, deletedAt: null }).select("+passwordHash");
   }
 
   /**
@@ -182,9 +190,89 @@ class UserRepository {
   public async findByIdForAccessControl(
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
-    return User.findById(id).select(
-      "_id mustChangePassword isActive deletedAt",
+    return User.findOne({ _id: id, deletedAt: null }).select(
+      "_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified",
     );
+  }
+
+  /**
+   * ==========================================================
+   * Busca o utilizador (CLIENT) vinculado a um cliente.
+   * ==========================================================
+   */
+  public async findByClientId(
+    clientId: string | Types.ObjectId,
+  ): Promise<UserDocument | null> {
+    return User.findOne({ clientId: clientId, deletedAt: null });
+  }
+
+  /**
+   * ==========================================================
+   * Busca o utilizador (CLIENT) vinculado a um cliente,
+   * incluindo documentos soft-deleted.
+   *
+   * O índice unique de email no MongoDB continua reservando o
+   * e-mail mesmo após soft delete; essa consulta permite
+   * restaurar o vínculo em vez de duplicá-lo.
+   * ==========================================================
+   */
+  public async findByClientIdIncludingDeleted(
+    clientId: string | Types.ObjectId,
+    companyId?: string | Types.ObjectId,
+  ): Promise<UserDocument | null> {
+    const filter: Record<string, unknown> = { clientId };
+    if (companyId !== undefined) {
+      filter.companyId = companyId;
+    }
+
+    return User.findOne(filter);
+  }
+
+  /**
+   * ==========================================================
+   * Busca os utilizadores (CLIENT) vinculados a uma lista de
+   * clientes de uma empresa, incluindo soft-deleted.
+   *
+   * Usado para resolver, em lote, o estado de acesso ao portal
+   * da listagem de clientes.
+   * ==========================================================
+   */
+  public async findByClientIdsAndCompanyIncludingDeleted(
+    clientIds: (string | Types.ObjectId)[],
+    companyId: string | Types.ObjectId,
+  ): Promise<UserDocument[]> {
+    return User.find({
+      clientId: { $in: clientIds },
+      companyId,
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Busca por email, incluindo documentos soft-deleted.
+   * ==========================================================
+   */
+  public async findByEmailIncludingDeleted(
+    email: string,
+  ): Promise<UserDocument | null> {
+    return User.findOne({ email });
+  }
+
+  /**
+   * ==========================================================
+   * Atualiza um utilizador, incluindo documentos soft-deleted.
+   *
+   * Usado para restaurar contas removidas (deletedAt: null).
+   * ==========================================================
+   */
+  public async updateIncludingDeleted(
+    id: string,
+    data: UpdateUserData,
+  ): Promise<UserDocument | null> {
+    return User.findOneAndUpdate({ _id: id }, data, {
+      new: true,
+      runValidators: true,
+    });
   }
   /**
    * ==========================================================
@@ -192,7 +280,7 @@ class UserRepository {
    * ==========================================================
    */
   public async verifyEmail(id: string): Promise<void> {
-    await User.findByIdAndUpdate(id, {
+    await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       emailVerified: true,
     });
   }

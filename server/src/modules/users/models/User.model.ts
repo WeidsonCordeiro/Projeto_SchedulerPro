@@ -22,6 +22,7 @@
 
 import { Role } from "../../../constants/roles";
 import { HydratedDocument, Schema, Types, model } from "mongoose";
+import type { StoredImage } from "../../../providers/images/types";
 
 /**
  * ==========================================================
@@ -36,12 +37,28 @@ export interface IUser {
   email: string;
   passwordHash: string;
   phone?: string | null;
-  avatar?: string | null;
+
+  /**
+   * Foto do funcionário.
+   *
+   * Contrato partilhado com o provider de imagens
+   * (`{ url, publicId }`). O `publicId` é obrigatório para
+   * que a imagem possa ser removida do storage.
+   *
+   * É sempre escrita pelo `imageProvider` através dos
+   * endpoints de foto; nunca é aceite como URL avulsa.
+   */
+  avatar?: StoredImage | null;
 
   /**
    * Empresa
    */
   companyId: Types.ObjectId;
+
+  /**
+   * Vínculo opcional com um cliente do portal (role CLIENT).
+   */
+  clientId?: Types.ObjectId | null;
 
   /**
    * Permissões
@@ -120,8 +137,27 @@ const UserSchema = new Schema<IUser>(
       default: null,
     },
 
+    /**
+     * Sub-objeto da foto. Os dois campos são obrigatórios:
+     * uma `url` sem `publicId` não permitiria remover a
+     * imagem do Cloudinary.
+     */
     avatar: {
-      type: String,
+      type: new Schema<StoredImage>(
+        {
+          url: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          publicId: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+        },
+        { _id: false },
+      ),
       default: null,
     },
 
@@ -142,6 +178,15 @@ const UserSchema = new Schema<IUser>(
       enum: [...Object.values(Role)],
       default: Role.EMPLOYEE,
       required: true,
+    },
+
+    /**
+     * Vínculo com um cliente do portal (role CLIENT).
+     */
+    clientId: {
+      type: Schema.Types.ObjectId,
+      ref: "Client",
+      default: null,
     },
 
     /**
@@ -236,6 +281,11 @@ UserSchema.index({
 UserSchema.index({
   companyId: 1,
   isActive: 1,
+});
+
+// Vínculo com cliente do portal
+UserSchema.index({
+  clientId: 1,
 });
 
 /**

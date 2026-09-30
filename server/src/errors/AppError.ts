@@ -25,15 +25,22 @@ export class AppError extends Error {
    */
   public readonly errors?: ValidationError[];
 
+  /**
+   * Código de erro de domínio opcional.
+   */
+  public readonly code?: string;
+
   constructor(
     message: string,
     statusCode: number = HttpStatus.BAD_REQUEST,
-    errors?: ValidationError[]
+    errors?: ValidationError[],
+    code?: string
   ) {
     super(message);
     this.name = "AppError";
     this.statusCode = statusCode;
     this.errors = errors;
+    this.code = code;
 
     Error.captureStackTrace(this, this.constructor);
   }

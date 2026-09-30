@@ -16,6 +16,10 @@ import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
 import { Permission } from "../../../constants/permissions";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import { updateCompanyValidator } from "../validators/update-company.validator";
+import { validateRequest } from "../../../middlewares/validation.middleware";
+import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
 
 const router = Router();
 
@@ -30,6 +34,7 @@ router.get(
 router.get(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_READ),
   CompanyController.findById,
@@ -38,14 +43,18 @@ router.get(
 router.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_UPDATE),
+  updateCompanyValidator,
+  validateRequest,
   CompanyController.update,
 );
 
 router.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_DELETE),
   CompanyController.delete,
@@ -54,6 +63,7 @@ router.delete(
 router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_ACTIVATE),
   CompanyController.activate,
@@ -62,9 +72,47 @@ router.patch(
 router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
+  validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.COMPANY_DEACTIVATE),
   CompanyController.deactivate,
+);
+
+/**
+ * ==========================================================
+ * Enviar ou substituir a logo de uma empresa.
+ *
+ * A logo usa a permission `COMPANY_UPDATE` já existente (a
+ * logo faz parte da atualização da empresa). A empresa é a
+ * própria entidade autenticada: o tenant é garantido no
+ * serviço comparando o `:id` com o `companyId` do token.
+ * ==========================================================
+ */
+router.post(
+  "/:id/logo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.COMPANY_UPDATE),
+  uploadSingleImage("logo"),
+  CompanyController.uploadLogo,
+);
+
+/**
+ * ==========================================================
+ * Remover a logo de uma empresa.
+ *
+ * Idempotente: uma empresa sem logo é um estado válido e a
+ * operação devolve sucesso sem chamar o storage.
+ * ==========================================================
+ */
+router.delete(
+  "/:id/logo",
+  AuthMiddleware.authenticate,
+  validateObjectId("id"),
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  hasPermission(Permission.COMPANY_UPDATE),
+  CompanyController.removeLogo,
 );
 
 export default router;

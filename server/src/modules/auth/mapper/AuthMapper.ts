@@ -31,6 +31,7 @@ class AuthMapper {
       role: user.role,
       companyId: user.companyId.toString(),
       isActive: user.isActive,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };
   }
 }

@@ -19,16 +19,15 @@
  * ==========================================================
  */
 
-import { NextFunction, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 
 import { AppError } from "../errors/AppError";
 import { HttpStatus } from "../constants/http-status";
 import { HttpMessages } from "../constants/http-messages";
-import { AuthenticatedRequest } from "../types/AuthenticatedRequest";
-import { Role, RoleHierarchy } from "../constants/roles";
+import { Role } from "../constants/roles";
 
 export function authorize(...roles: Role[]) /*authorize(minRole: Role)*/ {
-  return (req: AuthenticatedRequest, _: Response, next: NextFunction): void => {
+  return (req: Request, _: Response, next: NextFunction): void => {
     if (!req.user) {
       throw new AppError(
         HttpMessages.USER_NOT_UNAUTHORIZED,

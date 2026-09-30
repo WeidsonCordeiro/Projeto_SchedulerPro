@@ -16,9 +16,14 @@ import AppointmentController from "../controllers/AppointmentController";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
+import { authorize } from "../../../middlewares/role.middleware";
 import { Permission } from "../../../constants/permissions";
+import { Role } from "../../../constants/roles";
 import { createAppointmentValidator } from "../validators/create-appointment.validator";
 import { updateAppointmentValidator } from "../validators/update-appointment.validator";
+import { listAppointmentsValidator } from "../validators/list-appointments.validator";
+import { validateObjectId } from "../../../middlewares/object-id.middleware";
+import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 
 const appointmentRoutes = Router();
 
@@ -31,6 +36,7 @@ const appointmentRoutes = Router();
 appointmentRoutes.post(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.APPOINTMENT_CREATE),
   createAppointmentValidator,
   validateRequest,
@@ -46,7 +52,10 @@ appointmentRoutes.post(
 appointmentRoutes.get(
   "/",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
   hasPermission(Permission.APPOINTMENT_READ),
+  listAppointmentsValidator,
+  validateRequest,
   AppointmentController.findAll,
 );
 
@@ -58,6 +67,8 @@ appointmentRoutes.get(
 appointmentRoutes.patch(
   "/:id/confirm",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.confirm,
 );
@@ -70,20 +81,42 @@ appointmentRoutes.patch(
 appointmentRoutes.patch(
   "/:id/complete",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.complete,
 );
 
 /**
  * ==========================================================
- * Cancela um agendamento.
+ * Meus agendamentos (portal do cliente).
+ *
+ * Precisa estar registada antes de "/:id". O clientId vem
+ * exclusivamente da sessão autenticada.
  * ==========================================================
  */
-appointmentRoutes.patch(
-  "/:id/cancel",
+appointmentRoutes.get(
+  "/mine",
   AuthMiddleware.authenticate,
-  hasPermission(Permission.APPOINTMENT_UPDATE),
-  AppointmentController.cancel,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  authorize(Role.CLIENT),
+  listAppointmentsValidator,
+  validateRequest,
+  AppointmentController.findMine,
+);
+
+/**
+ * ==========================================================
+ * Buscar agendamento pelo ID.
+ * ==========================================================
+  */
+appointmentRoutes.get(
+  "/:id",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
+  hasPermission(Permission.APPOINTMENT_READ),
+  AppointmentController.findById,
 );
 
 /**
@@ -94,21 +127,24 @@ appointmentRoutes.patch(
 appointmentRoutes.patch(
   "/:id/no-show",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   AppointmentController.markAsNoShow,
 );
 
 /**
-
-* ==========================================================
-* Buscar agendamento pelo ID.
-* ==========================================================
-  */
-appointmentRoutes.get(
-  "/:id",
+ * ==========================================================
+ * Cancela um agendamento.
+ * ==========================================================
+ */
+appointmentRoutes.patch(
+  "/:id/cancel",
   AuthMiddleware.authenticate,
-  hasPermission(Permission.APPOINTMENT_READ),
-  AppointmentController.findById,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
+  hasPermission(Permission.APPOINTMENT_UPDATE),
+  AppointmentController.cancel,
 );
 
 /**
@@ -120,6 +156,8 @@ appointmentRoutes.get(
 appointmentRoutes.patch(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_UPDATE),
   updateAppointmentValidator,
   validateRequest,
@@ -137,6 +175,8 @@ appointmentRoutes.patch(
 appointmentRoutes.delete(
   "/:id",
   AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
   hasPermission(Permission.APPOINTMENT_DELETE),
   AppointmentController.delete,
 );

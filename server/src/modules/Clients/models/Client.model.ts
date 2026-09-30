@@ -14,6 +14,7 @@
  */
 
 import { Schema, model, Document, Types } from "mongoose";
+import { StoredImage } from "../../../providers/images/types";
 
 export interface ClientDocument extends Document {
   name: string;
@@ -21,6 +22,7 @@ export interface ClientDocument extends Document {
   phone: string;
   companyId: Types.ObjectId;
   notes?: string | null;
+  avatar?: StoredImage | null;
   isActive: boolean;
   deletedAt?: Date | null;
   createdAt: Date;
@@ -73,6 +75,32 @@ const ClientSchema = new Schema<ClientDocument>(
     notes: {
       type: String,
       trim: true,
+      default: null,
+    },
+
+    /**
+     * Foto do cliente.
+     *
+     * Formato único persistido: `StoredImage` ({ url, publicId }),
+     * seguindo o mesmo padrão de `User.avatar`.
+     *
+     * A imagem é gerida exclusivamente pelo `imageProvider`; o
+     * cliente nunca envia uma URL arbitrária.
+     */
+    avatar: {
+      type: new Schema(
+        {
+          url: {
+            type: String,
+            required: true,
+          },
+          publicId: {
+            type: String,
+            required: true,
+          },
+        },
+        { _id: false },
+      ),
       default: null,
     },
 

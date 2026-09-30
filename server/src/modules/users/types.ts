@@ -16,22 +16,31 @@
 
 import { Types } from "mongoose";
 import { Role } from "../../constants/roles";
+import type { StoredImage } from "../../providers/images/types";
 
 /**
  * Dados necessários para criar um usuário.
  */
-export interface CreateUserDTO {
+export interface CreateUserData {
   name: string;
   email: string;
   passwordHash: string;
   companyId: Types.ObjectId;
   role: Role;
   phone?: string | null;
-  avatar?: string | null;
+  avatar?: StoredImage | null;
   mustChangePassword: boolean;
+  clientId?: Types.ObjectId | null;
+  isActive?: boolean;
+  emailVerified?: boolean;
 }
 
 /**
  * Dados permitidos para atualização.
+ *
+ * deletedAt é aceito somente para operações de restauração
+ * (ver: UserRepository.updateIncludingDeleted).
  */
-export type UpdateUserDTO = Partial<CreateUserDTO>;
+export type UpdateUserData = Partial<CreateUserData> & {
+  deletedAt?: Date | null;
+};
