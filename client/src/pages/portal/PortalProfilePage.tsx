@@ -5,6 +5,7 @@ import { useAppSelector } from "../../store";
 import type { Client } from "../../types/client";
 import { ROLE_LABELS } from "../../config/roles";
 import PageHeader from "../../components/common/PageHeader";
+import ImageAvatar from "../../components/common/ImageAvatar";
 
 export default function PortalProfilePage() {
   const user = useAppSelector((state) => state.auth.user);
@@ -87,19 +88,30 @@ export default function PortalProfilePage() {
                 {!profile ? (
                   <p className="mb-0 text-muted">Perfil do cliente não encontrado.</p>
                 ) : (
-                  <dl className="row mb-0">
-                    <dt className="col-sm-4 text-muted">Nome</dt>
-                    <dd className="col-sm-8">{profile.name}</dd>
+                  <>
+                    <div className="mb-3">
+                      <ImageAvatar
+                        image={profile.avatar}
+                        name={profile.name}
+                        size="md"
+                        shape="circle"
+                        alt={`Foto de ${profile.name}`}
+                      />
+                    </div>
+                    <dl className="row mb-0">
+                      <dt className="col-sm-4 text-muted">Nome</dt>
+                      <dd className="col-sm-8">{profile.name}</dd>
 
-                    <dt className="col-sm-4 text-muted">Email</dt>
-                    <dd className="col-sm-8">{profile.email ?? "—"}</dd>
+                      <dt className="col-sm-4 text-muted">Email</dt>
+                      <dd className="col-sm-8">{profile.email ?? "—"}</dd>
 
-                    <dt className="col-sm-4 text-muted">Telefone</dt>
-                    <dd className="col-sm-8">{profile.phone}</dd>
+                      <dt className="col-sm-4 text-muted">Telefone</dt>
+                      <dd className="col-sm-8">{profile.phone}</dd>
 
-                    <dt className="col-sm-4 text-muted">Observações</dt>
-                    <dd className="col-sm-8">{profile.notes ?? "—"}</dd>
-                  </dl>
+                      <dt className="col-sm-4 text-muted">Observações</dt>
+                      <dd className="col-sm-8">{profile.notes ?? "—"}</dd>
+                    </dl>
+                  </>
                 )}
               </div>
             </div>

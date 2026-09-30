@@ -110,7 +110,10 @@ function toAppError(error: unknown, fallbackMessage: string): AppError {
   const detail =
     error instanceof Error ? error.message : HttpMessages.INTERNAL_ERROR;
 
-  return new AppError(`${fallbackMessage} (${detail})`, HttpStatus.INTERNAL_SERVER_ERROR);
+  return new AppError(
+    `${fallbackMessage} (${detail})`,
+    HttpStatus.INTERNAL_SERVER_ERROR,
+  );
 }
 
 class CloudinaryImageProvider extends ImageProvider {
@@ -125,7 +128,11 @@ class CloudinaryImageProvider extends ImageProvider {
     const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } =
       env.cloudinary;
 
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    if (
+      !CLOUDINARY_CLOUD_NAME ||
+      !CLOUDINARY_API_KEY ||
+      !CLOUDINARY_API_SECRET
+    ) {
       logger.error(new Error(HttpMessages.IMAGE_NOT_CONFIGURED));
 
       throw new AppError(
@@ -188,18 +195,21 @@ class CloudinaryImageProvider extends ImageProvider {
     });
 
     try {
-      const result = await cloudinary.uploader.upload(toDataUri(file, mimeType), {
-        resource_type: "image",
-        folder: FOLDERS[entity],
-        /**
-         * Cada upload gera um public_id novo. `overwrite` e
-         * `unique_filename` ficam explícitos para que uma
-         * repetição do pedido nunca destrua silenciosamente
-         * uma imagem já associada a outra entidade.
-         */
-        overwrite: false,
-        unique_filename: true,
-      });
+      const result = await cloudinary.uploader.upload(
+        toDataUri(file, mimeType),
+        {
+          resource_type: "image",
+          folder: FOLDERS[entity],
+          /**
+           * Cada upload gera um public_id novo. `overwrite` e
+           * `unique_filename` ficam explícitos para que uma
+           * repetição do pedido nunca destrua silenciosamente
+           * uma imagem já associada a outra entidade.
+           */
+          overwrite: false,
+          unique_filename: true,
+        },
+      );
 
       if (!result?.secure_url || !result?.public_id) {
         throw new AppError(

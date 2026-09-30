@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import companyApi from "../../api/endpoints/company.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import ImageUploader from "../common/ImageUploader";
 import { getIanaTimezones, isValidIanaTimezone } from "../../config/timezones";
 import type { Company, UpdateCompanyPayload } from "../../types/company";
+import type { StoredImage } from "../../types/image";
 
 interface FieldErrors {
   name?: string;
@@ -13,6 +15,8 @@ interface FieldErrors {
 interface CompanyFormProps {
   company: Company;
   onSaved: (company: Company) => void;
+  /** Notifica o pai após alterar a logo (estado local + global). */
+  onLogoChanged?: (company: Company) => void;
 }
 
 const NAME_MIN = 3;
@@ -36,14 +40,37 @@ function validate(name: string, timezone: string): FieldErrors {
   return errors;
 }
 
-export default function CompanyForm({ company, onSaved }: CompanyFormProps) {
+export default function CompanyForm({
+  company,
+  onSaved,
+  onLogoChanged,
+}: CompanyFormProps) {
   const [name, setName] = useState(company.name);
   const [timezone, setTimezone] = useState(company.timezone);
+  const [logo, setLogo] = useState<StoredImage | null>(company.logo ?? null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const zones = useMemo(() => getIanaTimezones(), []);
+
+  async function handleLogoUpload(file: File) {
+    const response = await companyApi.uploadCompanyLogo(company.id, file);
+    const updated = response.data;
+    if (updated) {
+      setLogo(updated.logo ?? null);
+      onLogoChanged?.(updated);
+    }
+  }
+
+  async function handleLogoRemove() {
+    const response = await companyApi.removeCompanyLogo(company.id);
+    const updated = response.data;
+    if (updated) {
+      setLogo(updated.logo ?? null);
+      onLogoChanged?.(updated);
+    }
+  }
 
   // Preserva o valor real devolvido pelo backend mesmo que não esteja na
   // lista atual do runtime (ex.: zona legada), evitando texto arbitrário.
@@ -91,6 +118,21 @@ export default function CompanyForm({ company, onSaved }: CompanyFormProps) {
           {errorMessage}
         </div>
       )}
+
+      <ImageUploader
+        id="company-logo"
+        name={name || company.name}
+        image={logo}
+        kind="company"
+        canManage
+        upload={handleLogoUpload}
+        remove={handleLogoRemove}
+        uploadLabel="Adicionar logo"
+        replaceLabel="Substituir logo"
+        removeLabel="Remover logo"
+        successUploadMessage="Logo atualizado com sucesso."
+        successRemoveMessage="Logo removido com sucesso."
+      />
 
       <div className="mb-3">
         <label htmlFor="company-name" className="form-label">

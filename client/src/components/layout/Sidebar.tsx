@@ -2,6 +2,7 @@ import { useAppSelector } from "../../store";
 import { getMenuItemsForRole } from "../../config/menu";
 import SidebarItem from "./SidebarItem";
 import { selectCompany } from "../../store/slices/companySlice";
+import ImageAvatar from "../common/ImageAvatar";
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const user = useAppSelector((state) => state.auth.user);
@@ -26,7 +27,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="navbar navbar-light flex-column align-items-stretch p-0">
       <div className="sidebar-context">
-        <div className="sidebar-context-mark">{(company?.name ?? "S").charAt(0).toUpperCase()}</div>
+        <ImageAvatar image={company?.logo} name={company?.name ?? "S"} kind="company" size="sm" shape="rounded" alt="" className="sidebar-context-avatar" />
         <div className="text-truncate"><span className="sidebar-context-label">Espaço de trabalho</span><strong className="d-block text-truncate">{company?.name ?? "SchedulerPro"}</strong></div>
       </div>
       {renderGroup("Visão geral", primaryItems)}

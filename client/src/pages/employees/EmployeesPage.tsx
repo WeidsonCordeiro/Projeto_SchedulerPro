@@ -9,13 +9,10 @@ import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ImageAvatar from "../../components/common/ImageAvatar";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("pt-PT");
-}
-
-function initials(name: string): string {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 }
 
 const ROLE_BADGE_CLASS: Record<Role, string> = {
@@ -99,6 +96,16 @@ export default function EmployeesPage() {
     setSuccessMessage("Funcionário excluído com sucesso.");
     setDeletingEmployee(null);
     void loadEmployees();
+  }
+
+  function handlePhotoUpdated(updated: Employee) {
+    setEmployees((prev) =>
+      prev.map((employee) =>
+        employee.id === updated.id
+          ? { ...employee, avatar: updated.avatar ?? null }
+          : employee,
+      ),
+    );
   }
 
   async function handleToggle(employee: Employee, activate: boolean) {
@@ -208,7 +215,7 @@ export default function EmployeesPage() {
                   const isSelf = employee.id === currentUser?.id;
                   return (
                     <tr key={employee.id}>
-                      <td><div className="person-cell"><span className="person-avatar">{initials(employee.name)}</span><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="table-subline">Você</span>}</span></div></td>
+                      <td><div className="person-cell"><ImageAvatar image={employee.avatar} name={employee.name} size="sm" shape="rounded" alt="" /><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="table-subline">Você</span>}</span></div></td>
                       <td>{employee.email}</td>
                       <td><span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>{employee.role}</span></td>
                       <td>
@@ -286,6 +293,7 @@ export default function EmployeesPage() {
           currentUserId={currentUser?.id ?? null}
           onClose={handleFormClose}
           onSaved={handleSaved}
+          onPhotoUpdated={handlePhotoUpdated}
         />
       )}
 

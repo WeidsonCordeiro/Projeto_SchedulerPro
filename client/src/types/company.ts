@@ -3,16 +3,24 @@
  * (server/src/modules/companies).
  *
  * A resposta (CompanyMapper.toResponse) devolve exatamente:
- *   id, name, timezone, isActive, createdAt, updatedAt.
+ *   id, name, timezone, logo, isActive, createdAt, updatedAt.
  *
  * O nome é armazenado em minúsculas pelo schema (trim + lowercase).
  * deletedAt nunca é devolvido pelo backend e não existe nesta resposta.
  * companyId não é um campo separado: o id do recurso É o id da empresa.
  */
+import type { StoredImage } from "./image";
+
 export interface Company {
   id: string;
   name: string;
   timezone: string;
+  /**
+   * Logo da empresa. `null`/ausente quando não existe imagem.
+   * Opcional para tolerar respostas parciais; o backend devolve sempre
+   * `{ url, publicId } | null`.
+   */
+  logo?: StoredImage | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

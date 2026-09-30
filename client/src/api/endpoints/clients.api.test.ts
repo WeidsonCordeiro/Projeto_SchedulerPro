@@ -116,6 +116,33 @@ describe("clientsApi", () => {
     expect(apiClient.delete).toHaveBeenCalledWith("/clients/abc123");
   });
 
+  it("posts /clients/:id/photo as multipart with the photo field", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+    const file = new File([new Uint8Array([1, 2, 3])], "maria.png", {
+      type: "image/png",
+    });
+
+    await clientsApi.uploadClientPhoto("abc123", file);
+
+    const calls = vi.mocked(apiClient.post).mock.calls;
+    const [url, body] = calls[calls.length - 1];
+    expect(url).toBe("/clients/abc123/photo");
+    expect(body).toBeInstanceOf(FormData);
+    expect((body as FormData).get("photo")).toBe(file);
+  });
+
+  it("deletes /clients/:id/photo", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+
+    await clientsApi.removeClientPhoto("abc123");
+
+    expect(apiClient.delete).toHaveBeenCalledWith("/clients/abc123/photo");
+  });
+
   it("propagates API errors to the caller", async () => {
     vi.mocked(apiClient.get).mockRejectedValue(
       httpError(500, { message: "Erro interno do servidor." }),

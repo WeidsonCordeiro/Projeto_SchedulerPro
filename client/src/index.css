@@ -421,17 +421,6 @@ button,
   margin: 0.15rem 0.1rem 0.5rem;
   padding: 0.7rem;
 }
-.sidebar-context-mark {
-  align-items: center;
-  background: #dfe7ff;
-  border-radius: 0.5rem;
-  color: var(--sp-primary);
-  display: flex;
-  flex: 0 0 2rem;
-  font-weight: 800;
-  height: 2rem;
-  justify-content: center;
-}
 .sidebar-context-label {
   color: #98a2b3;
   display: block;
@@ -908,23 +897,11 @@ button,
 }
 /* O contentor textual da célula encolhe abaixo do seu conteúdo, para que nomes
    e e-mails longos nunca empurrem a largura da tabela. */
-.person-cell > :not(.person-avatar) {
+.person-cell > :not(.entity-avatar) {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.person-avatar {
-  align-items: center;
-  background: #eaf0ff;
-  border-radius: 0.65rem;
-  color: var(--sp-primary);
-  display: inline-flex;
-  flex: 0 0 2.25rem;
-  font-size: 0.72rem;
-  font-weight: 800;
-  height: 2.25rem;
-  justify-content: center;
-}
 .person-cell strong {
   color: var(--sp-ink);
 }
@@ -1367,3 +1344,103 @@ button,
 .table-responsive {
   overflow-x: hidden;
 }
+
+/* =========================================================
+   Imagens de entidades (avatar/logo) + bloco de upload
+   ========================================================= */
+.entity-avatar {
+  align-items: center;
+  background: #eaf0ff;
+  color: var(--sp-primary);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-weight: 800;
+  justify-content: center;
+  overflow: hidden;
+  text-transform: uppercase;
+}
+.entity-avatar-sm {
+  font-size: 0.72rem;
+  height: 2.25rem;
+  width: 2.25rem;
+}
+.entity-avatar-md {
+  font-size: 1rem;
+  height: 3.25rem;
+  width: 3.25rem;
+}
+.entity-avatar-lg {
+  font-size: 1.5rem;
+  height: 5rem;
+  width: 5rem;
+}
+.entity-avatar-rounded {
+  border-radius: 0.65rem;
+}
+.entity-avatar-circle {
+  border-radius: 50%;
+}
+.entity-avatar-img {
+  display: block;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+/* Reaproveita o antigo marcador do contexto da barra lateral com imagem. */
+.sidebar-context-avatar {
+  border-radius: 0.5rem;
+  flex: 0 0 2rem;
+  font-size: 0.85rem;
+  height: 2rem;
+  width: 2rem;
+}
+
+.navbar-user-avatar {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.image-uploader {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.image-uploader-body {
+  min-width: 0;
+}
+.image-uploader-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.image-uploader-hint {
+  color: var(--sp-muted);
+  font-size: 0.78rem;
+  margin: 0.5rem 0 0;
+}
+.image-uploader-success {
+  color: #1a7f52;
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0;
+}
+.image-uploader-error {
+  color: #b42318;
+  font-size: 0.82rem;
+  margin: 0.4rem 0 0;
+}
+
+@media (max-width: 575.98px) {
+  .image-uploader {
+    align-items: flex-start;
+  }
+  .image-uploader-actions {
+    width: 100%;
+  }
+  .image-uploader-actions .btn {
+    flex: 1 1 auto;
+  }
+}
+

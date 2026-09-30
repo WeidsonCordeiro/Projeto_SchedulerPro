@@ -61,6 +61,28 @@ export const clientsApi = {
     );
     return data;
   },
+
+  /**
+   * POST /clients/:id/photo (multipart/form-data, campo "photo").
+   * Envia/substitui a foto do cliente. O axios gera o boundary do multipart.
+   */
+  async uploadClientPhoto(id: string, file: File) {
+    const formData = new FormData();
+    formData.append("photo", file);
+    const { data } = await apiClient.post<ApiResponse<Client>>(
+      `/clients/${id}/photo`,
+      formData,
+    );
+    return data;
+  },
+
+  /** DELETE /clients/:id/photo. Remove a foto (idempotente no backend). */
+  async removeClientPhoto(id: string) {
+    const { data } = await apiClient.delete<ApiResponse<Client>>(
+      `/clients/${id}/photo`,
+    );
+    return data;
+  },
 };
 
 export default clientsApi;

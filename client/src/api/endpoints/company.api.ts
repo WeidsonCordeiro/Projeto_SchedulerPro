@@ -30,6 +30,28 @@ export const companyApi = {
     );
     return data;
   },
+
+  /**
+   * POST /companies/:id/logo (multipart/form-data, campo "logo").
+   * Envia/substitui a logo da empresa. O axios gera o boundary do multipart.
+   */
+  async uploadCompanyLogo(id: string, file: File) {
+    const formData = new FormData();
+    formData.append("logo", file);
+    const { data } = await apiClient.post<ApiResponse<Company>>(
+      `/companies/${id}/logo`,
+      formData,
+    );
+    return data;
+  },
+
+  /** DELETE /companies/:id/logo. Remove a logo (idempotente no backend). */
+  async removeCompanyLogo(id: string) {
+    const { data } = await apiClient.delete<ApiResponse<Company>>(
+      `/companies/${id}/logo`,
+    );
+    return data;
+  },
 };
 
 export default companyApi;

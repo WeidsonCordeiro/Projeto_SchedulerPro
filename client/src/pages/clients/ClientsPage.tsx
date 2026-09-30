@@ -9,6 +9,7 @@ import { useAppSelector } from "../../store";
 import type { Client, ClientPortalAccess } from "../../types/client";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ImageAvatar from "../../components/common/ImageAvatar";
 
 function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
   if (!portalAccess.exists) {
@@ -106,6 +107,16 @@ export default function ClientsPage() {
     void loadClients();
   }
 
+  function handlePhotoUpdated(updated: Client) {
+    setClients((prev) =>
+      prev.map((client) =>
+        client.id === updated.id
+          ? { ...client, avatar: updated.avatar ?? null }
+          : client,
+      ),
+    );
+  }
+
   return (
     <section>
       <PageHeader title="Clientes" description="Gerencie os clientes e o acesso ao portal." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo cliente</button>} />
@@ -163,7 +174,7 @@ export default function ClientsPage() {
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.id}>
-                    <td>{client.name}</td>
+                    <td><div className="person-cell"><ImageAvatar image={client.avatar} name={client.name} size="sm" shape="rounded" alt="" /><span><strong className="d-block">{client.name}</strong></span></div></td>
                     <td>{client.email ?? "—"}</td>
                     <td>{client.phone}</td>
                     <td>
@@ -222,6 +233,7 @@ export default function ClientsPage() {
           client={editingClient}
           onClose={handleFormClose}
           onSaved={handleSaved}
+          onPhotoUpdated={handlePhotoUpdated}
         />
       )}
 

@@ -1,3 +1,5 @@
+import type { StoredImage } from "./image";
+
 export interface ClientPortalAccess {
   exists: boolean;
   isActive: boolean;
@@ -10,6 +12,12 @@ export interface Client {
   phone: string;
   companyId: string;
   notes: string | null;
+  /**
+   * Foto do cliente. `null`/ausente quando não existe imagem.
+   * Opcional para tolerar respostas parciais; o backend devolve sempre
+   * `{ url, publicId } | null`.
+   */
+  avatar?: StoredImage | null;
   isActive: boolean;
   portalAccess: ClientPortalAccess;
   createdAt: string;

@@ -8,6 +8,7 @@ import {
 } from "../../store/slices/authSlice";
 import { clearCompany } from "../../store/slices/companySlice";
 import NotificationBell from "./NotificationBell";
+import ImageAvatar from "../common/ImageAvatar";
 
 export default function Navbar({
   onToggleSidebar,
@@ -54,6 +55,7 @@ export default function Navbar({
         {user && (
           <div className="d-flex align-items-center gap-2 gap-md-3 ms-auto min-w-0">
             <NotificationBell />
+            <ImageAvatar image={user.avatar} name={user.name} size="sm" shape="circle" alt="" className="navbar-user-avatar flex-shrink-0" />
             <div className="text-end user-summary">
               <div className="navbar-text user-name m-0">{user.name}</div>
               <div className="navbar-text user-role text-uppercase small m-0">
