@@ -361,10 +361,10 @@ button,
 .card dd {
   overflow-wrap: anywhere;
 }
-.list-intro,
+/* .list-intro,
 .service-summary {
   flex-wrap: wrap;
-}
+} */
 
 .app-sidebar {
   background: #fff !important;
@@ -684,22 +684,22 @@ button,
 .insight-strip > div:last-child {
   border-right: 0;
 }
-.insight-strip span,
+/* .insight-strip span,
 .service-summary {
   color: var(--sp-muted);
   font-size: 0.78rem;
-}
-.insight-strip strong {
+} */
+/* .insight-strip strong {
   color: var(--sp-ink);
   font-size: 1.35rem;
-}
-.list-intro,
+} */
+/* .list-intro,
 .service-summary {
   align-items: center;
   display: flex;
   gap: 0.65rem;
-}
-.list-intro-number {
+} */
+/* .list-intro-number {
   align-items: center;
   background: #eaf0ff;
   border-radius: 0.5rem;
@@ -711,14 +711,14 @@ button,
   justify-content: center;
   min-width: 1.8rem;
   padding: 0 0.4rem;
-}
-.service-summary {
+} */
+/* .service-summary {
   gap: 1.25rem;
 }
 .service-summary strong {
   color: var(--sp-ink);
   font-size: 1rem;
-}
+} */
 
 .availability-day-card {
   overflow: hidden;
@@ -1533,4 +1533,3 @@ button,
   border-radius: var(--sp-radius);
   box-shadow: 0 0 0 1px #d92d20;
 }
-

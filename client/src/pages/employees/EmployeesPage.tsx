@@ -10,6 +10,7 @@ import type { Role } from "../../types/auth";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import ImageAvatar from "../../components/common/ImageAvatar";
+import DashboardCard from "../../components/common/DashboardCard";
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("pt-PT");
@@ -37,7 +38,9 @@ export default function EmployeesPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
+    null
+  );
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const loadEmployees = useCallback(async () => {
@@ -85,7 +88,7 @@ export default function EmployeesPage() {
     setSuccessMessage(
       editingEmployee
         ? "Funcionário atualizado com sucesso."
-        : "Funcionário criado com sucesso.",
+        : "Funcionário criado com sucesso."
     );
     setFormOpen(false);
     setEditingEmployee(null);
@@ -103,8 +106,8 @@ export default function EmployeesPage() {
       prev.map((employee) =>
         employee.id === updated.id
           ? { ...employee, avatar: updated.avatar ?? null }
-          : employee,
-      ),
+          : employee
+      )
     );
   }
 
@@ -142,12 +145,30 @@ export default function EmployeesPage() {
   }
 
   const actionsVisible = canEdit || canActivate || canDeactivate || canDelete;
-  const activeCount = employees.filter((employee) => employee.isActive !== false).length;
-  const managerCount = employees.filter((employee) => employee.role === "MANAGER").length;
+  const activeCount = employees.filter(
+    (employee) => employee.isActive !== false
+  ).length;
+  const managerCount = employees.filter(
+    (employee) => employee.role === "MANAGER"
+  ).length;
 
   return (
     <section>
-      <PageHeader title="Funcionários" description="Organize a equipa e as permissões de acesso ao sistema." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo funcionário</button>} />
+      <PageHeader
+        title="Funcionários"
+        description="Organize a equipa e as permissões de acesso ao sistema."
+        actions={
+          canCreate && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
+              Novo funcionário
+            </button>
+          )
+        }
+      />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -162,10 +183,24 @@ export default function EmployeesPage() {
       )}
 
       {!isLoading && !loadError && employees.length > 0 && (
-        <div className="insight-strip mb-4" aria-label="Resumo da equipa">
-          <div><span>Total da equipa</span><strong>{employees.length}</strong></div>
-          <div><span>Ativos</span><strong>{activeCount}</strong></div>
-          <div><span>Managers</span><strong>{managerCount}</strong></div>
+        <div className="row g-3 dashboard-kpis">
+          <div className="col-12 col-md-4">
+            <DashboardCard
+              title="Total da equipa"
+              value={employees.length}
+              icon="bi-calendar-check"
+            />
+          </div>
+          <div className="col-12 col-md-4">
+            <DashboardCard title="Ativos" value={activeCount} icon="bi-clock" />
+          </div>
+          <div className="col-12 col-md-4">
+            <DashboardCard
+              title="Managers"
+              value={managerCount}
+              icon="bi-check-circle"
+            />
+          </div>
         </div>
       )}
 
@@ -193,11 +228,25 @@ export default function EmployeesPage() {
       )}
 
       {!isLoading && !loadError && employees.length === 0 && (
-        <EmptyState title="Nenhum funcionário cadastrado." description="Você ainda não possui funcionários. Adicione a equipa que participa dos seus agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro funcionário</button>} />
+        <EmptyState
+          title="Nenhum funcionário cadastrado."
+          description="Você ainda não possui funcionários. Adicione a equipa que participa dos seus agendamentos."
+          action={
+            canCreate && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
+              >
+                Cadastrar primeiro funcionário
+              </button>
+            )
+          }
+        />
       )}
 
       {!isLoading && !loadError && employees.length > 0 && (
-        <div className="card table-card">
+        <div className="card table-card mt-3">
           <div className="table-responsive">
             <table className="table table-hover align-middle">
               <thead>
@@ -215,12 +264,36 @@ export default function EmployeesPage() {
                   const isSelf = employee.id === currentUser?.id;
                   return (
                     <tr key={employee.id}>
-                      <td><div className="person-cell"><ImageAvatar image={employee.avatar} name={employee.name} size="sm" shape="rounded" alt="" /><span><strong className="d-block">{employee.name}</strong>{isSelf && <span className="table-subline">Você</span>}</span></div></td>
+                      <td>
+                        <div className="person-cell">
+                          <ImageAvatar
+                            image={employee.avatar}
+                            name={employee.name}
+                            size="sm"
+                            shape="rounded"
+                            alt=""
+                          />
+                          <span>
+                            <strong className="d-block">{employee.name}</strong>
+                            {isSelf && (
+                              <span className="table-subline">Você</span>
+                            )}
+                          </span>
+                        </div>
+                      </td>
                       <td>{employee.email}</td>
-                      <td><span className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}>{employee.role}</span></td>
+                      <td>
+                        <span
+                          className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}
+                        >
+                          {employee.role}
+                        </span>
+                      </td>
                       <td>
                         {employee.isActive === false ? (
-                          <span className="badge text-bg-secondary">Inativo</span>
+                          <span className="badge text-bg-secondary">
+                            Inativo
+                          </span>
                         ) : (
                           <span className="badge text-bg-success">Ativo</span>
                         )}
@@ -239,30 +312,38 @@ export default function EmployeesPage() {
                                 Editar
                               </button>
                             )}
-                            {!isSelf && canDeactivate && employee.isActive !== false && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-secondary"
-                                onClick={() => void handleToggle(employee, false)}
-                                disabled={togglingId === employee.id}
-                              >
-                                {togglingId === employee.id
-                                  ? "Aguarde..."
-                                  : "Desativar"}
-                              </button>
-                            )}
-                            {!isSelf && canActivate && employee.isActive === false && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-success"
-                                onClick={() => void handleToggle(employee, true)}
-                                disabled={togglingId === employee.id}
-                              >
-                                {togglingId === employee.id
-                                  ? "Aguarde..."
-                                  : "Ativar"}
-                              </button>
-                            )}
+                            {!isSelf &&
+                              canDeactivate &&
+                              employee.isActive !== false && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-secondary"
+                                  onClick={() =>
+                                    void handleToggle(employee, false)
+                                  }
+                                  disabled={togglingId === employee.id}
+                                >
+                                  {togglingId === employee.id
+                                    ? "Aguarde..."
+                                    : "Desativar"}
+                                </button>
+                              )}
+                            {!isSelf &&
+                              canActivate &&
+                              employee.isActive === false && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-outline-success"
+                                  onClick={() =>
+                                    void handleToggle(employee, true)
+                                  }
+                                  disabled={togglingId === employee.id}
+                                >
+                                  {togglingId === employee.id
+                                    ? "Aguarde..."
+                                    : "Ativar"}
+                                </button>
+                              )}
                             {!isSelf && canDelete && (
                               <button
                                 type="button"

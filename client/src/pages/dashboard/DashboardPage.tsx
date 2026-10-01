@@ -11,7 +11,7 @@ import type { Appointment, AppointmentStatus } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import type { Employee, EmployeeRole } from "../../types/employee";
-import DashboardCard from "./DashboardCard";
+import DashboardCard from "../../components/common/DashboardCard";
 import DashboardAppointments from "./DashboardAppointments";
 import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
@@ -148,7 +148,9 @@ export default function DashboardPage() {
     () =>
       appointments
         .filter(
-          (apt) => formatAppointmentDate(apt.startAt, timezone) === todayKey
+          (apt) =>
+            apt.status !== ("cancelled" as AppointmentStatus) &&
+            formatAppointmentDate(apt.startAt, timezone) === todayKey
         )
         .sort(byStartAt),
     [appointments, timezone, todayKey]
@@ -228,21 +230,21 @@ export default function DashboardPage() {
         </div>
       </div>
       <div className="row g-3 dashboard-kpis">
-        <div className="col-12 col-md-4 col-xl-3">
+        <div className="col-12 col-md-4">
           <DashboardCard
             title="Hoje"
             value={todayAppointments.length}
             icon="bi-calendar-check"
           />
         </div>
-        <div className="col-12 col-md-4 col-xl-3">
+        <div className="col-12 col-md-4">
           <DashboardCard
             title="Pendentes"
             value={appointments.filter((a) => a.status === "scheduled").length}
             icon="bi-clock"
           />
         </div>
-        <div className="col-12 col-md-4 col-xl-3">
+        <div className="col-12 col-md-4">
           <DashboardCard
             title="Confirmados"
             value={appointments.filter((a) => a.status === "confirmed").length}

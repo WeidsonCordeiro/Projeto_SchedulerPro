@@ -22,6 +22,7 @@ import type {
 } from "../../types/report";
 import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
+import DashboardCard from "../../components/common/DashboardCard";
 
 const STATUSES: AppointmentStatus[] = [
   "scheduled",
@@ -41,7 +42,13 @@ const STATUS_ICONS: Record<AppointmentStatus, string> = {
 
 const EMPTY_OVERVIEW: ReportOverview = {
   total: 0,
-  byStatus: { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, "no-show": 0 },
+  byStatus: {
+    scheduled: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled: 0,
+    "no-show": 0,
+  },
 };
 
 const EMPTY_REVENUE: ReportRevenue = {
@@ -87,30 +94,6 @@ function formatPercent(value: number): string {
   return `${value.toLocaleString("pt-PT", { maximumFractionDigits: 2 })}%`;
 }
 
-function StatCard({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: React.ReactNode;
-  icon: string;
-}) {
-  return (
-    <div className="card h-100">
-      <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start">
-          <div>
-            <h3 className="card-title h6 mb-1">{title}</h3>
-            <p className="card-text fs-4 mb-0">{value}</p>
-          </div>
-          <i className={`bi ${icon} text-muted fs-4`} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function customMonthBounds(timezone: string) {
   const now = DateTime.now().setZone(timezone);
   return {
@@ -126,10 +109,10 @@ export default function ReportsPage() {
 
   const [period, setPeriod] = useState<ReportPeriodKey>("month");
   const [customInput, setCustomInput] = useState(() =>
-    customMonthBounds(timezone),
+    customMonthBounds(timezone)
   );
   const [appliedCustom, setAppliedCustom] = useState(() =>
-    customMonthBounds(timezone),
+    customMonthBounds(timezone)
   );
   const [customError, setCustomError] = useState<string | null>(null);
 
@@ -138,9 +121,8 @@ export default function ReportsPage() {
   const [topServices, setTopServices] = useState<ReportTopService[]>([]);
   const [employees, setEmployees] = useState<ReportEmployee[]>([]);
   const [clients, setClients] = useState<ReportClients>(EMPTY_CLIENTS);
-  const [cancellations, setCancellations] = useState<ReportCancellations>(
-    EMPTY_CANCELLATIONS,
-  );
+  const [cancellations, setCancellations] =
+    useState<ReportCancellations>(EMPTY_CANCELLATIONS);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -152,7 +134,7 @@ export default function ReportsPage() {
         "custom",
         timezone,
         appliedCustom.start,
-        appliedCustom.end,
+        appliedCustom.end
       );
     }
     return buildReportRange(period, timezone);
@@ -219,8 +201,10 @@ export default function ReportsPage() {
 
     setRelatedError(
       failures.length > 0
-        ? `Não foi possível carregar parte dos relatórios. ${failures.join(" ")}`
-        : null,
+        ? `Não foi possível carregar parte dos relatórios. ${failures.join(
+            " "
+          )}`
+        : null
     );
     setIsLoading(false);
   }, []);
@@ -248,9 +232,7 @@ export default function ReportsPage() {
       return;
     }
     if (start > end) {
-      setCustomError(
-        "A data inicial não pode ser posterior à data final.",
-      );
+      setCustomError("A data inicial não pode ser posterior à data final.");
       return;
     }
     setCustomError(null);
@@ -272,27 +254,44 @@ export default function ReportsPage() {
 
   const periodDescription =
     period === "custom"
-      ? `${formatReportDate(appliedCustom.start, timezone)} a ${formatReportDate(appliedCustom.end, timezone)}`
+      ? `${formatReportDate(
+          appliedCustom.start,
+          timezone
+        )} a ${formatReportDate(appliedCustom.end, timezone)}`
       : REPORT_PERIOD_LABELS[period];
 
   return (
     <section>
-      <PageHeader title="Relatórios" description="Acompanhe o desempenho da operação no período selecionado." actions={<span className="text-muted small">Período: {periodDescription}</span>} />
+      <PageHeader
+        title="Relatórios"
+        description="Acompanhe o desempenho da operação no período selecionado."
+        actions={
+          <span className="text-muted small">Período: {periodDescription}</span>
+        }
+      />
 
       <div className="mb-4">
         <div className="filter-bar">
-          <div className="btn-group" role="group" aria-label="Período do relatório">
-            {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriodKey[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`btn btn-sm ${period === key ? "btn-primary" : "btn-outline-primary"}`}
-                aria-pressed={period === key}
-                onClick={() => selectPeriod(key)}
-              >
-                {REPORT_PERIOD_LABELS[key]}
-              </button>
-            ))}
+          <div
+            className="btn-group"
+            role="group"
+            aria-label="Período do relatório"
+          >
+            {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriodKey[]).map(
+              (key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`btn btn-sm ${
+                    period === key ? "btn-primary" : "btn-outline-primary"
+                  }`}
+                  aria-pressed={period === key}
+                  onClick={() => selectPeriod(key)}
+                >
+                  {REPORT_PERIOD_LABELS[key]}
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -308,7 +307,10 @@ export default function ReportsPage() {
                 className="form-control form-control-sm"
                 value={customInput.start}
                 onChange={(event) =>
-                  setCustomInput((prev) => ({ ...prev, start: event.target.value }))
+                  setCustomInput((prev) => ({
+                    ...prev,
+                    start: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -322,7 +324,10 @@ export default function ReportsPage() {
                 className="form-control form-control-sm"
                 value={customInput.end}
                 onChange={(event) =>
-                  setCustomInput((prev) => ({ ...prev, end: event.target.value }))
+                  setCustomInput((prev) => ({
+                    ...prev,
+                    end: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -370,9 +375,7 @@ export default function ReportsPage() {
       {!isLoading && !loadError && overview.total === 0 && (
         <div className="card">
           <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">
-              Nenhum agendamento neste período.
-            </p>
+            <p className="mb-3 text-muted">Nenhum agendamento neste período.</p>
           </div>
         </div>
       )}
@@ -386,17 +389,17 @@ export default function ReportsPage() {
           )}
 
           <h2 className="h5 mb-3">Visão geral</h2>
-          <div className="row g-3 mb-4">
-            <div className="col-6 col-md-4 col-lg-2">
-              <StatCard
+          <div className="row g-3 dashboard-kpis">
+            <div className="col-12 col-md-2">
+              <DashboardCard
                 title="Total"
                 value={formatInteger(overview.total)}
-                icon="bi-calendar3"
+                icon="bi-calendar-check"
               />
             </div>
             {STATUSES.map((status) => (
-              <div className="col-6 col-md-4 col-lg-2" key={status}>
-                <StatCard
+              <div className="col-12 col-md-2" key={status}>
+                <DashboardCard
                   title={STATUSES_HEADERS[status]}
                   value={formatInteger(overview.byStatus[status] ?? 0)}
                   icon={STATUS_ICONS[status]}
@@ -405,29 +408,25 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          <h2 className="h5 mb-3">Receita</h2>
-          <div className="row g-3 mb-4">
-            <div className="col-md-6">
-              <StatCard
+          <h2 className="h5 mb-3 mt-3">Receita</h2>
+          <div className="row g-3 dashboard-kpis">
+            <div className="col-12 col-md-6">
+              <DashboardCard
                 title="Receita estimada (concluídos)"
-                value={
-                  <span data-testid="revenue-estimated">
-                    {formatMoney(revenue.estimatedRevenue)}
-                  </span>
-                }
-                icon="bi-cash"
+                value={formatMoney(revenue.estimatedRevenue)}
+                icon="bi-calendar-check"
               />
             </div>
-            <div className="col-md-6">
-              <StatCard
+            <div className="col-12 col-md-6">
+              <DashboardCard
                 title="Valor previsto (agendados e confirmados)"
                 value={formatMoney(revenue.forecastRevenue)}
-                icon="bi-calendar2-week"
+                icon="bi-check-circle"
               />
             </div>
           </div>
 
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 mt-3">
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Serviços mais realizados</div>
@@ -477,19 +476,14 @@ export default function ReportsPage() {
                 <div className="card-header">
                   Clientes recorrentes
                   <span className="text-muted small fw-normal ms-2">
-                    {formatInteger(clients.totalClients)} clientes ativos no período,{" "}
-                    {formatInteger(clients.recurringCount)} recorrentes
+                    {formatInteger(clients.totalClients)} clientes ativos no
+                    período, {formatInteger(clients.recurringCount)} recorrentes
                   </span>
                 </div>
                 <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum cliente neste período."
-                    headers={[
-                      "Cliente",
-                      "Agend.",
-                      "Concl.",
-                      "Valor estimado",
-                    ]}
+                    headers={["Cliente", "Agend.", "Concl.", "Valor estimado"]}
                     rows={clients.topClients.map((client) => [
                       client.name ?? "—",
                       formatInteger(client.count),
@@ -506,7 +500,9 @@ export default function ReportsPage() {
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span>Cancelados</span>
-                    <strong>{formatInteger(cancellations.cancelledCount)}</strong>
+                    <strong>
+                      {formatInteger(cancellations.cancelledCount)}
+                    </strong>
                   </div>
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span>Total de agendamentos</span>

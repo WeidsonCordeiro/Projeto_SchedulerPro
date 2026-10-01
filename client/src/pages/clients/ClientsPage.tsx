@@ -10,6 +10,7 @@ import type { Client, ClientPortalAccess } from "../../types/client";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import ImageAvatar from "../../components/common/ImageAvatar";
+import DashboardCard from "../../components/common/DashboardCard";
 
 function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
   if (!portalAccess.exists) {
@@ -19,9 +20,7 @@ function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
   return portalAccess.isActive ? "Gerenciar acesso" : "Reativar acesso";
 }
 
-function getAccessButtonTitle(
-  client: Client,
-): string {
+function getAccessButtonTitle(client: Client): string {
   if (!client.email) {
     return "O cliente precisa de um email para acessar o portal";
   }
@@ -37,7 +36,9 @@ function getAccessButtonTitle(
 
 export default function ClientsPage() {
   const user = useAppSelector((state) => state.auth.user);
-  const { canCreate, canUpdate, canDelete } = getClientAbilities(user?.role ?? null);
+  const { canCreate, canUpdate, canDelete } = getClientAbilities(
+    user?.role ?? null
+  );
 
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,7 +48,9 @@ export default function ClientsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
-  const [credentialingClient, setCredentialingClient] = useState<Client | null>(null);
+  const [credentialingClient, setCredentialingClient] = useState<Client | null>(
+    null
+  );
 
   const loadClients = useCallback(async () => {
     setIsLoading(true);
@@ -86,7 +89,7 @@ export default function ClientsPage() {
     setSuccessMessage(
       editingClient
         ? "Cliente atualizado com sucesso."
-        : "Cliente criado com sucesso.",
+        : "Cliente criado com sucesso."
     );
     setFormOpen(false);
     setEditingClient(null);
@@ -100,9 +103,7 @@ export default function ClientsPage() {
   }
 
   function handleCredentialsSaved(client: Client) {
-    setSuccessMessage(
-      `Credenciais de acesso definidas para ${client.name}.`,
-    );
+    setSuccessMessage(`Credenciais de acesso definidas para ${client.name}.`);
     setCredentialingClient(null);
     void loadClients();
   }
@@ -112,14 +113,28 @@ export default function ClientsPage() {
       prev.map((client) =>
         client.id === updated.id
           ? { ...client, avatar: updated.avatar ?? null }
-          : client,
-      ),
+          : client
+      )
     );
   }
 
   return (
     <section>
-      <PageHeader title="Clientes" description="Gerencie os clientes e o acesso ao portal." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo cliente</button>} />
+      <PageHeader
+        title="Clientes"
+        description="Gerencie os clientes e o acesso ao portal."
+        actions={
+          canCreate && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
+              Novo cliente
+            </button>
+          )
+        }
+      />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -128,7 +143,15 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="list-intro mb-3"><span className="list-intro-number">{clients.length}</span><span>clientes na sua base</span></div>
+        <div className="row g-3 dashboard-kpis">
+          <div className="col-12">
+            <DashboardCard
+              title="Clientes na sua base"
+              value={clients.length}
+              icon="bi-calendar-check"
+            />
+          </div>
+        </div>
       )}
 
       {isLoading && (
@@ -155,11 +178,25 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length === 0 && (
-        <EmptyState title="Nenhum cliente cadastrado." description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro cliente</button>} />
+        <EmptyState
+          title="Nenhum cliente cadastrado."
+          description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos."
+          action={
+            canCreate && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
+              >
+                Cadastrar primeiro cliente
+              </button>
+            )
+          }
+        />
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="card table-card">
+        <div className="card table-card mt-3">
           <div className="table-responsive">
             <table className="table table-hover align-middle">
               <thead>
@@ -174,7 +211,20 @@ export default function ClientsPage() {
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.id}>
-                    <td><div className="person-cell"><ImageAvatar image={client.avatar} name={client.name} size="sm" shape="rounded" alt="" /><span><strong className="d-block">{client.name}</strong></span></div></td>
+                    <td>
+                      <div className="person-cell">
+                        <ImageAvatar
+                          image={client.avatar}
+                          name={client.name}
+                          size="sm"
+                          shape="rounded"
+                          alt=""
+                        />
+                        <span>
+                          <strong className="d-block">{client.name}</strong>
+                        </span>
+                      </div>
+                    </td>
                     <td>{client.email ?? "—"}</td>
                     <td>{client.phone}</td>
                     <td>
