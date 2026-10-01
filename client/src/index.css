@@ -386,6 +386,7 @@ button,
   border-radius: 0.6rem;
   display: flex;
   font-weight: 550;
+  margin-left: 2rem;
   margin-bottom: 0.25rem;
   min-height: 2.7rem;
   padding: 0.7rem 0.85rem;
@@ -404,9 +405,9 @@ button,
   margin-top: 1.1rem;
 }
 .sidebar-group-label {
-  color: #98a2b3;
-  font-size: 0.68rem;
-  font-weight: 750;
+  color: #3157d5;
+  font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0.1em;
   margin: 0 0.85rem 0.45rem;
   text-transform: uppercase;
