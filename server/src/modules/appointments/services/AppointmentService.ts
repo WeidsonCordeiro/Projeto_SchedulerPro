@@ -15,13 +15,17 @@ import { Types } from "mongoose";
 
 import AppointmentRepository from "../repositories/AppointmentRepository";
 import AppointmentMapper from "../mappers/AppointmentMapper";
+import PublicAppointmentMapper from "../mappers/PublicAppointmentMapper";
 
 import { CreateAppointmentDto } from "../dto/CreateAppointment.dto";
 import { UpdateAppointmentDto } from "../dto/UpdateAppointment.dto";
+import { CreatePublicAppointmentDto } from "../dto/CreatePublicAppointment.dto";
 
 import ClientRepository from "../../Clients/repositories/ClientRepository";
+import { ClientDocument } from "../../Clients/models/Client.model";
 import ServiceRepository from "../../services/repositories/ServiceRepository";
 import UserRepository from "../../users/repositories/UserRepository";
+import CompanyRepository from "../../companies/repositories/CompanyRepository";
 
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
@@ -29,6 +33,7 @@ import { HttpStatus } from "../../../constants/http-status";
 import Logger from "../../../providers/logger/Logger";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
+import { Role } from "../../../constants/roles";
 import AvailabilityService from "../../availability/services/AvailabilityService";
 import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
 import { NotificationType } from "../../notifications";
@@ -43,11 +48,231 @@ export interface AppointmentListFilter {
   endAt?: Date;
 }
 
+/**
+ * ==========================================================
+ * Dados já validados, prontos a persistir.
+ *
+ * Reúne as regras comuns à criação administrativa e à criação
+ * pública: cálculo de `endAt`, regra de passado, disponibilidade
+ * (e exceções), conflito de funcionário e de cliente, status
+ * inicial e notificações.
+ *
+ * `endAt` NUNCA entra aqui: é sempre derivado de
+ * `durationMinutes`, que por sua vez vem do `Service`.
+ *
+ * `resolveClientId` é uma função (e não um id) para que o
+ * cliente público só seja criado depois de as regras de agenda
+ * terem passado — um pedido rejeitado não pode deixar um
+ * cadastro de cliente órfão na base de dados.
+ * ==========================================================
+ */
+interface ScheduleAppointmentInput {
+  companyId: string;
+  resolveClientId: () => Types.ObjectId | Promise<Types.ObjectId>;
+  serviceId: Types.ObjectId;
+  employeeId: Types.ObjectId;
+  durationMinutes: number;
+  startAt: Date;
+  notes?: string | null;
+  now: Date;
+}
+
 class AppointmentService {
   private readonly appointmentRepository = AppointmentRepository;
   private readonly clientRepository = ClientRepository;
   private readonly serviceRepository = ServiceRepository;
   private readonly userRepository = UserRepository;
+  private readonly companyRepository = CompanyRepository;
+
+  /**
+   * ==========================================================
+   * Exige um cliente existente, da empresa e ativo.
+   * ==========================================================
+   */
+  private async requireActiveClient(clientId: string, companyId: string) {
+    const client = await this.clientRepository.findById(clientId);
+
+    if (!client || client.companyId.toString() !== companyId) {
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!client.isActive) {
+      throw new AppError(
+        "Cliente encontra-se inativo.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return client;
+  }
+
+  /**
+   * ==========================================================
+   * Exige um serviço existente, da empresa e ativo.
+   * ==========================================================
+   */
+  private async requireActiveService(serviceId: string, companyId: string) {
+    const service = await this.serviceRepository.findById(serviceId);
+
+    if (!service || service.companyId.toString() !== companyId) {
+      throw new AppError(HttpMessages.SERVICE_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!service.isActive) {
+      throw new AppError(
+        "Serviço encontra-se inativo.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return service;
+  }
+
+  /**
+   * ==========================================================
+   * Exige um funcionário existente, da empresa e ativo.
+   * ==========================================================
+   */
+  private async requireActiveEmployee(
+    employeeId: string,
+    companyId: string,
+  ) {
+    const employee = await this.userRepository.findById(employeeId);
+
+    if (!employee || employee.companyId.toString() !== companyId) {
+      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!employee.isActive) {
+      throw new AppError(
+        "Funcionário encontra-se inativo.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return employee;
+  }
+
+  /**
+   * ==========================================================
+   * Aplica TODAS as regras de agenda e persiste o agendamento.
+   *
+   * Único caminho de escrita da criação: o fluxo administrativo e
+   * o fluxo público partilham exatamente estas regras — passado,
+   * disponibilidade semanal, exceções (férias/bloqueios),
+   * conflito de funcionário, conflito de cliente, status inicial
+   * e notificações.
+   * ==========================================================
+   */
+  private async schedule(input: ScheduleAppointmentInput) {
+    const {
+      companyId,
+      resolveClientId,
+      serviceId,
+      employeeId,
+      durationMinutes,
+      startAt,
+      notes,
+      now,
+    } = input;
+
+    /**
+     * ----------------------------------------------------------
+     * Calcula o horário de término a partir do serviço.
+     * ----------------------------------------------------------
+     */
+    const endAt = new Date(
+      startAt.getTime() + durationMinutes * 60 * 1000,
+    );
+
+    /**
+     * ----------------------------------------------------------
+     * Não permite criar agendamentos no passado.
+     * ----------------------------------------------------------
+     */
+    if (startAt.getTime() <= now.getTime()) {
+      throw new AppError(
+        HttpMessages.APPOINTMENT_START_IN_PAST,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await AvailabilityService.ensureEmployeeAvailable(
+      companyId,
+      employeeId,
+      startAt,
+      endAt,
+    );
+
+    /**
+     * ----------------------------------------------------------
+     * Verifica conflito de horário do funcionário.
+     * ----------------------------------------------------------
+     */
+    const hasEmployeeConflict =
+      await this.appointmentRepository.hasEmployeeConflict(
+        companyId,
+        employeeId,
+        startAt,
+        endAt,
+      );
+
+    if (hasEmployeeConflict) {
+      throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * ----------------------------------------------------------
+     * Resolve o cliente.
+     *
+     * Só agora, depois de as regras de agenda terem passado: no
+     * fluxo público esta chamada pode criar o cadastro do cliente
+     * e um pedido rejeitado não pode deixar um órfão na base de
+     * dados.
+     * ----------------------------------------------------------
+     */
+    const clientId = await resolveClientId();
+
+    /**
+     * ----------------------------------------------------------
+     * Verifica conflito de horário do cliente.
+     * ----------------------------------------------------------
+     */
+    const hasClientConflict =
+      await this.appointmentRepository.hasClientConflict(
+        companyId,
+        clientId,
+        startAt,
+        endAt,
+      );
+
+    if (hasClientConflict) {
+      throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
+    }
+
+    /**
+     * ----------------------------------------------------------
+     * Cria o agendamento.
+     * ----------------------------------------------------------
+     */
+    const appointment = await this.appointmentRepository.create({
+      companyId: new Types.ObjectId(companyId),
+      clientId,
+      serviceId,
+      employeeId,
+      startAt,
+      endAt,
+      status: AppointmentStatus.SCHEDULED,
+      notes: notes ?? null,
+    });
+
+    await this.dispatchAppointmentNotification(
+      appointment,
+      NotificationType.APPOINTMENT_CREATED,
+    );
+
+    return appointment;
+  }
 
   /**
    * ==========================================================
@@ -95,140 +320,195 @@ class AppointmentService {
     now: Date = new Date(),
   ) {
     /**
-
-  * ---
-  * Valida o cliente.
-  * ---
-
-  */
-    const client = await this.clientRepository.findById(dto.clientId);
-
-    if (!client || client.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!client.isActive) {
-      throw new AppError(
-        "Cliente encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+   * ---
+   * Valida o cliente.
+   * ---
+   */
+    await this.requireActiveClient(dto.clientId, companyId);
 
     /**
      * ----------------------------------------------------------
      * Valida o serviço.
      * ----------------------------------------------------------
      */
-    const service = await this.serviceRepository.findById(dto.serviceId);
-
-    if (!service || service.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.SERVICE_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!service.isActive) {
-      throw new AppError(
-        "Serviço encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const service = await this.requireActiveService(dto.serviceId, companyId);
 
     /**
      * ----------------------------------------------------------
      * Valida o funcionário.
      * ----------------------------------------------------------
      */
-    const employee = await this.userRepository.findById(dto.employeeId);
+    await this.requireActiveEmployee(dto.employeeId, companyId);
 
-    if (!employee || employee.companyId.toString() !== companyId) {
+    const appointment = await this.schedule({
+      companyId,
+      resolveClientId: () => new Types.ObjectId(dto.clientId),
+      serviceId: new Types.ObjectId(dto.serviceId),
+      employeeId: new Types.ObjectId(dto.employeeId),
+      durationMinutes: service.duration,
+      startAt: new Date(dto.startAt),
+      notes: dto.notes ?? null,
+      now,
+    });
+
+    return AppointmentMapper.toResponse(appointment);
+  }
+
+  /**
+   * ==========================================================
+   * Resolve o `Client` de um agendamento público.
+   *
+   * Se já existir um cliente com o mesmo e-mail NA MESMA empresa,
+   * ele é reutilizado — o que evita duplicar o cadastro a cada
+   * agendamento e faz a regra de conflito de cliente valer para
+   * quem agenda repetidamente.
+   *
+   * Um cliente desativado pela empresa bloqueia o agendamento: um
+   * link público não pode contornar um bloqueio existente.
+   *
+   * O e-mail NÃO é verificado contra a coleção `User`. O pedido
+   * não cria conta de acesso e recusar o agendamento por existir
+   * uma conta com o mesmo e-mail noutra empresa revelaria
+   * informação de outro tenant.
+   * ==========================================================
+   */
+  private async resolvePublicClient(
+    companyId: string,
+    email: string,
+    name: string,
+    phone: string | null,
+  ): Promise<ClientDocument> {
+    const existing = await this.clientRepository.findByEmailAndCompany(
+      email,
+      companyId,
+    );
+
+    if (existing) {
+      if (!existing.isActive) {
+        throw new AppError(
+          "Cliente encontra-se inativo.",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return existing;
+    }
+
+    return this.clientRepository.create({
+      companyId: new Types.ObjectId(companyId),
+      name,
+      email,
+      phone,
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Cria um agendamento a partir do link público da empresa.
+   *
+   * O `companyId` vem EXCLUSIVAMENTE da URL
+   * (`/api/public/companies/:companyId/appointments`), nunca do
+   * corpo do pedido. Serviço, profissional, duração, término,
+   * status e cliente são determinados pelo backend.
+   *
+   * Nenhum `User` é criado: o agendamento fica associado a um
+   * `Client`, reutilizando o cadastro existente na empresa quando
+   * o e-mail já existe.
+   * ==========================================================
+   */
+  public async createPublic(
+    dto: CreatePublicAppointmentDto,
+    companyId: string,
+    now: Date = new Date(),
+  ) {
+    /**
+     * ----------------------------------------------------------
+     * Valida a empresa (tenant do link público).
+     *
+     * Empresa eliminada devolve 404 porque o repositório já
+     * filtra `deletedAt`; empresa inativa devolve 400 porque
+     * existe mas não aceita agendamentos.
+     * ----------------------------------------------------------
+     */
+    const company = await this.companyRepository.findById(companyId);
+
+    if (!company) {
+      throw new AppError(
+        HttpMessages.COMPANY_NOT_FOUND,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (!company.isActive) {
+      throw new AppError(
+        HttpMessages.COMPANY_INACTIVE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    /**
+     * ----------------------------------------------------------
+     * Valida serviço e profissional contra o MESMO tenant.
+     * ----------------------------------------------------------
+     */
+    const service = await this.requireActiveService(dto.serviceId, companyId);
+
+    const employee = await this.requireActiveEmployee(
+      dto.employeeId,
+      companyId,
+    );
+
+    /**
+     * Uma conta de acesso (role CLIENT) não é profissional:
+     * o link público nunca agenda para ela. 404 para não revelar
+     * a existência da conta.
+     */
+    if (employee.role === Role.CLIENT) {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    if (!employee.isActive) {
-      throw new AppError(
-        "Funcionário encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    /**
+     * ----------------------------------------------------------
+     * Resolve o cliente público.
+     * ----------------------------------------------------------
+     */
+    const clientName = dto.clientName.trim();
+    const clientEmail = dto.clientEmail.trim().toLowerCase();
+    const clientPhone = dto.clientPhone?.trim() || null;
 
     /**
      * ----------------------------------------------------------
-     * Calcula o horário de término.
+     * Regras de agenda idênticas ao fluxo administrativo.
+     *
+     * O cliente só é criado dentro de `resolveClientId`, ou seja,
+     * depois de passado, disponibilidade e conflito de funcionário
+     * terem sido aceites.
      * ----------------------------------------------------------
      */
-    const startAt = new Date(dto.startAt);
-
-    const endAt = new Date(startAt.getTime() + service.duration * 60 * 1000);
-
-    /**
-     * ----------------------------------------------------------
-     * Não permite criar agendamentos no passado.
-     * ----------------------------------------------------------
-     */
-    if (startAt.getTime() <= now.getTime()) {
-      throw new AppError(
-        HttpMessages.APPOINTMENT_START_IN_PAST,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    await AvailabilityService.ensureEmployeeAvailable(companyId, dto.employeeId, startAt, endAt);
-
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do funcionário.
-     * ----------------------------------------------------------
-     */
-    const hasEmployeeConflict =
-      await this.appointmentRepository.hasEmployeeConflict(
-        companyId,
-        dto.employeeId,
-        startAt,
-        endAt,
-      );
-
-    if (hasEmployeeConflict) {
-      throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do cliente.
-     * ----------------------------------------------------------
-     */
-    const hasClientConflict =
-      await this.appointmentRepository.hasClientConflict(
-        companyId,
-        dto.clientId,
-        startAt,
-        endAt,
-      );
-
-    if (hasClientConflict) {
-      throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Cria o agendamento.
-     * ----------------------------------------------------------
-     */
-    const appointment = await this.appointmentRepository.create({
-      companyId: new Types.ObjectId(companyId),
-      clientId: new Types.ObjectId(dto.clientId),
-      serviceId: new Types.ObjectId(dto.serviceId),
-      employeeId: new Types.ObjectId(dto.employeeId),
-      startAt,
-      endAt,
-      status: AppointmentStatus.SCHEDULED,
-      notes: dto.notes ?? null,
+    const appointment = await this.schedule({
+      companyId,
+      resolveClientId: async () =>
+        (
+          await this.resolvePublicClient(
+            companyId,
+            clientEmail,
+            clientName,
+            clientPhone,
+          )
+        )._id,
+      serviceId: service._id,
+      employeeId: employee._id,
+      durationMinutes: service.duration,
+      startAt: new Date(dto.startAt),
+      notes: dto.notes?.trim() || null,
+      now,
     });
 
-    await this.dispatchAppointmentNotification(
-      appointment,
-      NotificationType.APPOINTMENT_CREATED,
-    );
-
-    return AppointmentMapper.toResponse(appointment);
+    return PublicAppointmentMapper.toResponse(appointment, {
+      clientName,
+      service: { id: service._id.toString(), name: service.name },
+      employee: { id: employee._id.toString(), name: employee.name },
+    });
   }
 
   /**
@@ -377,18 +657,7 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     if (dto.clientId) {
-      const client = await this.clientRepository.findById(dto.clientId);
-
-      if (!client || client.companyId.toString() !== companyId) {
-        throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
-      }
-
-      if (!client.isActive) {
-        throw new AppError(
-          "Cliente encontra-se inativo.",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      await this.requireActiveClient(dto.clientId, companyId);
 
       clientId = new Types.ObjectId(dto.clientId);
     }
@@ -401,28 +670,8 @@ class AppointmentService {
     let service = await this.serviceRepository.findById(serviceId);
 
     if (dto.serviceId) {
-      const updatedService = await this.serviceRepository.findById(
-        dto.serviceId,
-      );
+      service = await this.requireActiveService(dto.serviceId, companyId);
 
-      if (
-        !updatedService ||
-        updatedService.companyId.toString() !== companyId
-      ) {
-        throw new AppError(
-          HttpMessages.SERVICE_NOT_FOUND,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      if (!updatedService.isActive) {
-        throw new AppError(
-          "Serviço encontra-se inativo.",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      service = updatedService;
       serviceId = new Types.ObjectId(dto.serviceId);
     }
 
@@ -432,18 +681,7 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     if (dto.employeeId) {
-      const employee = await this.userRepository.findById(dto.employeeId);
-
-      if (!employee || employee.companyId.toString() !== companyId) {
-        throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-      }
-
-      if (!employee.isActive) {
-        throw new AppError(
-          "Funcionário encontra-se inativo.",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      await this.requireActiveEmployee(dto.employeeId, companyId);
 
       employeeId = new Types.ObjectId(dto.employeeId);
     }

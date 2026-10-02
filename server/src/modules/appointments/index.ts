@@ -55,3 +55,32 @@ export interface UpdateAppointmentData {
   endAt?: Date;
   notes?: string | null;
 }
+
+/**
+
+* ==========================================================
+* Contrato de resposta do agendamento público.
+*
+* Mais estreito que `AppointmentMapper.toResponse`: não expõe
+* `companyId`, `clientId`, `notes` nem timestamps de auditoria.
+*
+* O `id` é o `_id` interno e serve apenas para identificar o
+* agendamento dentro da resposta. Não é credencial de acesso
+* público.
+* ==========================================================
+  */
+export interface PublicAppointmentResult {
+  id: string;
+  startAt: Date;
+  endAt: Date;
+  status: AppointmentStatus;
+  clientName: string;
+  service: {
+    id: string;
+    name: string;
+  };
+  employee: {
+    id: string;
+    name: string;
+  };
+}

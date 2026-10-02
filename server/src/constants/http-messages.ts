@@ -66,6 +66,7 @@ export const HttpMessages = {
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
+  COMPANY_INACTIVE: "A empresa não está ativa para receber agendamentos.",
   COMPANY_LOGO_UPDATED: "Logo da empresa atualizada com sucesso.",
   COMPANY_LOGO_REMOVED: "Logo da empresa removida com sucesso.",
 
@@ -119,6 +120,10 @@ export const HttpMessages = {
     "Não é possível alterar o status deste agendamento.",
   STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
   APPOINTMENT_START_IN_PAST: "Não é possível agendar em um horário que já passou.",
+
+  /*Agendamento público (sem autenticação)*/
+  TOO_MANY_REQUESTS:
+    "Demasiadas tentativas de agendamento. Tente novamente mais tarde.",
 
   /*Disponibilidade de funcionários*/
   AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",

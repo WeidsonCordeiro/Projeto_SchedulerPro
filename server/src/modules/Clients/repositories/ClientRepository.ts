@@ -13,7 +13,6 @@
 
 import { Types } from "mongoose";
 import Client, { ClientDocument } from "../models/Client.model";
-import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
 import { StoredImage } from "../../../providers/images/types";
 
@@ -66,14 +65,46 @@ class ClientRepository {
 
   /**
    * ==========================================================
-   * Cria um novo cliente.
+   * Busca um cliente pelo e-mail dentro de uma empresa.
+   *
+   * Usado pelo agendamento público para reaproveitar o cliente já
+   * cadastrado em vez de duplicar o registo a cada agendamento.
+   *
+   * O companyId garante o isolamento entre empresas: um e-mail
+   * existente noutra empresa nunca é reutilizado.
    * ==========================================================
    */
-  public async create(
-    data: CreateClientDto & {
-      companyId: Types.ObjectId;
-    },
-  ): Promise<ClientDocument> {
+  public async findByEmailAndCompany(
+    email: string,
+    companyId: string | Types.ObjectId,
+  ): Promise<ClientDocument | null> {
+    if (!email) {
+      return null;
+    }
+
+    return Client.findOne({
+      companyId,
+      email: email.trim().toLowerCase(),
+      deletedAt: null,
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Cria um novo cliente.
+   *
+   * `phone` é opcional porque o agendamento público pode criar um
+   * cliente sem telefone. O fluxo administrativo continua a exigir
+   * telefone antes de chegar aqui (`create-client.validator.ts`).
+   * ==========================================================
+   */
+  public async create(data: {
+    companyId: Types.ObjectId;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    notes?: string | null;
+  }): Promise<ClientDocument> {
     return Client.create(data);
   }
 
