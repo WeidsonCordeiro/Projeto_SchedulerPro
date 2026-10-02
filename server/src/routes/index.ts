@@ -22,6 +22,7 @@ import CompanyRoutes from "../modules/companies/routes/CompanyRoutes";
 import serviceRoutes from "../modules/services/routes/ServiceRoutes";
 import ClientRoutes from "../modules/Clients/routes/ClientRoutes";
 import appointmentRoutes from "../modules/appointments/routes/AppointmentRoutes";
+import publicAppointmentRoutes from "../modules/appointments/routes/PublicAppointmentRoutes";
 import availabilityRoutes from "../modules/availability/routes/AvailabilityRoutes";
 import availabilityExceptionRoutes from "../modules/availability/routes/AvailabilityExceptionRoutes";
 import reportRoutes from "../modules/reports/routes/ReportRoutes";
@@ -35,6 +36,16 @@ router.use("/companies", CompanyRoutes);
 router.use("/services", serviceRoutes);
 router.use("/clients", ClientRoutes);
 router.use("/appointments", appointmentRoutes);
+
+/**
+ * ==========================================================
+ * Rotas públicas (sem autenticação).
+ *
+ * Só o agendamento sem registo existe hoje. O tenant vem da
+ * URL: /public/companies/:companyId/appointments.
+ * ==========================================================
+ */
+router.use("/public", publicAppointmentRoutes);
 router.use("/availability", availabilityRoutes);
 router.use("/availability-exceptions", availabilityExceptionRoutes);
 router.use("/reports", reportRoutes);

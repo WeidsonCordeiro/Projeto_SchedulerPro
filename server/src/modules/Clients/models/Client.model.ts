@@ -19,7 +19,7 @@ import { StoredImage } from "../../../providers/images/types";
 export interface ClientDocument extends Document {
   name: string;
   email?: string | null;
-  phone: string;
+  phone?: string | null;
   companyId: Types.ObjectId;
   notes?: string | null;
   avatar?: StoredImage | null;
@@ -52,11 +52,16 @@ const ClientSchema = new Schema<ClientDocument>(
 
     /**
      * Número de telefone/telemóvel.
+     *
+     * Opcional: um cliente criado pelo agendamento público pode não
+     * fornecer telefone. O fluxo administrativo continua a exigir
+     * telefone em `create-client.validator.ts`; a obrigatoriedade
+     * do formulário de registo não muda.
      */
     phone: {
       type: String,
-      required: true,
       trim: true,
+      default: null,
     },
 
     /**
@@ -126,5 +131,23 @@ const ClientSchema = new Schema<ClientDocument>(
     collection: "clients",
   },
 );
+
+/**
+ * ==========================================================
+ * Índices
+ * ==========================================================
+ */
+
+/**
+ * Usado pelo agendamento público para reutilizar o cliente já
+ * cadastrado na empresa a partir do e-mail informado.
+ *
+ * NÃO é único de propósito: o mesmo e-mail pode existir em
+ * empresas diferentes (o e-mail só é único dentro do `User`).
+ */
+ClientSchema.index({
+  companyId: 1,
+  email: 1,
+});
 
 export default model<ClientDocument>("Client", ClientSchema);

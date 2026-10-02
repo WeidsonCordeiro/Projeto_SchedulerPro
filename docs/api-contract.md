@@ -423,6 +423,50 @@ DELETE /api/appointments/:id
 - Success: 200 with data null.
 - Soft delete.
 
+### Public appointment booking
+
+POST /api/public/companies/:companyId/appointments
+- No authentication and no permission required.
+- Rate limited: 20 requests per 15 minutes per IP. Exceeding returns 429.
+- companyId comes from the URL only. Sending it in the body is a 400.
+- Body: serviceId, employeeId, startAt ISO 8601 with explicit offset,
+  clientName, clientEmail, optional clientPhone, optional notes.
+- Unknown fields are rejected with 400 rather than ignored.
+- endAt is calculated from the service duration; status starts as
+  scheduled. Neither is accepted from the client.
+- The client is matched by email inside companyId. A new client is
+  created when none matches; an inactive client is a 400. No user
+  account is created or linked.
+- Success: 201 with the narrowed public representation below.
+- Errors: 400 validation, inactive company/service/employee/client, or
+  past startAt; 404 unknown or cross-company service/employee, missing
+  company; 409 availability or appointment conflict; 429 rate limit.
+
+Example:
+
+    {
+      "serviceId": "ObjectId",
+      "employeeId": "ObjectId",
+      "startAt": "2026-08-30T09:00:00.000Z",
+      "clientName": "Ana Silva",
+      "clientEmail": "ana@example.com",
+      "clientPhone": "+351912345678",
+      "notes": "optional"
+    }
+
+    {
+      "success": true,
+      "data": {
+        "id": "ObjectId",
+        "startAt": "2026-08-30T09:00:00.000Z",
+        "endAt": "2026-08-30T09:30:00.000Z",
+        "status": "scheduled",
+        "clientName": "Ana Silva",
+        "service": { "id": "ObjectId", "name": "Corte" },
+        "employee": { "id": "ObjectId", "name": "Carlos" }
+      }
+    }
+
 ## 4. Resource fields
 
 Company:
@@ -435,6 +479,7 @@ passwordHash is never returned.
 
 Client:
 id, name, email, phone, companyId, notes, isActive, createdAt, updatedAt.
+phone is null when the client was created through public booking.
 
 Service:
 id, companyId, name, description, duration, price, isActive, createdAt,
