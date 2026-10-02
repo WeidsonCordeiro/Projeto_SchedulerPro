@@ -910,6 +910,93 @@ button,
 .public-shell .page-header {
   margin-bottom: 1.25rem;
 }
+
+/* =========================================================
+   Página pública do agendamento (/agendar/:token)
+   ========================================================= */
+/* Resumo do agendamento: rótulo em cima, valor em baixo. Empilhado por
+   omissão (a coluna mais estreita é a do telemóvel) e lado a lado a partir
+   de 480px, onde há largura para os dois. */
+.public-summary {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.public-summary-row {
+  border-bottom: 1px solid var(--sp-border);
+  display: grid;
+  gap: 0.15rem 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0.85rem 0;
+}
+.public-summary-row:first-child {
+  padding-top: 0;
+}
+.public-summary-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.public-summary dt {
+  color: var(--sp-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.public-summary dd {
+  color: var(--sp-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+/* Versão compacta, dentro do modal de confirmação. */
+.public-summary-compact .public-summary-row {
+  padding: 0.5rem 0;
+}
+.public-summary-compact dd {
+  font-size: 0.92rem;
+}
+/* Ações da página: pilha em ecrãs estreitos (alvos de toque comfortable) e
+   linha a partir de 480px. */
+.public-appointment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+.public-form-note {
+  background: #f7f9ff;
+  border: 1px solid var(--sp-border);
+  border-radius: 0.7rem;
+  color: var(--sp-muted);
+  font-size: 0.82rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+}
+@media (min-width: 480px) {
+  .public-summary-row {
+    align-items: baseline;
+    grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+  }
+  .public-summary-row:first-child,
+  .public-summary-row:last-child {
+    padding: 0.85rem 0;
+  }
+  .public-summary-row:first-child {
+    padding-top: 0;
+  }
+  .public-summary-row:last-child {
+    padding-bottom: 0;
+  }
+  .public-appointment-actions {
+    flex-direction: row;
+  }
+  .public-appointment-actions > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
 .portal-shell-note {
   background: #edf2ff;
   border-radius: 0.8rem;

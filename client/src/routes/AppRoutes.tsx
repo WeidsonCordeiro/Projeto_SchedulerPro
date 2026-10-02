@@ -17,6 +17,7 @@ import VerifyEmailPage from "../pages/VerifyEmailPage";
 import PortalHomePage from "../pages/portal/PortalHomePage";
 import PortalAppointmentsPage from "../pages/portal/PortalAppointmentsPage";
 import PortalProfilePage from "../pages/portal/PortalProfilePage";
+import PublicAppointmentPage from "../pages/public/PublicAppointmentPage";
 import ProtectedRoute from "./ProtectedRoute";
 import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
@@ -24,6 +25,13 @@ import ChangePasswordRoute from "./ChangePasswordRoute";
 export default function AppRoutes() {
   return (
     <Routes>
+      {/**
+        Link público do agendamento, entregue a quem não tem conta.
+        `/agendar/` sem token é o mesmo 404 da rota com token inválido.
+       */}
+      <Route path="/agendar/:token" element={<PublicAppointmentPage />} />
+      <Route path="/agendar" element={<PublicAppointmentPage />} />
+
       <Route element={<GuestRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
