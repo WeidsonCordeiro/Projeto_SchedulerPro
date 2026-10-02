@@ -22,6 +22,7 @@ const {
     softDelete: vi.fn(),
     cancelOverdueScheduled: vi.fn(),
     findByCompanyId: vi.fn(),
+    findByPublicAccessTokenHash: vi.fn(),
   },
   clientRepository: {
     findById: vi.fn(),
@@ -61,6 +62,7 @@ vi.mock("../../../src/modules/availability/services/AvailabilityService", () => 
 vi.mock("../../../src/modules/notifications/services/NotificationDispatcher", () => ({ default: notificationDispatcher }));
 
 import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
+import PublicAppointmentTokenProvider from "../../../src/providers/security/PublicAppointmentTokenProvider";
 import { AppointmentStatus } from "../../../src/constants/appointment-status";
 import { Role } from "../../../src/constants/roles";
 
@@ -131,6 +133,7 @@ beforeEach(() => {
   appointmentRepository.hasEmployeeConflict.mockResolvedValue(false);
   appointmentRepository.hasClientConflict.mockResolvedValue(false);
   appointmentRepository.create.mockResolvedValue(appointmentEntity());
+  appointmentRepository.findByPublicAccessTokenHash.mockResolvedValue(null);
   notificationDispatcher.dispatchAppointmentEvent.mockResolvedValue(undefined);
 });
 
@@ -518,25 +521,60 @@ describe("AppointmentService.createPublic — agendamento gravado", () => {
       }),
     );
   });
+
+  it("grava o hash do token na mesma escrita do agendamento", async () => {
+    const result = await AppointmentService.createPublic(
+      publicDto(),
+      companyId,
+      NOW,
+    );
+
+    const persisted = appointmentRepository.create.mock.calls[0][0];
+
+    /**
+     * O agendamento e o hash nascem juntos: não há uma segunda
+     * escrita que possa falhar e deixar o link inacessível.
+     */
+    expect(persisted.publicAccessTokenHash).toBe(
+      PublicAppointmentTokenProvider.hash(result.publicAccessToken),
+    );
+  });
+
+  it("nunca persiste o token puro", async () => {
+    const result = await AppointmentService.createPublic(
+      publicDto(),
+      companyId,
+      NOW,
+    );
+
+    const persisted = JSON.stringify(
+      appointmentRepository.create.mock.calls[0][0],
+    );
+
+    expect(result.publicAccessToken).toHaveLength(43);
+    expect(persisted).not.toContain(result.publicAccessToken);
+    expect(persisted.publicAccessTokenHash).toBeUndefined();
+  });
 });
 
 describe("AppointmentService.createPublic — resposta pública", () => {
   it("devolve o contrato público sem dados internos", async () => {
     const result = await AppointmentService.createPublic(publicDto(), companyId, NOW);
 
-    expect(result).toEqual({
+    expect(result.appointment).toEqual({
       id: appointmentId,
       startAt: START_AT,
       endAt: new Date(START_AT.getTime() + 30 * 60 * 1000),
       status: AppointmentStatus.SCHEDULED,
       clientName: "Ana Publica",
       service: { id: serviceId, name: "Corte" },
-      employee: { id: employeeId, name: "Carlos" },
+      employee: { id: employeeId, name: "Carlos", avatarUrl: null },
     });
 
-    expect(result).not.toHaveProperty("clientId");
-    expect(result).not.toHaveProperty("companyId");
-    expect(result).not.toHaveProperty("notes");
-    expect(result).not.toHaveProperty("createdAt");
+    expect(result.appointment).not.toHaveProperty("clientId");
+    expect(result.appointment).not.toHaveProperty("companyId");
+    expect(result.appointment).not.toHaveProperty("notes");
+    expect(result.appointment).not.toHaveProperty("createdAt");
+    expect(result).not.toHaveProperty("publicAccessTokenHash");
   });
 });

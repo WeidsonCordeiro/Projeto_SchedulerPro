@@ -29,3 +29,41 @@ describe("AppointmentService", () => {
   it("passa objeto vazio ao repositório quando nenhum filtro informado", async () => { const now = new Date("2026-07-01T00:00:00.000Z"); await AppointmentService.findAll(companyId, {}, undefined, now); expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(companyId, {}, undefined); });
   it("não cancela scheduled vencidos quando a consulta é escopada a um cliente", async () => { const now = new Date("2026-09-01T00:00:00.000Z"); await AppointmentService.findAll(companyId, {}, clientId, now); expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled(); expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(companyId, {}, clientId); });
 });
+
+describe("AppointmentService - agendamento administrativo sem link público", () => {
+  beforeEach(() => {
+    availabilityService.ensureEmployeeAvailable.mockResolvedValue(undefined);
+  });
+
+  it("grava publicAccessTokenHash: null", async () => {
+    await AppointmentService.create(
+      { clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") },
+      companyId,
+      new Date("2026-08-29T00:00:00.000Z"),
+    );
+
+    /**
+     * Agendamento criado pela empresa não tem link público. A
+     * escrita é explícita para nunca depender do valor por
+     * omissão do schema.
+     */
+    expect(appointmentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ publicAccessTokenHash: null }),
+    );
+  });
+
+  it("não expõe o hash na resposta administrativa", async () => {
+    appointmentRepository.create.mockResolvedValue(
+      entity({ publicAccessTokenHash: "sha256:segredo" }),
+    );
+
+    const created = await AppointmentService.create(
+      { clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") },
+      companyId,
+      new Date("2026-08-29T00:00:00.000Z"),
+    );
+
+    expect(JSON.stringify(created)).not.toContain("publicAccessTokenHash");
+    expect(JSON.stringify(created)).not.toContain("sha256:segredo");
+  });
+});

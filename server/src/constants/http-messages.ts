@@ -125,6 +125,23 @@ export const HttpMessages = {
   TOO_MANY_REQUESTS:
     "Demasiadas tentativas de agendamento. Tente novamente mais tarde.",
 
+  /**
+   * Mensagem ÚNICA para qualquer falha de token público.
+   *
+   * Token malformado, token inexistente e agendamento eliminado
+   * soft devolvem exatamente esta mensagem, para que a rota
+   * não confirme a existência de um agendamento a quem está a
+   * tentar adivinhar tokens.
+   */
+  PUBLIC_APPOINTMENT_NOT_FOUND: "Agendamento não encontrado.",
+
+  /**
+   * Agendamento que já não pode ser alterado nem cancelado pelo
+   * link público: cancelado, concluído, no-show, ou já iniciado.
+   */
+  PUBLIC_APPOINTMENT_NOT_EDITABLE:
+    "Este agendamento já não pode ser alterado nem cancelado.",
+
   /*Disponibilidade de funcionários*/
   AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",
   AVAILABILITY_UPDATED:

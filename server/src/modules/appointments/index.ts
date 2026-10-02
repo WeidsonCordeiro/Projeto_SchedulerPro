@@ -45,6 +45,10 @@ export interface CreateAppointmentData {
 * de um agendamento.
 *
 * endAt poderá ser recalculado pelo backend.
+*
+* `publicAccessTokenHash` NÃO entra aqui: a alteração de um
+* agendamento (administrativa ou pública) nunca regenera nem
+* apaga o token, para que o link já entregue continue válido.
 * ==========================================================
   */
 export interface UpdateAppointmentData {
@@ -65,8 +69,9 @@ export interface UpdateAppointmentData {
 * `companyId`, `clientId`, `notes` nem timestamps de auditoria.
 *
 * O `id` é o `_id` interno e serve apenas para identificar o
-* agendamento dentro da resposta. Não é credencial de acesso
-* público.
+* agendamento dentro da resposta. NÃO é credencial de acesso
+* público: o acesso é feito pelo token, que é opaco e não
+* deriva do id.
 * ==========================================================
   */
 export interface PublicAppointmentResult {
@@ -82,5 +87,28 @@ export interface PublicAppointmentResult {
   employee: {
     id: string;
     name: string;
+    /**
+     * Foto do profissional, ou `null`.
+     *
+     * Mantém a experiência pública consistente com o seletor de
+     * profissional da Stage 30. Exposta apenas como `url`: o
+     * `publicId` do storage nunca sai do backend.
+     */
+    avatarUrl: string | null;
   };
+}
+
+/**
+
+* ==========================================================
+* Resposta da criação pública.
+*
+* O token puro é devolvido UMA vez, aqui, no pedido que o
+* cria. Não é recuperável depois: a base de dados guarda
+* apenas o hash.
+* ==========================================================
+  */
+export interface CreatePublicAppointmentResult {
+  appointment: PublicAppointmentResult;
+  publicAccessToken: string;
 }
