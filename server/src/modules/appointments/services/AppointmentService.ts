@@ -30,7 +30,6 @@ import ClientRepository from "../../Clients/repositories/ClientRepository";
 import { ClientDocument } from "../../Clients/models/Client.model";
 import ServiceRepository from "../../services/repositories/ServiceRepository";
 import UserRepository from "../../users/repositories/UserRepository";
-import CompanyRepository from "../../companies/repositories/CompanyRepository";
 
 import { AppError } from "../../../errors/AppError";
 import { HttpMessages } from "../../../constants/http-messages";
@@ -38,8 +37,8 @@ import { HttpStatus } from "../../../constants/http-status";
 import Logger from "../../../providers/logger/Logger";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
-import { Role } from "../../../constants/roles";
 import AvailabilityService from "../../availability/services/AvailabilityService";
+import PublicBookingEligibility from "../../public-booking/services/PublicBookingEligibility";
 import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
 import PublicAppointmentTokenProvider from "../../../providers/security/PublicAppointmentTokenProvider";
 import { NotificationType } from "../../notifications";
@@ -97,7 +96,6 @@ class AppointmentService {
   private readonly clientRepository = ClientRepository;
   private readonly serviceRepository = ServiceRepository;
   private readonly userRepository = UserRepository;
-  private readonly companyRepository = CompanyRepository;
   private readonly publicTokenProvider = PublicAppointmentTokenProvider;
 
   /**
@@ -120,53 +118,6 @@ class AppointmentService {
     }
 
     return client;
-  }
-
-  /**
-   * ==========================================================
-   * Exige um serviço existente, da empresa e ativo.
-   * ==========================================================
-   */
-  private async requireActiveService(serviceId: string, companyId: string) {
-    const service = await this.serviceRepository.findById(serviceId);
-
-    if (!service || service.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.SERVICE_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!service.isActive) {
-      throw new AppError(
-        "Serviço encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    return service;
-  }
-
-  /**
-   * ==========================================================
-   * Exige um funcionário existente, da empresa e ativo.
-   * ==========================================================
-   */
-  private async requireActiveEmployee(
-    employeeId: string,
-    companyId: string,
-  ) {
-    const employee = await this.userRepository.findById(employeeId);
-
-    if (!employee || employee.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!employee.isActive) {
-      throw new AppError(
-        "Funcionário encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    return employee;
   }
 
   /**
@@ -410,14 +361,14 @@ class AppointmentService {
      * Valida o serviço.
      * ----------------------------------------------------------
      */
-    const service = await this.requireActiveService(dto.serviceId, companyId);
+    const service = await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId);
 
     /**
      * ----------------------------------------------------------
      * Valida o funcionário.
      * ----------------------------------------------------------
      */
-    await this.requireActiveEmployee(dto.employeeId, companyId);
+    await PublicBookingEligibility.requireActiveEmployee(dto.employeeId, companyId);
 
     const appointment = await this.schedule({
       companyId,
@@ -509,42 +460,25 @@ class AppointmentService {
      * existe mas não aceita agendamentos.
      * ----------------------------------------------------------
      */
-    const company = await this.companyRepository.findById(companyId);
-
-    if (!company) {
-      throw new AppError(
-        HttpMessages.COMPANY_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    if (!company.isActive) {
-      throw new AppError(
-        HttpMessages.COMPANY_INACTIVE,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    await PublicBookingEligibility.requireActiveCompany(companyId);
 
     /**
      * ----------------------------------------------------------
      * Valida serviço e profissional contra o MESMO tenant.
+     *
+     * `requireBookableEmployee` exclui a conta de acesso
+     * (role CLIENT): o link público nunca agenda para ela.
      * ----------------------------------------------------------
      */
-    const service = await this.requireActiveService(dto.serviceId, companyId);
-
-    const employee = await this.requireActiveEmployee(
-      dto.employeeId,
+    const service = await PublicBookingEligibility.requireActiveService(
+      dto.serviceId,
       companyId,
     );
 
-    /**
-     * Uma conta de acesso (role CLIENT) não é profissional:
-     * o link público nunca agenda para ela. 404 para não revelar
-     * a existência da conta.
-     */
-    if (employee.role === Role.CLIENT) {
-      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
+    const employee = await PublicBookingEligibility.requireBookableEmployee(
+      dto.employeeId,
+      companyId,
+    );
 
     /**
      * ----------------------------------------------------------
@@ -780,7 +714,7 @@ class AppointmentService {
     let service = await this.serviceRepository.findById(serviceId);
 
     if (dto.serviceId) {
-      service = await this.requireActiveService(dto.serviceId, companyId);
+      service = await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId);
 
       serviceId = new Types.ObjectId(dto.serviceId);
     }
@@ -791,7 +725,7 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     if (dto.employeeId) {
-      await this.requireActiveEmployee(dto.employeeId, companyId);
+      await PublicBookingEligibility.requireActiveEmployee(dto.employeeId, companyId);
 
       employeeId = new Types.ObjectId(dto.employeeId);
     }
@@ -1074,8 +1008,8 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     const service = dto.serviceId
-      ? await this.requireActiveService(dto.serviceId, companyId)
-      : await this.requireActiveService(
+      ? await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId)
+      : await PublicBookingEligibility.requireActiveService(
           appointment.serviceId.toString(),
           companyId,
         );
@@ -1088,19 +1022,16 @@ class AppointmentService {
      * ----------------------------------------------------------
      * Profissional: mesma empresa, ativo e nunca um `CLIENT`.
      *
-     *Igual ao serviço, o profissional efetivo é sempre
+     * Igual ao serviço, o profissional efetivo é sempre
      * revalidado.
      * ----------------------------------------------------------
      */
     const effectiveEmployeeId = dto.employeeId ?? appointment.employeeId.toString();
-    const employee = await this.requireActiveEmployee(
+
+    await PublicBookingEligibility.requireBookableEmployee(
       effectiveEmployeeId,
       companyId,
     );
-
-    if (employee.role === Role.CLIENT) {
-      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
 
     const employeeId = new Types.ObjectId(effectiveEmployeeId);
 

@@ -211,6 +211,44 @@ class AppointmentRepository {
   /**
 
 * ==========================================================
+* Lista os agendamentos que BLOQUEIAM o horário de um
+* profissional dentro de uma janela.
+*
+* É a mesma consulta de `hasEmployeeConflict`, devolvendo os
+* documentos em vez de um booleano. Existe para o catálogo
+* público de disponibilidade, que precisa de subtrair os
+* horários ocupados do período do dia.
+*
+* Reutiliza deliberadamente o mesmo bloco de filtro, para que
+* a lista de bloqueios e a verificação de conflito nunca
+* discordem sobre o que ocupa um horário.
+* ==========================================================
+  */
+  public async findBlockingForEmployee(
+    companyId: string | Types.ObjectId,
+    employeeId: string | Types.ObjectId,
+    windowStart: Date,
+    windowEnd: Date,
+  ): Promise<AppointmentDocument[]> {
+    return Appointment.find({
+      companyId,
+      employeeId,
+      deletedAt: null,
+      status: {
+        $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+      },
+      startAt: {
+        $lt: windowEnd,
+      },
+      endAt: {
+        $gt: windowStart,
+      },
+    });
+  }
+
+  /**
+
+* ==========================================================
 * Verifica conflito de horário para um cliente.
 *
 * Um cliente não pode possuir dois agendamentos

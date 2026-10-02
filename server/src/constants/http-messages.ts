@@ -80,6 +80,14 @@ export const HttpMessages = {
   SERVICE_ACTIVATED: "Serviço ativado com sucesso.",
   SERVICE_DEACTIVATED: "Serviço desativado com sucesso.",
 
+  /**
+   * Serviço que existe e pertence à empresa, mas está inativo.
+   *
+   * Diferente de `SERVICE_NOT_FOUND` de propósito: empresa errada ou
+   * serviço eliminado devolvem 404, serviço inativo devolve 400.
+   */
+  SERVICE_INACTIVE: "Serviço encontra-se inativo.",
+
   /*Clientes*/
   CLIENT_CREATED: "Cliente criado com sucesso.",
   CLIENT_UPDATED: "Cliente atualizado com sucesso.",
@@ -111,6 +119,7 @@ export const HttpMessages = {
   APPOINTMENTS_FOUND: "Agendamentos encontrados.",
   APPOINTMENT_NOT_FOUND: "Agendamento não encontrado.",
   EMPLOYEE_CONFLICT: "O funcionário já possui um agendamento neste horário.",
+  EMPLOYEE_INACTIVE: "Funcionário encontra-se inativo.",
   CLIENT_CONFLICT: "O cliente já possui um agendamento neste horário.",
   APPOINTMENT_NO_SHOW: "Agendamento marcado como não comparecimento.",
   APPOINTMENT_CANCELLED: "Agendamento cancelado com sucesso.",
@@ -141,6 +150,21 @@ export const HttpMessages = {
    */
   PUBLIC_APPOINTMENT_NOT_EDITABLE:
     "Este agendamento já não pode ser alterado nem cancelado.",
+
+  /**
+   * ==========================================================
+   * Respostas do catálogo público (Stage 31 Parte 4).
+   *
+   * São mensagens de sucesso de leitura, como as de qualquer
+   * outro `*_FOUND` do projeto. As regras de elegibilidade
+   * (empresa/serviço/profissional inativos) reutilizam as
+   * mensagens acima, para que a criação pública e a consulta de
+   * catálogo nunca falem de maneiras diferentes.
+   * ==========================================================
+   */
+  PUBLIC_SERVICES_FOUND: "Serviços disponíveis encontrados.",
+  PUBLIC_EMPLOYEES_FOUND: "Profissionais disponíveis encontrados.",
+  PUBLIC_AVAILABILITY_FOUND: "Horários disponíveis encontrados.",
 
   /*Disponibilidade de funcionários*/
   AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",

@@ -16,6 +16,7 @@ import User from "../models/User.model";
 import { CreateUserData, UpdateUserData } from "../types";
 import { UserDocument } from "../models/User.model";
 import { ClientSession } from "mongoose";
+import { Role } from "../../../constants/roles";
 
 class UserRepository {
   /**
@@ -130,6 +131,36 @@ class UserRepository {
     return User.find({
       companyId,
       deletedAt: null,
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Busca os profissionais ATIVOS de uma empresa.
+   *
+   * `role: { $nin: [CLIENT] }` em vez de `role: EMPLOYEE`: no
+   * modelo, `EMPLOYEE` é o valor por omissão e o dono, o
+   * gestor e o administrador também atendem. Excluir apenas
+   * `CLIENT` é o mesmo critério de `UserService.findAll`, e é o
+   * que a criação pública aceita (`requireActiveEmployee`
+   * rejeita `CLIENT`, não exige `EMPLOYEE`).
+   *
+   * O filtro é feito na consulta, e não depois em memória como
+   * em `findAll`, porque o índice `{ companyId, isActive }`
+   * já existe e o catálogo público não precisa deler os campos
+   * de autenticação de contas inativas.
+   * ==========================================================
+   */
+  public async findActiveEmployeesByCompanyId(
+    companyId: string | Types.ObjectId,
+  ): Promise<UserDocument[]> {
+    return User.find({
+      companyId,
+      isActive: true,
+      role: { $nin: [Role.CLIENT] },
+      deletedAt: null,
+    }).sort({
+      name: 1,
     });
   }
 

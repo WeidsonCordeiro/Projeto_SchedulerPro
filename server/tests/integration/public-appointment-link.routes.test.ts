@@ -100,7 +100,14 @@ vi.mock("../../src/middlewares/public-appointment-link-rate-limit.middleware", (
 
   return {
     default: pass(rateLimitCalls),
-    createPublicLinkRateLimit: pass(rateLimitCalls),
+    /**
+     * Factory: é chamada na construção do middleware, não no
+     * pedido, por isso tem de devolver um middleware. Tratar
+     * `createPublicLinkRateLimit` como middleware foi-Si a
+     * origem de um falso positivo — só funcionava porque nada a
+     * invocava como factory.
+     */
+    createPublicLinkRateLimit: () => pass(rateLimitCalls),
     publicAppointmentReadRateLimit: pass(readLimitCalls),
     publicAppointmentWriteRateLimit: pass(writeLimitCalls),
     publicAppointmentCancelRateLimit: pass(cancelLimitCalls),
