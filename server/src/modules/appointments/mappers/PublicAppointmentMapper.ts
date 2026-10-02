@@ -13,11 +13,11 @@
 * internos nem timestamps de auditoria.
 *
 * NOTA: o `id` devolvido é o `_id` interno do MongoDB. Ele serve
-* apenas para identificar o agendamento dentro desta resposta.
-* NÃO deve ser usado como credencial de acesso público: a etapa
-* seguinte criará um identificador próprio para os links de
-* consulta/alteração/cancelamento.
-* ==========================================================
+ * apenas para identificar o agendamento dentro desta resposta.
+ * NÃO é credencial de acesso público: o acesso é feito pelo
+ * token opaco devolvido na criação, que não deriva do id e é
+ * desconhecido para quem não possui o link.
+ * ==========================================================
   */
 
 import { AppointmentDocument } from "../models/Appointment.model";
@@ -37,7 +37,7 @@ class PublicAppointmentMapper {
     context: {
       clientName: string;
       service: { id: string; name: string };
-      employee: { id: string; name: string };
+      employee: { id: string; name: string; avatarUrl?: string | null };
     },
   ): PublicAppointmentResult {
     return {
@@ -47,7 +47,11 @@ class PublicAppointmentMapper {
       status: appointment.status,
       clientName: context.clientName,
       service: context.service,
-      employee: context.employee,
+      employee: {
+        id: context.employee.id,
+        name: context.employee.name,
+        avatarUrl: context.employee.avatarUrl ?? null,
+      },
     };
   }
 }

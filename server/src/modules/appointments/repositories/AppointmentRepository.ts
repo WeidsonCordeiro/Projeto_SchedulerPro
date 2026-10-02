@@ -44,11 +44,10 @@ export interface ReminderFields {
 }
 
 class AppointmentRepository {
-  /**
+/**
   
 * ==========================================================
 * Busca um agendamento pelo ID.
-* ==========================================================
   */
   public async findById(
     id: string | Types.ObjectId,
@@ -57,6 +56,31 @@ class AppointmentRepository {
       _id: id,
       deletedAt: null,
     });
+  }
+
+  /**
+  
+* ==========================================================
+* Busca um agendamento pelo HASH do token público.
+*
+* É o ÚNICO caminho de resolução de acesso público. Não
+* aceita `_id`, `clientId` nem e-mail: o token é a credencial.
+*
+* `deletedAt: null` está no próprio filtro, o que faz um
+* agendamento eliminado soft ser indistinguível de um token
+* inválido — ambos devolvem `null`.
+*
+* O campo tem `select: false` no schema, por isso é pedido
+* explicitamente; o hash devolvido serve para confirmar a
+* correspondência e para Diagnóstico, nunca para resposta HTTP.
+  */
+  public async findByPublicAccessTokenHash(
+    hash: string,
+  ): Promise<AppointmentDocument | null> {
+    return Appointment.findOne({
+      publicAccessTokenHash: hash,
+      deletedAt: null,
+    }).select("+publicAccessTokenHash");
   }
 
   /**

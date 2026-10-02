@@ -42,6 +42,7 @@ const {
     appointmentRepository: {
       findById: vi.fn(),
       findByCompanyId: vi.fn(),
+      findByPublicAccessTokenHash: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateStatus: vi.fn(),
@@ -231,19 +232,24 @@ describe("Agendamento público — rota sem autenticação", () => {
   it("devolve o contrato público sem dados internos", async () => {
     const response = await request(app).post(publicUrl()).send(validPublicPayload());
 
-    expect(response.body.data).toEqual({
+    expect(response.body.data.appointment).toEqual({
       id: ids.appointment,
       startAt: "2027-08-29T08:00:00.000Z",
       endAt: "2027-08-29T08:30:00.000Z",
       status: AppointmentStatus.SCHEDULED,
       clientName: "Ana Publica",
       service: { id: ids.service, name: "Corte" },
-      employee: { id: ids.employee, name: "Carlos" },
+      employee: {
+        id: ids.employee,
+        name: "Carlos",
+        avatarUrl: null,
+      },
     });
 
-    expect(response.body.data).not.toHaveProperty("clientId");
-    expect(response.body.data).not.toHaveProperty("companyId");
-    expect(response.body.data).not.toHaveProperty("notes");
+    expect(response.body.data.appointment).not.toHaveProperty("clientId");
+    expect(response.body.data.appointment).not.toHaveProperty("companyId");
+    expect(response.body.data.appointment).not.toHaveProperty("notes");
+    expect(response.body.data).not.toHaveProperty("publicAccessTokenHash");
   });
 
   it("recusa campos de controlo interno em vez de os ignorar", async () => {
@@ -540,6 +546,10 @@ describe("Agendamento público — regras de agenda", () => {
       expect.anything(),
       new Date("2027-08-29T08:00:00.000Z"),
       new Date("2027-08-29T08:30:00.000Z"),
+      /**
+       * Na criação não há agendamento a excluir do conflito.
+       */
+      undefined,
     );
     expect(appointmentRepository.hasClientConflict).toHaveBeenCalled();
   });

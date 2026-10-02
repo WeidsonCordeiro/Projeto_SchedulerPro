@@ -37,6 +37,18 @@ export interface AppointmentDocument extends Document {
   deletedAt?: Date | null;
 
   /**
+   * Hash do token público que dá acesso a este agendamento.
+   *
+   * `null` em agendamentos criados pelo fluxo administrativo e
+   * em todos os agendamentos anteriores a esta etapa: apenas o
+   * fluxo público gera token.
+   *
+   * O token puro NUNCA é persistido — apenas este hash. O valor
+   * devolvido ao cliente na criação é a única cópia.
+   */
+  publicAccessTokenHash?: string | null;
+
+  /**
    * Marcas de lembretes automáticos enviados ao cliente.
    *
    * O horário em que o lembrete foi enviado (ou `null` enquanto
@@ -124,6 +136,19 @@ const appointmentSchema = new Schema<AppointmentDocument>(
       default: null,
     },
 
+    /**
+     * Hash do token público.
+     *
+     * `select: false` para que o hash nunca entre numa
+     * consulta por omissão: obriga a pedir explicitamente,
+     * o que torna cada leitura do hash rastreável no código.
+     */
+    publicAccessTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
     reminder24hSentAt: {
       type: Date,
       default: null,
@@ -160,14 +185,44 @@ const appointmentSchema = new Schema<AppointmentDocument>(
 
 /**
 
-* Utilizado para buscar agendamentos de um funcionário
-* em determinado período.
+* ==========================================================
+* Utilizado para consultas de agendamentos de clientes.
   */
 appointmentSchema.index({
   companyId: 1,
-  employeeId: 1,
+  clientId: 1,
   startAt: 1,
 });
+
+/**
+
+* ==========================================================
+* Lookup do agendamento pelo token público.
+*
+* É um índice PARCIAL e não `sparse`:
+*
+* • `sparse` ignora documentos em que o campo não existe, mas
+*   a maioria dos documentos deste schema tem o campo presente
+*   com o valor `null` (default). Com `sparse`, todos esses
+*   `null` seriam indexados e o índice UNIQUE recusaria a
+*   criação do segundo agendamento sem token.
+* • `partialFilterExpression` restringe o índice aos documentos
+*   em que o hash é uma string, ignorando completamente os
+*   `null`. Assim a unicidade só é imposta entre tokens reais.
+*
+* Consequência pretendida: dois agendamentos podem ter
+* `null`, mas dois agendamentos com o mesmo hash nunca
+* coexistem.
+  */
+appointmentSchema.index(
+  { publicAccessTokenHash: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      publicAccessTokenHash: { $type: "string" },
+    },
+  },
+);
 
 /**
 

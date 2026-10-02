@@ -437,7 +437,8 @@ POST /api/public/companies/:companyId/appointments
 - The client is matched by email inside companyId. A new client is
   created when none matches; an inactive client is a 400. No user
   account is created or linked.
-- Success: 201 with the narrowed public representation below.
+- Success: 201 with `{ appointment, publicAccessToken }`. The token is
+  returned once and never again.
 - Errors: 400 validation, inactive company/service/employee/client, or
   past startAt; 404 unknown or cross-company service/employee, missing
   company; 409 availability or appointment conflict; 429 rate limit.
@@ -457,15 +458,95 @@ Example:
     {
       "success": true,
       "data": {
-        "id": "ObjectId",
-        "startAt": "2026-08-30T09:00:00.000Z",
-        "endAt": "2026-08-30T09:30:00.000Z",
-        "status": "scheduled",
-        "clientName": "Ana Silva",
-        "service": { "id": "ObjectId", "name": "Corte" },
-        "employee": { "id": "ObjectId", "name": "Carlos" }
+        "appointment": {
+          "id": "ObjectId",
+          "startAt": "2026-08-30T09:00:00.000Z",
+          "endAt": "2026-08-30T09:30:00.000Z",
+          "status": "scheduled",
+          "clientName": "Ana Silva",
+          "service": { "id": "ObjectId", "name": "Corte" },
+          "employee": {
+            "id": "ObjectId",
+            "name": "Carlos",
+            "avatarUrl": null
+          }
+        },
+        "publicAccessToken": "43-char base64url token"
       }
     }
+
+### Public appointment link (token)
+
+Three routes share one credential: `publicAccessToken`. The token is a
+bearer secret; there is no authentication, permission or account, and the
+company is taken from the appointment itself, never from the URL or body.
+
+GET /api/public/appointments/:token
+- Rate limited: 60 requests per 15 minutes per IP. Exceeding returns 429.
+- Resolves the appointment by the SHA-256 hash of the token only.
+  `_id`, clientId and e-mail are not accepted as alternatives.
+- A malformed, unknown or soft-deleted token is indistinguishable: all
+  return 404 with the same message.
+- Any status is readable, including cancelled, completed, no-show and
+  past appointments.
+- Success: 200 with the same narrowed public representation used at
+  creation.
+- Errors: 404 invalid or unknown token; 429 rate limit.
+
+PATCH /api/public/appointments/:token
+- Rate limited: 10 requests per 15 minutes per IP. Exceeding returns 429.
+- Body: optional serviceId, employeeId, startAt (ISO 8601 with explicit
+  offset) and notes (max 500 chars, null clears). An empty body is a no-op
+  that returns the current state.
+- Unknown fields are rejected with 400. In particular rejected:
+  status, endAt, companyId, clientId, clientName, clientEmail,
+  clientPhone, price, duration, deletedAt, reminder24hSentAt,
+  publicAccessTokenHash.
+- The client is fixed: the appointment belongs to a company-wide client
+  record, which a public link cannot re-identify.
+- endAt is always recalculated from the service duration; status is never
+  changed here; publicAccessTokenHash is never touched, so the link the
+  client already has keeps working.
+- The effective service and employee are revalidated even when not sent:
+  missing or cross-company is 404, inactive is 400, a CLIENT account as
+  employee is 404.
+- Only scheduled/confirmed appointments that have not started are
+  editable. Cancelled, completed, no-show and past appointments are 400.
+- Success: 200 with the narrowed public representation.
+- Errors: 400 validation, non-editable state, past startAt, inactive
+  service/employee; 404 invalid token, unknown or cross-company
+  service/employee; 409 availability or conflict; 429 rate limit.
+
+Example:
+
+    { "startAt": "2026-09-06T09:00:00.000Z", "notes": "Chego 10 min depois" }
+
+DELETE /api/public/appointments/:token
+- Rate limited: 10 requests per 15 minutes per IP, with its own bucket, so
+  a client cannot spend the reschedule budget or vice versa.
+- Body must be empty. Any field, including `status`, is a 400. The state
+  transition is decided by the server from the current status.
+- Reuses the administrative cancel transition: scheduled and confirmed
+  become cancelled, including when they already started.
+- Idempotent: an already cancelled appointment returns 200 without a
+  write and can never be reactivated. Completed and no-show are 400.
+- Never deletes: there is no soft delete and no physical removal.
+- Success: 200 with the cancelled public representation.
+- Errors: 400 non-empty body, completed or no-show; 404 invalid or
+  unknown token; 429 rate limit.
+
+Token handling
+- 32 CSPRNG bytes, base64url, 43 characters; enterprise and client data
+  are not part of it.
+- Only the SHA-256 hash (`sha256:<hex>`) is stored, written together with
+  the appointment in a single insert, in a field with `select: false` and a
+  unique partial index over string values.
+- Appointments created by the company keep `publicAccessTokenHash: null`
+  and are not reachable by link.
+- The token does not expire in this version, and there is no revoke or
+  regenerate endpoint.
+- Token lookups are rate limited per IP and route, so tokens attempted at
+  error consume the same budget.
 
 ## 4. Resource fields
 
@@ -493,7 +574,9 @@ Appointment:
 id, companyId, clientId, serviceId, employeeId, startAt, endAt, status,
 notes, createdAt, updatedAt.
 
-deletedAt is not returned by resource mappers.
+publicAccessTokenHash exists in the schema but is never returned by any
+mapper, including the administrative one. deletedAt is not returned by
+resource mappers.
 
 ## 5. Permissions by role
 
@@ -518,6 +601,8 @@ The route middleware is authoritative; frontend visibility is only UX.
 | API-05 | LOW | Cross-tenant status | Most foreign resources return 404; service findById currently returns 403. | Documented; behavior preserved. |
 | API-06 | INFO | Lists | No pagination, filters or query ordering parameters exist. | Documented; no functionality added. |
 | API-07 | INFO | JWT | Logout clears cookies but does not revoke already-issued JWTs. | Existing future architectural improvement; not implemented. |
+| API-08 | INFO | Public link | The public link token never expires and cannot be revoked or regenerated from the API. | Documented as a known limitation of this stage. |
+| API-09 | LOW | Appointment index | The compound index `{ companyId, clientId, startAt }` is declared twice in the schema. | Pre-existing; left untouched because it is harmless and out of scope. |
 
 ## 7. Scope
 
@@ -532,6 +617,15 @@ Only minimal contract corrections were made:
 - register and user creation return 201;
 - register and refresh include mustChangePassword;
 - me includes mustChangePassword.
+
+Public booking and public link additions, all behind the token:
+- the creation response wraps the appointment with `publicAccessToken`;
+- the public representation exposes `employee.avatarUrl`;
+- `GET`, `PATCH` and `DELETE /api/public/appointments/:token`;
+- `publicAccessTokenHash` on the appointment, stored only as a hash.
+
+No frontend, no email or WhatsApp delivery of the link, no portal and no
+user-facing page consume these routes yet.
 
 All other observed behavior remains as implemented.
 
