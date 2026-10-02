@@ -78,6 +78,26 @@ vi.mock("../api/endpoints/appointments.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/publicAppointments.api", () => ({
+  default: {
+    getByToken: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: {
+        id: "apt1",
+        startAt: "2099-10-10T14:30:00.000Z",
+        endAt: "2099-10-10T15:00:00.000Z",
+        status: "scheduled",
+        clientName: "Maria Silva",
+        service: { id: "svc1", name: "Corte de cabelo" },
+        employee: { id: "emp1", name: "João Silva", avatarUrl: null },
+      },
+    }),
+    updateByToken: vi.fn(),
+    cancelByToken: vi.fn(),
+  },
+}));
+
 vi.mock("../api/endpoints/company.api", () => ({
   default: {
     getCompany: vi.fn().mockResolvedValue({
@@ -432,5 +452,56 @@ describe("AppRoutes", () => {
     expect(
       screen.getByRole("link", { name: /esqueceu a senha/i }),
     ).toBeInTheDocument();
+  });
+
+  describe("rota pública /agendar/:token", () => {
+    it.each([
+      ["sem sessão", { isInitializing: false }],
+      [
+        "com sessão administrativa aberta",
+        { user, isAuthenticated: true, isInitializing: false },
+      ],
+    ])("abre %s sem redirecionar para o login", async (_case, auth) => {
+      renderAt("/agendar/qualquer-token", auth);
+
+      expect(
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /entrar/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+      renderAt("/agendar/qualquer-token", {});
+
+      expect(
+        screen.getByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
+    });
+
+    it("não usa o layout autenticado", async () => {
+      renderAt("/agendar/qualquer-token", { isInitializing: false });
+
+      await screen.findByRole("heading", { name: /seu agendamento/i });
+      expect(document.querySelector(".app-sidebar")).toBeNull();
+      expect(document.querySelector(".app-navbar")).toBeNull();
+    });
+
+    it("mostra o agendamento do token da rota", async () => {
+      renderAt("/agendar/qualquer-token", { isInitializing: false });
+
+      expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
+      expect(screen.getByText("João Silva")).toBeInTheDocument();
+    });
+
+    it("trata /agendar sem token como link inválido", async () => {
+      renderAt("/agendar", { isInitializing: false });
+
+      expect(
+        await screen.findByText("Link de agendamento inválido."),
+      ).toBeInTheDocument();
+    });
   });
 });
