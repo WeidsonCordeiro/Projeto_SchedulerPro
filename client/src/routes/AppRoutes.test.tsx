@@ -98,6 +98,31 @@ vi.mock("../api/endpoints/publicAppointments.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/publicBooking.api", () => ({
+  default: {
+    // Devolve o payload JÁ desembrulhado, como o módulo real faz: o envelope
+    // `ApiResponse` é tratado dentro do módulo de API, não na página.
+    getServices: vi.fn().mockResolvedValue([
+      {
+        id: "svc1",
+        name: "Corte de cabelo",
+        description: null,
+        durationMinutes: 45,
+        price: 25,
+      },
+    ]),
+    getEmployees: vi.fn().mockResolvedValue([
+      { id: "emp1", name: "João Silva", avatarUrl: null },
+    ]),
+    getAvailability: vi.fn().mockResolvedValue({
+      date: "2099-10-10",
+      timezone: "Europe/Lisbon",
+      slots: [],
+    }),
+    createAppointment: vi.fn(),
+  },
+}));
+
 vi.mock("../api/endpoints/company.api", () => ({
   default: {
     getCompany: vi.fn().mockResolvedValue({
@@ -502,6 +527,78 @@ describe("AppRoutes", () => {
       expect(
         await screen.findByText("Link de agendamento inválido."),
       ).toBeInTheDocument();
+    });
+
+    it("não rouba /agendar/:token quando existe o prefixo 'empresa'", async () => {
+      // `/agendar/empresa/...` é a nova rota de MARCAÇÃO. O token dinâmico
+      // continua a ser seu, e esta é a prova de que as duas não se confundem.
+      renderAt("/agendar/qualquer-token", { isInitializing: false });
+
+      expect(
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /marcar atendimento/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("trata /agendar/empresa sem companyId como token, não como marcação", async () => {
+      // `/agendar/empresa` sem `companyId` casa com `/agendar/:token` e é
+      // gerido como link de gestão — a prova de que a rota nova só entra com o
+      // segmento completo.
+      renderAt("/agendar/empresa", { isInitializing: false });
+
+      expect(
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /marcar atendimento/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("rota pública /agendar/empresa/:companyId", () => {
+    it.each([
+      ["sem sessão", { isInitializing: false }],
+      [
+        "com sessão administrativa aberta",
+        { user, isAuthenticated: true, isInitializing: false },
+      ],
+    ])("abre %s sem redirecionar para o login", async (_case, auth) => {
+      renderAt("/agendar/empresa/qualquer-empresa", auth);
+
+      expect(
+        await screen.findByRole("heading", { name: /marcar atendimento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /entrar/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("não usa o layout autenticado", async () => {
+      renderAt("/agendar/empresa/qualquer-empresa", { isInitializing: false });
+
+      await screen.findByRole("heading", { name: /marcar atendimento/i });
+      expect(document.querySelector(".app-sidebar")).toBeNull();
+      expect(document.querySelector(".app-navbar")).toBeNull();
+    });
+
+    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+      renderAt("/agendar/empresa/qualquer-empresa", {});
+
+      expect(
+        screen.getByRole("heading", { name: /marcar atendimento/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
+    });
+
+    it("mostra o catálogo da empresa da rota", async () => {
+      renderAt("/agendar/empresa/qualquer-empresa", { isInitializing: false });
+
+      expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /seu agendamento/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });
