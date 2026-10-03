@@ -392,3 +392,30 @@ describe("NotificationDispatcher — link público de gestão", () => {
     expect(logger.error).toHaveBeenCalled();
   });
 });
+
+describe("NotificationDispatcher — entrega de reminders", () => {
+  it("reutiliza o provider Resend configurado e envia exatamente o email recebido", async () => {
+    const reminderEmail = {
+      to: "maria@example.com",
+      subject: "SchedulerPro — Lembrete em 24 horas",
+      html: '<a href="https://app.exemplo/agendar/token">Gerenciar meu agendamento</a>',
+    };
+
+    await NotificationDispatcher.dispatchReminderEmail(reminderEmail);
+
+    expect(resendProvider.send).toHaveBeenCalledTimes(1);
+    expect(resendProvider.send).toHaveBeenCalledWith(reminderEmail);
+  });
+
+  it("propaga falha do provider para o ReminderService liberar a lease e tentar novamente", async () => {
+    resendProvider.send.mockRejectedValue(new Error("provider unavailable"));
+
+    await expect(
+      NotificationDispatcher.dispatchReminderEmail({
+        to: "maria@example.com",
+        subject: "Lembrete",
+        html: "conteúdo",
+      }),
+    ).rejects.toThrow("provider unavailable");
+  });
+});

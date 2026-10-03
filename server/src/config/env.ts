@@ -82,6 +82,12 @@ export const env = {
      */
     MONGO_URI: process.env.MONGO_URI!, //! = Possível garantir que a variável está definida, pois validateEnv() já validou.
   },
+  security: {
+    PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS:
+      process.env.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS!,
+    PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION:
+      process.env.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION!,
+  },
   cloudinary: {
     /**
      * Cloudinary

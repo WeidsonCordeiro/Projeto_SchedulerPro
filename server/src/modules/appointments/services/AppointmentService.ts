@@ -89,12 +89,12 @@ interface ScheduleAppointmentInput {
    * inacessível) ou com um token que o cliente nunca recebeu.
    */
   publicAccessTokenHash?: string;
+  publicAccessTokenCiphertext?: string;
   /**
    * Token público PURO, apenas para compor o link do e-mail.
    *
-   * É o valor que o cliente recebeu e nunca é persistido: a
-   * base de dados guarda só `publicAccessTokenHash`. Vive nesta
-   * chamada, no máximo, durante o envio do e-mail.
+   * É o valor que o cliente recebe. Nunca é persistido em texto
+   * claro: a base guarda hash e ciphertext autenticado.
    *
    * É opcional e só é enviado na criação pública. Sem ele, o
    * e-mail de confirmação é enviado sem link de gestão.
@@ -229,6 +229,7 @@ class AppointmentService {
       notes,
       now,
       publicAccessTokenHash,
+      publicAccessTokenCiphertext,
     } = input;
 
     /**
@@ -305,6 +306,9 @@ class AppointmentService {
       ...(publicAccessTokenHash
         ? { publicAccessTokenHash }
         : { publicAccessTokenHash: null }),
+      ...(publicAccessTokenCiphertext
+        ? { publicAccessTokenCiphertext }
+        : { publicAccessTokenCiphertext: null }),
     });
 
     await this.dispatchAppointmentNotification(
@@ -524,6 +528,8 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     const publicAccessToken = this.publicTokenProvider.generate();
+    const publicAccessTokenHash =
+      this.publicTokenProvider.hash(publicAccessToken);
 
     /**
      * ----------------------------------------------------------
@@ -556,9 +562,9 @@ class AppointmentService {
        * agendamento. O token puro existe apenas nesta resposta —
        * é a única cópia que alguma vez sai do servidor.
        */
-      publicAccessTokenHash: this.publicTokenProvider.hash(
-        publicAccessToken,
-      ),
+      publicAccessTokenHash,
+      publicAccessTokenCiphertext:
+        this.publicTokenProvider.encrypt(publicAccessToken, publicAccessTokenHash),
       /**
        * O token PURO segue apenas para a composição do link do
        * e-mail. Não entra em nenhuma escrita: a base de dados

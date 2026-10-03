@@ -36,6 +36,8 @@ export interface CreateAppointmentData {
   endAt: Date;
   status: AppointmentStatus;
   notes?: string | null;
+  publicAccessTokenHash?: string | null;
+  publicAccessTokenCiphertext?: string | null;
 }
 
 /**

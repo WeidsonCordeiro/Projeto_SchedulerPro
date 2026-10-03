@@ -553,7 +553,11 @@ describe("AppointmentService.createPublic — agendamento gravado", () => {
 
     expect(result.publicAccessToken).toHaveLength(43);
     expect(persisted).not.toContain(result.publicAccessToken);
-    expect(persisted.publicAccessTokenHash).toBeUndefined();
+    const written = appointmentRepository.create.mock.calls[0][0];
+    expect(written.publicAccessTokenHash).toBe(
+      PublicAppointmentTokenProvider.hash(result.publicAccessToken),
+    );
+    expect(written.publicAccessTokenCiphertext).toMatch(/^v1\./);
   });
 });
 
@@ -576,5 +580,7 @@ describe("AppointmentService.createPublic — resposta pública", () => {
     expect(result.appointment).not.toHaveProperty("notes");
     expect(result.appointment).not.toHaveProperty("createdAt");
     expect(result).not.toHaveProperty("publicAccessTokenHash");
+    expect(result).not.toHaveProperty("publicAccessTokenCiphertext");
+    expect(result.appointment).not.toHaveProperty("publicAccessTokenCiphertext");
   });
 });

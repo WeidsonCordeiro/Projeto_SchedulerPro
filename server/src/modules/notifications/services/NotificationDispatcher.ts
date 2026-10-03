@@ -69,6 +69,12 @@ export interface AppointmentNotificationInput {
   publicAccessToken?: string | null;
 }
 
+export interface ReminderEmailInput {
+  to: string;
+  subject: string;
+  html: string;
+}
+
 interface AppointmentContext {
   title: string;
   emailTemplate: (data: AppointmentEmailData) => string;
@@ -110,6 +116,12 @@ class NotificationDispatcher {
       ...meta,
       error: error instanceof Error ? error.message : String(error),
     });
+  }
+
+  /** Shared email delivery path for reminder templates. Errors bubble to the
+   * reminder service so its existing lease release and retry behavior applies. */
+  public async dispatchReminderEmail(input: ReminderEmailInput): Promise<void> {
+    await this.resendProvider.send(input);
   }
 
   /**

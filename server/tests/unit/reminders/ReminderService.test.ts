@@ -6,7 +6,7 @@ const {
   clientRepository,
   serviceRepository,
   userRepository,
-  resendProvider,
+  notificationDispatcher,
   logger,
 } = vi.hoisted(() => ({
   appointmentRepository: {
@@ -19,7 +19,7 @@ const {
   clientRepository: { findByIdAndCompany: vi.fn() },
   serviceRepository: { findById: vi.fn() },
   userRepository: { findById: vi.fn() },
-  resendProvider: { send: vi.fn() },
+  notificationDispatcher: { dispatchReminderEmail: vi.fn() },
   logger: { error: vi.fn(), email: vi.fn() },
 }));
 
@@ -38,14 +38,16 @@ vi.mock("../../../src/modules/services/repositories/ServiceRepository", () => ({
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
 }));
-vi.mock("../../../src/providers/mail/ResendProvider", () => ({
-  default: resendProvider,
+vi.mock("../../../src/modules/notifications/services/NotificationDispatcher", () => ({
+  default: notificationDispatcher,
 }));
 vi.mock("../../../src/providers/logger/Logger", () => ({
   default: logger,
 }));
 
 import ReminderService from "../../../src/modules/reminders/services/ReminderService";
+import PublicAppointmentTokenProvider from "../../../src/providers/security/PublicAppointmentTokenProvider";
+import { buildPublicManageUrl } from "../../../src/utils/public-manage-url";
 import { AppointmentStatus } from "../../../src/constants/appointment-status";
 
 const companyId = "507f1f77bcf86cd799439011";
@@ -55,6 +57,12 @@ const employeeId = "507f1f77bcf86cd799439014";
 const appointmentId = "507f1f77bcf86cd799439015";
 
 const now = new Date("2026-08-30T12:00:00.000Z");
+const reminderToken = "qwertyuiopasdfghjklzxcvbnm0123456789ABCDEFG";
+const reminderTokenHash = PublicAppointmentTokenProvider.hash(reminderToken);
+const reminderTokenCiphertext = PublicAppointmentTokenProvider.encrypt(
+  reminderToken,
+  reminderTokenHash,
+);
 
 const ref = (id: string) => ({ toString: () => id });
 
@@ -84,6 +92,8 @@ const appointment = (extra = {}) => ({
   reminder2hSentAt: null,
   reminder24hLeaseUntil: null,
   reminder2hLeaseUntil: null,
+  publicAccessTokenCiphertext: reminderTokenCiphertext,
+  publicAccessTokenHash: reminderTokenHash,
   ...extra,
 });
 
@@ -114,10 +124,48 @@ beforeEach(() => {
   serviceRepository.findById.mockResolvedValue({ name: "Corte de cabelo", duration: 30 });
   userRepository.findById.mockResolvedValue({ name: "Ana" });
 
-  resendProvider.send.mockResolvedValue(undefined);
+  notificationDispatcher.dispatchReminderEmail.mockResolvedValue(undefined);
 });
 
 describe("ReminderService — lembretes de 24h", () => {
+  it("ignora appointment legado sem ciphertext sem consumir lease nem marcar enviado", async () => {
+    appointmentRepository.findUpcomingForReminders.mockResolvedValue([
+      appointment24h({ publicAccessTokenCiphertext: null }),
+    ]);
+
+    const summary = await ReminderService.processDueReminders(now);
+
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
+    expect(appointmentRepository.claimReminder).not.toHaveBeenCalled();
+    expect(appointmentRepository.markReminderSent).not.toHaveBeenCalled();
+    expect(summary.skipped).toBe(1);
+  });
+
+  it("não registra credencial em logs de sucesso", async () => {
+    appointmentRepository.findUpcomingForReminders.mockResolvedValue([
+      appointment24h(),
+    ]);
+
+    await ReminderService.processDueReminders(now);
+
+    expect(JSON.stringify(logger.email.mock.calls)).not.toContain(reminderToken);
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain(reminderToken);
+  });
+
+  it("ciphertext inválido não envia nem expõe token e deixa o reminder recuperável", async () => {
+    appointmentRepository.findUpcomingForReminders.mockResolvedValue([
+      appointment24h({ publicAccessTokenCiphertext: "v1.invalid.invalid.invalid" }),
+    ]);
+
+    const summary = await ReminderService.processDueReminders(now);
+
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
+    expect(appointmentRepository.claimReminder).not.toHaveBeenCalled();
+    expect(appointmentRepository.markReminderSent).not.toHaveBeenCalled();
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain(reminderToken);
+    expect(summary.failed).toBe(1);
+  });
+
   it("envia o lembrete de 24h quando o agendamento é elegível", async () => {
     appointmentRepository.findUpcomingForReminders.mockResolvedValue([
       appointment24h(),
@@ -125,14 +173,17 @@ describe("ReminderService — lembretes de 24h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledTimes(1);
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledTimes(1);
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: "maria@example.com",
         subject: "SchedulerPro — Lembrete em 24 horas",
         html: expect.stringContaining("Seu agendamento é em 24 horas"),
       }),
     );
+    const sent24hHtml = notificationDispatcher.dispatchReminderEmail.mock.calls[0][0].html;
+    expect(sent24hHtml).toContain(`href="${buildPublicManageUrl(reminderToken)}"`);
+    expect(sent24hHtml).toContain("Gerenciar meu agendamento");
     expect(appointmentRepository.markReminderSent).toHaveBeenCalledWith(
       expect.anything(),
       {
@@ -151,7 +202,7 @@ describe("ReminderService — lembretes de 24h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.sent).toBe(0);
   });
 
@@ -164,7 +215,7 @@ describe("ReminderService — lembretes de 24h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.sent).toBe(0);
   });
 
@@ -175,7 +226,7 @@ describe("ReminderService — lembretes de 24h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.sent).toBe(0);
   });
 
@@ -187,7 +238,7 @@ describe("ReminderService — lembretes de 24h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.sent).toBe(0);
     expect(summary.skipped).toBe(1);
   });
@@ -202,7 +253,7 @@ describe("ReminderService — lembretes de 24h", () => {
 
       const summary = await ReminderService.processDueReminders(now);
 
-      expect(resendProvider.send).not.toHaveBeenCalled();
+      expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
       expect(summary.sent).toBe(0);
       expect(summary.skipped).toBe(1);
     },
@@ -212,7 +263,9 @@ describe("ReminderService — lembretes de 24h", () => {
     appointmentRepository.findUpcomingForReminders.mockResolvedValue([
       appointment24h(),
     ]);
-    resendProvider.send.mockRejectedValue(new Error("resend down"));
+    notificationDispatcher.dispatchReminderEmail.mockRejectedValue(
+      new Error(`provider diagnostic ${reminderToken}`),
+    );
 
     const summary = await ReminderService.processDueReminders(now);
 
@@ -222,6 +275,8 @@ describe("ReminderService — lembretes de 24h", () => {
     );
     expect(appointmentRepository.markReminderSent).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalled();
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain(reminderToken);
+    expect(JSON.stringify(logger.error.mock.calls)).not.toContain(reminderTokenCiphertext);
     expect(summary).toEqual({ checked: 1, sent: 0, skipped: 0, failed: 1 });
   });
 
@@ -229,7 +284,7 @@ describe("ReminderService — lembretes de 24h", () => {
     appointmentRepository.findUpcomingForReminders.mockResolvedValue([
       appointment24h(),
     ]);
-    resendProvider.send.mockRejectedValue(new Error("resend down"));
+    notificationDispatcher.dispatchReminderEmail.mockRejectedValue(new Error("resend down"));
     appointmentRepository.releaseReminderLease.mockRejectedValue(
       new Error("mongo down"),
     );
@@ -251,7 +306,7 @@ describe("ReminderService — lembretes de 24h", () => {
     await ReminderService.processDueReminders(now);
     await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledTimes(1);
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledTimes(1);
     expect(appointmentRepository.markReminderSent).toHaveBeenCalledTimes(1);
   });
 });
@@ -264,13 +319,16 @@ describe("ReminderService — lembretes de 2h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledTimes(1);
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledTimes(1);
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         subject: "SchedulerPro — Lembrete em 2 horas",
         html: expect.stringContaining("Seu agendamento é em 2 horas"),
       }),
     );
+    const sent2hHtml = notificationDispatcher.dispatchReminderEmail.mock.calls[0][0].html;
+    expect(sent2hHtml).toContain(`href="${buildPublicManageUrl(reminderToken)}"`);
+    expect(sent2hHtml).toContain("Gerenciar meu agendamento");
     expect(appointmentRepository.markReminderSent).toHaveBeenCalledWith(
       expect.anything(),
       {
@@ -289,7 +347,7 @@ describe("ReminderService — lembretes de 2h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.sent).toBe(0);
   });
 
@@ -301,7 +359,7 @@ describe("ReminderService — lembretes de 2h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.sent).toBe(0);
   });
 
@@ -315,14 +373,14 @@ describe("ReminderService — lembretes de 2h", () => {
     await ReminderService.processDueReminders(now);
     await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledTimes(1);
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledTimes(1);
   });
 
   it("falha no envio não marca como enviado", async () => {
     appointmentRepository.findUpcomingForReminders.mockResolvedValue([
       appointment2h(),
     ]);
-    resendProvider.send.mockRejectedValue(new Error("resend down"));
+    notificationDispatcher.dispatchReminderEmail.mockRejectedValue(new Error("resend down"));
 
     const summary = await ReminderService.processDueReminders(now);
 
@@ -341,8 +399,8 @@ describe("ReminderService — lembretes de 2h", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledTimes(1);
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledTimes(1);
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({ subject: "SchedulerPro — Lembrete em 2 horas" }),
     );
     expect(summary.sent).toBe(1);
@@ -357,12 +415,12 @@ describe("ReminderService — timezone e DST", () => {
 
     await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         html: expect.stringContaining("31/08/2026"),
       }),
     );
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         html: expect.stringContaining("11:00 às 11:30"),
       }),
@@ -379,7 +437,7 @@ describe("ReminderService — timezone e DST", () => {
 
     await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({ html: expect.stringContaining("07:00 às 07:30") }),
     );
   });
@@ -395,7 +453,7 @@ describe("ReminderService — timezone e DST", () => {
       await ReminderService.processDueReminders(
         new Date(startAt.getTime() - 22 * 60 * 60 * 1000),
       );
-      expect(resendProvider.send).toHaveBeenCalledWith(
+      expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
         expect.objectContaining({ html: expect.stringContaining(expected) }),
       );
     };
@@ -403,7 +461,7 @@ describe("ReminderService — timezone e DST", () => {
     await checkLabel(beforeDst, "10:00 às 10:30");
     await checkLabel(afterDst, "11:00 às 11:30");
 
-    expect(resendProvider.send).toHaveBeenCalledTimes(2);
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -450,11 +508,11 @@ describe("ReminderService — isolamento e destinatário", () => {
       clientIdB,
       companyIdB,
     );
-    expect(resendProvider.send).toHaveBeenNthCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ to: "ana@a.com", html: expect.stringContaining("Ana A") }),
     );
-    expect(resendProvider.send).toHaveBeenNthCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({ to: "bia@b.com", html: expect.stringContaining("Bia B") }),
     );
@@ -470,7 +528,7 @@ describe("ReminderService — isolamento e destinatário", () => {
 
     await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).toHaveBeenCalledWith(
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "cliente@example.com" }),
     );
   });
@@ -485,7 +543,7 @@ describe("ReminderService — isolamento e destinatário", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.skipped).toBe(1);
   });
 
@@ -499,7 +557,7 @@ describe("ReminderService — isolamento e destinatário", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary.skipped).toBe(1);
   });
 
@@ -511,7 +569,7 @@ describe("ReminderService — isolamento e destinatário", () => {
 
     const summary = await ReminderService.processDueReminders(now);
 
-    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationDispatcher.dispatchReminderEmail).not.toHaveBeenCalled();
     expect(summary).toEqual({ checked: 1, sent: 0, skipped: 1, failed: 0 });
   });
 });

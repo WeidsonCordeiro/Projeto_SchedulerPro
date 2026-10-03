@@ -11,6 +11,11 @@ import AppointmentModel from "../../../src/modules/appointments/models/Appointme
  * a definição do schema.
  */
 describe("Appointment - schema do token público", () => {
+  it("mantém o ciphertext fora das leituras por omissão", () => {
+    const field = AppointmentModel.schema.path("publicAccessTokenCiphertext");
+    expect(field.options.select).toBe(false);
+    expect(field.options.default).toBeNull();
+  });
   it("guarda o hash fora das leituras por omissão", () => {
     const field = AppointmentModel.schema.path("publicAccessTokenHash");
 
@@ -66,5 +71,6 @@ describe("Appointment - schema do token público", () => {
     expect(paths).not.toContain("publicAccessToken");
     expect(paths).not.toContain("publicToken");
     expect(paths).toContain("publicAccessTokenHash");
+    expect(paths).toContain("publicAccessTokenCiphertext");
   });
 });

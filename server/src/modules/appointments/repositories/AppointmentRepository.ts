@@ -316,7 +316,9 @@ class AppointmentRepository {
         $gt: now,
         $lte: new Date(now.getTime() + lookaheadMs),
       },
-    }).sort({ startAt: 1 });
+    })
+      .select("+publicAccessTokenCiphertext +publicAccessTokenHash")
+      .sort({ startAt: 1 });
   }
 
   /**

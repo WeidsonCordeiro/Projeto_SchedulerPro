@@ -250,6 +250,7 @@ describe("Agendamento público — rota sem autenticação", () => {
     expect(response.body.data.appointment).not.toHaveProperty("companyId");
     expect(response.body.data.appointment).not.toHaveProperty("notes");
     expect(response.body.data).not.toHaveProperty("publicAccessTokenHash");
+    expect(response.body.data).not.toHaveProperty("publicAccessTokenCiphertext");
   });
 
   it("recusa campos de controlo interno em vez de os ignorar", async () => {
@@ -646,6 +647,26 @@ describe("Agendamento público — cliente sem conta", () => {
     expect(dispatched.publicAccessToken).not.toContain("sha256:");
   });
 
+  it("o token novo devolvido na criação resolve o GET público", async () => {
+    const created = await request(app)
+      .post(publicUrl())
+      .send(validPublicPayload());
+    const token = created.body.data.publicAccessToken as string;
+    const persisted = appointmentRepository.create.mock.calls[0][0];
+    appointmentRepository.findByPublicAccessTokenHash.mockResolvedValue({
+      ...createdAppointment(),
+      publicAccessTokenHash: persisted.publicAccessTokenHash,
+    });
+
+    const fetched = await request(app).get(`/api/public/appointments/${token}`);
+
+    expect(fetched.status).toBe(200);
+    expect(fetched.body.data.id).toBe(ids.appointment);
+    expect(appointmentRepository.findByPublicAccessTokenHash).toHaveBeenCalledWith(
+      persisted.publicAccessTokenHash,
+    );
+  });
+
   it("não persiste o token puro: a base de dados recebe só o hash", async () => {
     const response = await request(app)
       .post(publicUrl())
@@ -654,6 +675,7 @@ describe("Agendamento público — cliente sem conta", () => {
     const persisted = appointmentRepository.create.mock.calls[0][0];
 
     expect(persisted.publicAccessTokenHash).toContain("sha256:");
+    expect(persisted.publicAccessTokenCiphertext).toMatch(/^v1\./);
     expect(JSON.stringify(persisted)).not.toContain(
       response.body.data.publicAccessToken,
     );
