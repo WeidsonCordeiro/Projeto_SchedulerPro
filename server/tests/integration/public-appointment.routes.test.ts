@@ -631,6 +631,33 @@ describe("Agendamento público — cliente sem conta", () => {
       }),
     );
   });
+
+  it("entrega o token puro ao notificador, igual ao devolvido na resposta", async () => {
+    const response = await request(app)
+      .post(publicUrl())
+      .send(validPublicPayload());
+
+    const dispatched = notificationDispatcher.dispatchAppointmentEvent.mock
+      .calls[0][0];
+
+    expect(dispatched.publicAccessToken).toBe(
+      response.body.data.publicAccessToken,
+    );
+    expect(dispatched.publicAccessToken).not.toContain("sha256:");
+  });
+
+  it("não persiste o token puro: a base de dados recebe só o hash", async () => {
+    const response = await request(app)
+      .post(publicUrl())
+      .send(validPublicPayload());
+
+    const persisted = appointmentRepository.create.mock.calls[0][0];
+
+    expect(persisted.publicAccessTokenHash).toContain("sha256:");
+    expect(JSON.stringify(persisted)).not.toContain(
+      response.body.data.publicAccessToken,
+    );
+  });
 });
 
 describe("Agendamento público — superfície da rota", () => {

@@ -40,6 +40,7 @@ import {
   DEFAULT_TIMEZONE,
   toCompanyDateTime,
 } from "../../../utils/timezone";
+import { buildPublicManageUrl } from "../../../utils/public-manage-url";
 
 export interface AppointmentNotificationInput {
   companyId: string;
@@ -50,6 +51,22 @@ export interface AppointmentNotificationInput {
   employeeId: string;
   startAt: Date;
   notes?: string | null;
+  /**
+   * Token puro do link público, quando o evento nasceu do
+   * FLUXO PÚBLICO.
+   *
+   * Existe em memória em exatamente dois momentos: na criação
+   * (acabou de ser gerado) e na alteração/cancelamento (o
+   * cliente acabou de o apresentar na URL). Não é lido da base
+   * de dados — lá só existe o hash, que é irreversível e não
+   * produz um link utilizável.
+   *
+   * Omitido no fluxo administrativo: um agendamento criado por
+   * um utilizador autenticado não tem token público.
+   *
+   * NÃO registar este valor. O link só é montado para o HTML.
+   */
+  publicAccessToken?: string | null;
 }
 
 interface AppointmentContext {
@@ -267,6 +284,13 @@ class NotificationDispatcher {
       timeLabel,
       endTimeLabel,
       notes: input.notes,
+      /**
+       * Só no fluxo público. `undefined` no administrativo →
+       * o template omite o bloco em vez de gerar um link morto.
+       */
+      publicManageUrl: input.publicAccessToken
+        ? buildPublicManageUrl(input.publicAccessToken)
+        : null,
     });
 
     try {
