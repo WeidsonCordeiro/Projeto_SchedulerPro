@@ -2,9 +2,73 @@ import { describe, expect, it } from "vitest";
 
 import PublicAppointmentTokenProvider, {
   PUBLIC_TOKEN_LENGTH,
+  PublicAppointmentTokenProvider as PublicAppointmentTokenProviderClass,
 } from "../../../src/providers/security/PublicAppointmentTokenProvider";
+import { env } from "../../../src/config/env";
 
 const provider = PublicAppointmentTokenProvider;
+
+describe("PublicAppointmentTokenProvider — ciphertext para reminders", () => {
+  it("recupera o mesmo token sem persistir plaintext", () => {
+    const token = provider.generate();
+    const hash = provider.hash(token);
+    const envelope = provider.encrypt(token, hash);
+
+    expect(envelope).toMatch(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+    expect(envelope).not.toContain(token);
+    expect(provider.decrypt(envelope, hash)).toBe(token);
+    expect(provider.hash(provider.decrypt(envelope, hash))).toBe(hash);
+  });
+
+  it("rejeita ciphertext alterado sem revelar a credencial", () => {
+    const token = provider.generate();
+    const envelope = provider.encrypt(token, provider.hash(token));
+    const [version, iv, tag, ciphertext] = envelope.split(".");
+    const changed = [version, iv, `${tag[0] === "A" ? "B" : "A"}${tag.slice(1)}`, ciphertext].join(".");
+    expect(() => provider.decrypt(changed, provider.hash(token))).toThrow(
+      "Não foi possível recuperar a credencial pública do agendamento.",
+    );
+  });
+
+  it("vincula o ciphertext ao hash original", () => {
+    const token = provider.generate();
+    const envelope = provider.encrypt(token, provider.hash(token));
+
+    expect(() => provider.decrypt(envelope, provider.hash(provider.generate())))
+      .toThrow("Não foi possível recuperar a credencial pública do agendamento.");
+  });
+
+  it("outra instância com o mesmo keyring recupera o token", () => {
+    const token = provider.generate();
+    const hash = provider.hash(token);
+    const envelope = provider.encrypt(token, hash);
+    const anotherInstance = new PublicAppointmentTokenProviderClass();
+
+    expect(anotherInstance.decrypt(envelope, hash)).toBe(token);
+  });
+
+  it("mantém versões antigas de chave legíveis durante rotação", () => {
+    const token = provider.generate();
+    const hash = provider.hash(token);
+    const oldEnvelope = provider.encrypt(token, hash);
+    const oldKeys = env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS;
+    const oldVersion = env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION;
+
+    try {
+      env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS = JSON.stringify({
+        v1: Buffer.alloc(32).toString("base64"),
+        v2: Buffer.alloc(32, 1).toString("base64"),
+      });
+      env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION = "v2";
+
+      expect(provider.decrypt(oldEnvelope, hash)).toBe(token);
+      expect(provider.encrypt(token, hash).startsWith("v2.")).toBe(true);
+    } finally {
+      env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS = oldKeys;
+      env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION = oldVersion;
+    }
+  });
+});
 
 describe("PublicAppointmentTokenProvider — geração", () => {
   it("gera um token com o comprimento esperado em base64url", () => {

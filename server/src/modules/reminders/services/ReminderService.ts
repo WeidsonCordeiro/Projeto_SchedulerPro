@@ -28,8 +28,10 @@ import ClientRepository from "../../Clients/repositories/ClientRepository";
 import ServiceRepository from "../../services/repositories/ServiceRepository";
 import UserRepository from "../../users/repositories/UserRepository";
 
-import ResendProvider from "../../../providers/mail/ResendProvider";
 import Logger from "../../../providers/logger/Logger";
+import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
+import PublicAppointmentTokenProvider from "../../../providers/security/PublicAppointmentTokenProvider";
+import { buildPublicManageUrl } from "../../../utils/public-manage-url";
 
 import { reminder24hEmail } from "../../../providers/mail/templates/reminder-24h.template";
 import { reminder2hEmail } from "../../../providers/mail/templates/reminder-2h.template";
@@ -89,7 +91,8 @@ class ReminderService {
   private readonly clientRepository = ClientRepository;
   private readonly serviceRepository = ServiceRepository;
   private readonly userRepository = UserRepository;
-  private readonly resendProvider = ResendProvider;
+  private readonly notificationDispatcher = NotificationDispatcher;
+  private readonly publicTokenProvider = PublicAppointmentTokenProvider;
   private readonly logger = Logger;
 
   /**
@@ -195,6 +198,23 @@ class ReminderService {
       return false;
     }
 
+    // Legacy/admin appointments without recoverable public credentials are
+    // skipped; never fabricate or rotate a token in the reminder path.
+    if (!appointment.publicAccessTokenCiphertext) {
+      return false;
+    }
+    const publicToken = this.publicTokenProvider.decrypt(
+      appointment.publicAccessTokenCiphertext,
+      appointment.publicAccessTokenHash ?? "",
+    );
+    if (
+      !this.publicTokenProvider.hasValidFormat(publicToken) ||
+      this.publicTokenProvider.hash(publicToken) !==
+        appointment.publicAccessTokenHash
+    ) {
+      throw new Error("Credencial pública do agendamento inválida.");
+    }
+
     const service = await this.serviceRepository.findById(
       appointment.serviceId.toString(),
     );
@@ -220,6 +240,7 @@ class ReminderService {
       dateLabel,
       timeLabel,
       endTimeLabel,
+      publicManageUrl: buildPublicManageUrl(publicToken),
     });
 
     const leaseUntil = new Date(
@@ -238,7 +259,7 @@ class ReminderService {
     }
 
     try {
-      await this.resendProvider.send({
+      await this.notificationDispatcher.dispatchReminderEmail({
         to: client.email,
         subject: `${emailSubjectPrefix}${context.subject}`,
         html,
@@ -253,7 +274,7 @@ class ReminderService {
         companyId: appointment.companyId.toString(),
         clientId: appointment.clientId.toString(),
         email: client.email,
-        error: error instanceof Error ? error.message : String(error),
+        error: "Falha no provider de e-mail.",
       });
 
       throw error;

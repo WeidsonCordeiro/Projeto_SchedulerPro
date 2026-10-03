@@ -12,17 +12,22 @@
 *
 * Princípio aplicado:
 *
-*   token puro  ──►  SHA-256  ──►  MongoDB
-*      (URL)          (índice)     (persistido)
+*   token puro ──► SHA-256 + AES-256-GCM ──► MongoDB
+*      (URL)          (hash + envelope)
 *
-* O valor puro existe apenas em dois momentos: no instante em
-* que é gerado e no instante em que o cliente o apresenta. A
-* base de dados guarda apenas o hash, pelo que uma exposição
-* da base de dados não dá acesso utilizável a agendamentos.
+* O token puro não é persistido em texto. O hash serve para
+* lookup e o envelope autenticado permite a entrega posterior
+* do mesmo link nos reminders.
 * ==========================================================
   */
 
-import { createHash, randomBytes } from "crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from "crypto";
+import { env } from "../../config/env";
 
 /**
  * 32 bytes = 256 bits de entropia.
@@ -56,7 +61,83 @@ export const PUBLIC_TOKEN_LENGTH = 43;
  */
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
-class PublicAppointmentTokenProvider {
+export class PublicAppointmentTokenProvider {
+  private encryptionKeys(): {
+    activeVersion: string;
+    keys: Record<string, string>;
+  } {
+    try {
+      const keys = JSON.parse(
+        env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS,
+      ) as Record<string, string>;
+      const activeVersion =
+        env.security.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION;
+      if (!keys || typeof keys !== "object" || Array.isArray(keys)) {
+        throw new Error();
+      }
+      return { activeVersion, keys };
+    } catch {
+      throw new Error("Configuração de criptografia do token público inválida.");
+    }
+  }
+
+  private keyBytes(encodedKey: string): Buffer {
+    const key = Buffer.from(encodedKey, "base64");
+    if (key.length !== 32 || key.toString("base64") !== encodedKey) {
+      throw new Error("Chave de criptografia do token público inválida.");
+    }
+    return key;
+  }
+
+  /** Encrypts a token for reminder delivery; plaintext is never persisted. */
+  public encrypt(token: string, associatedData: string): string {
+    const { activeVersion, keys } = this.encryptionKeys();
+    const encodedKey = keys[activeVersion];
+    if (!encodedKey || !/^[A-Za-z0-9_-]{1,32}$/.test(activeVersion)) {
+      throw new Error("Versão ativa da chave do token público indisponível.");
+    }
+    const iv = randomBytes(12);
+    const cipher = createCipheriv("aes-256-gcm", this.keyBytes(encodedKey), iv);
+    cipher.setAAD(Buffer.from(associatedData, "utf8"));
+    const ciphertext = Buffer.concat([
+      cipher.update(token, "utf8"),
+      cipher.final(),
+    ]);
+    return [
+      activeVersion,
+      iv.toString("base64url"),
+      cipher.getAuthTag().toString("base64url"),
+      ciphertext.toString("base64url"),
+    ].join(".");
+  }
+
+  /** Decrypts only versioned authenticated envelopes produced by encrypt(). */
+  public decrypt(envelope: string, associatedData: string): string {
+    try {
+      const [version, ivPart, tagPart, ciphertextPart, ...extra] =
+        envelope.split(".");
+      if (!version || !ivPart || !tagPart || !ciphertextPart || extra.length) {
+        throw new Error();
+      }
+      const { keys } = this.encryptionKeys();
+      const encodedKey = keys[version];
+      if (!encodedKey) throw new Error();
+      const iv = Buffer.from(ivPart, "base64url");
+      const tag = Buffer.from(tagPart, "base64url");
+      const ciphertext = Buffer.from(ciphertextPart, "base64url");
+      if (iv.length !== 12 || tag.length !== 16) throw new Error();
+      const decipher = createDecipheriv("aes-256-gcm", this.keyBytes(encodedKey), iv);
+      decipher.setAAD(Buffer.from(associatedData, "utf8"));
+      decipher.setAuthTag(tag);
+      return Buffer.concat([
+        decipher.update(ciphertext),
+        decipher.final(),
+      ]).toString("utf8");
+    } catch {
+      throw new Error("Não foi possível recuperar a credencial pública do agendamento.");
+    }
+  }
+
   /**
    * ==========================================================
    * Gera um token público novo.

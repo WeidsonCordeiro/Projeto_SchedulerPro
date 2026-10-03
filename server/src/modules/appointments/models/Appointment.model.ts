@@ -36,17 +36,10 @@ export interface AppointmentDocument extends Document {
   notes?: string | null;
   deletedAt?: Date | null;
 
-  /**
-   * Hash do token público que dá acesso a este agendamento.
-   *
-   * `null` em agendamentos criados pelo fluxo administrativo e
-   * em todos os agendamentos anteriores a esta etapa: apenas o
-   * fluxo público gera token.
-   *
-   * O token puro NUNCA é persistido — apenas este hash. O valor
-   * devolvido ao cliente na criação é a única cópia.
-   */
+  /** SHA-256 lookup hash. The raw token is never stored in plaintext. */
   publicAccessTokenHash?: string | null;
+  /** AES-256-GCM envelope used only to reproduce links in later reminders. */
+  publicAccessTokenCiphertext?: string | null;
 
   /**
    * Marcas de lembretes automáticos enviados ao cliente.
@@ -144,6 +137,12 @@ const appointmentSchema = new Schema<AppointmentDocument>(
      * o que torna cada leitura do hash rastreável no código.
      */
     publicAccessTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    publicAccessTokenCiphertext: {
       type: String,
       default: null,
       select: false,
