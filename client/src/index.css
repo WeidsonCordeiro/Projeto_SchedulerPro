@@ -1621,3 +1621,336 @@ button,
   border-radius: var(--sp-radius);
   box-shadow: 0 0 0 1px #d92d20;
 }
+
+/* ================================================================== */
+/* Marcação pública (Parte 5)                                          */
+/* ================================================================== */
+
+/**
+ * O fluxo público tem mais conteúdo por ecrã do que a página de gestão de um
+ * agendamento (uma escolha, cinco etapas), por isso o contentor é mais largo.
+ * Afeta APENAS esta página — a largura padrão de 34rem das restantes páginas
+ * públicas não muda.
+ */
+.public-booking {
+  width: min(100%, 44rem);
+}
+
+/* --- Etapas ------------------------------------------------------- */
+
+.booking-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.booking-step {
+  align-items: center;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: 999px;
+  color: var(--sp-muted);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.3rem;
+}
+
+/**
+ * Concluídas ficam com o número tapado por um disco sólido: dá para ler "já
+ * passei por aqui" sem depender só da cor, o que também ajuda quem não
+ * distingue o verde do cinzento.
+ */
+.booking-step.is-done {
+  background: var(--sp-primary);
+  border-color: var(--sp-primary);
+  color: #fff;
+}
+
+.booking-step.is-current {
+  background: var(--sp-primary);
+  border-color: var(--sp-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.booking-step-number {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 700;
+  height: 1.35rem;
+  justify-content: center;
+  width: 1.35rem;
+}
+
+.booking-step:not(.is-current):not(.is-done) .booking-step-number {
+  background: var(--sp-border);
+  color: var(--sp-ink);
+}
+
+.booking-step.is-current .booking-step-number,
+.booking-step.is-done .booking-step-number {
+  background: #fff;
+  color: var(--sp-primary);
+}
+
+@media (max-width: 430px) {
+  /* Em 390px as cinco etapas cabem, mas cada uma tem de ficar com o número
+     visível — esconder o rótulo seria perder a informação de onde se está. */
+  .booking-step {
+    font-size: 0.72rem;
+    padding-right: 0.55rem;
+  }
+}
+
+/* --- Título da etapa ---------------------------------------------- */
+
+.booking-stage-title {
+  font-size: 1.25rem;
+  margin: 0 0 1rem;
+}
+
+/**
+ * O título recebe foco quando a etapa muda (ver `PublicBookingPage`). Sem
+ * `outline: none` o anel de foco apareceria em torno de um texto grande e
+ * distorcia o ecrã; com `outline: none` some o indicador. `:focus-visible`
+ * devolve-o apenas na navegação por teclado, que é quem dele precisa.
+ */
+.booking-stage-title:focus {
+  outline: none;
+}
+
+.booking-stage-title:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 4px;
+}
+
+/* --- Escolha de serviço / profissional ----------------------------- */
+
+.booking-choice-group {
+  border: 0;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.booking-legend {
+  font-size: 0.95rem;
+  font-weight: 650;
+  margin-bottom: 0.75rem;
+}
+
+.booking-cards {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+}
+
+.booking-cards-people {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+
+.booking-card {
+  position: relative;
+}
+
+.booking-card:hover {
+  border-color: var(--sp-primary);
+}
+
+/**
+ * O input fica no DOM, focável e operável por teclado — só deixa de ser
+ * visível. Esconder com `display: none` tiraria-o da navegação por teclado e
+ * do leitor de ecrã, que é exatamente o que os radios existem para evitar.
+ */
+.booking-card-input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.booking-card-label {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  height: 100%;
+  padding: 0.85rem;
+}
+
+.booking-card.is-selected .booking-card-label {
+  border-color: var(--sp-primary);
+  box-shadow: 0 0 0 1px var(--sp-primary);
+}
+
+/* `:focus-within` no cartão, e não `:focus` no input: o input é invisível, e
+   um contorno desenhado nele (1px, opacidade 0) não se veria. */
+.booking-card:focus-within .booking-card-label {
+  border-color: var(--sp-primary);
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 2px;
+}
+
+.booking-card-title {
+  color: var(--sp-ink);
+  font-weight: 650;
+}
+
+.booking-card-description {
+  color: var(--sp-muted);
+  font-size: 0.85rem;
+}
+
+.booking-card-meta {
+  color: var(--sp-muted);
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.booking-cards-people .booking-card-label {
+  align-items: center;
+  text-align: center;
+}
+
+/* --- Data e horários ---------------------------------------------- */
+
+.booking-section {
+  margin-bottom: 1.5rem;
+}
+
+.booking-section-title {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.booking-field {
+  margin-bottom: 1rem;
+}
+
+.booking-slots {
+  margin: 1rem 0 1.25rem;
+}
+
+.booking-slots-title {
+  font-size: 0.85rem;
+  font-weight: 650;
+  margin-bottom: 0.5rem;
+}
+
+.booking-slots-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+}
+
+.booking-slot {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  color: var(--sp-ink);
+  font-weight: 650;
+  padding: 0.6rem 0.5rem;
+}
+
+.booking-slot:hover {
+  border-color: var(--sp-primary);
+  color: var(--sp-primary);
+}
+
+.booking-slot.is-selected {
+  background: var(--sp-primary);
+  border-color: var(--sp-primary);
+  color: #fff;
+}
+
+/* --- Formulário e revisão ------------------------------------------ */
+
+.booking-form {
+  margin: 0;
+}
+
+.booking-back {
+  margin-top: 1rem;
+}
+
+.booking-review-list {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  display: grid;
+  gap: 0.35rem 1rem;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+}
+
+.booking-review-list dt {
+  color: var(--sp-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.booking-review-list dd {
+  color: var(--sp-ink);
+  margin: 0;
+}
+
+.booking-review-meta {
+  color: var(--sp-muted);
+  font-size: 0.85rem;
+}
+
+.booking-review-person {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 430px) {
+  /* Numa coluna o par rótulo/valor continua legível; numa linha, "Data e
+     hora" roubaria a largura do valor em ecrãs de 390px. */
+  .booking-review-list {
+    gap: 0.15rem;
+    grid-template-columns: 1fr;
+  }
+
+  .booking-review-list dt {
+    margin-top: 0.4rem;
+  }
+}
+
+/* --- Confirmação --------------------------------------------------- */
+
+.booking-manage {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.booking-manage-hint {
+  font-size: 0.85rem;
+}
+
+.booking-manage-link {
+  overflow-wrap: anywhere;
+  width: 100%;
+}
+
+@media (min-width: 576px) {
+  .booking-manage-link {
+    width: auto;
+  }
+}

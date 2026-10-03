@@ -18,6 +18,7 @@ import PortalHomePage from "../pages/portal/PortalHomePage";
 import PortalAppointmentsPage from "../pages/portal/PortalAppointmentsPage";
 import PortalProfilePage from "../pages/portal/PortalProfilePage";
 import PublicAppointmentPage from "../pages/public/PublicAppointmentPage";
+import PublicBookingPage from "../pages/public/PublicBookingPage";
 import ProtectedRoute from "./ProtectedRoute";
 import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
@@ -29,6 +30,19 @@ export default function AppRoutes() {
         Link público do agendamento, entregue a quem não tem conta.
         `/agendar/` sem token é o mesmo 404 da rota com token inválido.
        */}
+      {/**
+        MARCAÇÃO (nova): `/agendar/empresa/:companyId`.
+
+        Declarada ANTES de `/agendar/:token` por legibilidade, não por
+        necessidade — o react-router pontua segmentos estáticos acima de dinâmicos
+        e escolheria esta rota para `/agendar/empresa/x` de qualquer maneira.
+        Escrever por ordem inversa faria o token dinâmico parecer o dono do
+        prefixo, e alguém acabaria por "acertar" a ordem por tentativa e erro.
+      */}
+      <Route
+        path="/agendar/empresa/:companyId"
+        element={<PublicBookingPage />}
+      />
       <Route path="/agendar/:token" element={<PublicAppointmentPage />} />
       <Route path="/agendar" element={<PublicAppointmentPage />} />
 
