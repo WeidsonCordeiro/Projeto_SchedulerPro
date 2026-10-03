@@ -39,6 +39,9 @@ vi.mock("../../../src/providers/mail/ResendProvider", () => ({
 vi.mock("../../../src/providers/logger/Logger", () => ({
   default: logger,
 }));
+vi.mock("../../../src/config/env", () => ({
+  env: { frontend: { FRONTEND_URL: "https://app.exemplo" } },
+}));
 
 import NotificationDispatcher from "../../../src/modules/notifications/services/NotificationDispatcher";
 import { NotificationType } from "../../../src/modules/notifications";
@@ -244,5 +247,148 @@ describe("NotificationDispatcher", () => {
         html: expect.stringContaining("18:00 às 18:00"),
       }),
     );
+  });
+});
+
+describe("NotificationDispatcher — link público de gestão", () => {
+  const PUBLIC_TOKEN = "aB3-_xY9zQ1wE2rT5yU8iO0pL4kJ6hG7fD2sA1nM0";
+  const EXPECTED_URL = `https://app.exemplo/agendar/${PUBLIC_TOKEN}`;
+
+  beforeEach(() => {
+    userRepository.findByCompanyId.mockResolvedValue([user()]);
+  });
+
+  const sentHtml = () =>
+    resendProvider.send.mock.calls[0][0].html as unknown as string;
+
+  it.each([
+    ["criação", NotificationType.APPOINTMENT_CREATED],
+    ["alteração", NotificationType.APPOINTMENT_UPDATED],
+    ["cancelamento", NotificationType.APPOINTMENT_CANCELLED],
+  ])(
+    "inclui o link /agendar/:token no e-mail de %s",
+    async (_label, type) => {
+      await NotificationDispatcher.dispatchAppointmentEvent({
+        ...input,
+        type,
+        publicAccessToken: PUBLIC_TOKEN,
+      });
+
+      expect(resendProvider.send).toHaveBeenCalledTimes(1);
+      expect(sentHtml()).toContain(`href="${EXPECTED_URL}"`);
+      expect(sentHtml()).toContain("Gerenciar meu agendamento");
+    },
+  );
+
+  it.each([
+    ["criação", NotificationType.APPOINTMENT_CREATED],
+    ["alteração", NotificationType.APPOINTMENT_UPDATED],
+    ["cancelamento", NotificationType.APPOINTMENT_CANCELLED],
+  ])(
+    "omite o link no e-mail administrativo de %s (sem token público)",
+    async (_label, type) => {
+      await NotificationDispatcher.dispatchAppointmentEvent({
+        ...input,
+        type,
+      });
+
+      expect(resendProvider.send).toHaveBeenCalledTimes(1);
+      expect(sentHtml()).not.toContain("Gerenciar meu agendamento");
+      expect(sentHtml()).not.toContain("/agendar/");
+    },
+  );
+
+  it("omite o link quando o token chega nulo", async () => {
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: null,
+    });
+
+    expect(sentHtml()).not.toContain("/agendar/");
+  });
+
+  it("envia exatamente um e-mail por evento (sem duplicação)", async () => {
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: PUBLIC_TOKEN,
+    });
+
+    expect(resendProvider.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("não envia nada quando o cliente não tem e-mail, mesmo com token público", async () => {
+    clientRepository.findByIdAndCompany.mockResolvedValue({
+      id: ref(clientId),
+      name: "Maria",
+      email: null,
+    });
+
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: PUBLIC_TOKEN,
+    });
+
+    expect(resendProvider.send).not.toHaveBeenCalled();
+  });
+
+  it("não envia e-mail a um cliente de outra empresa", async () => {
+    // O tenant vem sempre do agendamento; `findByIdAndCompany`
+    // não encontra o cliente noutra empresa e o dispatcher aborta.
+    clientRepository.findByIdAndCompany.mockResolvedValue(null);
+
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: PUBLIC_TOKEN,
+    });
+
+    expect(resendProvider.send).not.toHaveBeenCalled();
+    expect(notificationRepository.createMany).not.toHaveBeenCalled();
+  });
+
+  it("não regista o token puro em nenhum log de sucesso", async () => {
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: PUBLIC_TOKEN,
+    });
+
+    for (const call of logger.email.mock.calls) {
+      expect(JSON.stringify(call)).not.toContain(PUBLIC_TOKEN);
+    }
+  });
+
+  it("não regista o token puro no log de falha de envio", async () => {
+    resendProvider.send.mockRejectedValue(new Error("resend down"));
+
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: PUBLIC_TOKEN,
+    });
+
+    expect(logger.error).toHaveBeenCalled();
+    for (const call of logger.error.mock.calls) {
+      expect(JSON.stringify(call)).not.toContain(PUBLIC_TOKEN);
+    }
+  });
+
+  it("não envia o hash do token ao cliente", async () => {
+    await NotificationDispatcher.dispatchAppointmentEvent({
+      ...input,
+      publicAccessToken: PUBLIC_TOKEN,
+    });
+
+    expect(sentHtml()).not.toContain("sha256:");
+  });
+
+  it("a falha de envio não apaga o link nem altera a resposta", async () => {
+    resendProvider.send.mockRejectedValue(new Error("resend down"));
+
+    await expect(
+      NotificationDispatcher.dispatchAppointmentEvent({
+        ...input,
+        publicAccessToken: PUBLIC_TOKEN,
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(logger.error).toHaveBeenCalled();
   });
 });

@@ -460,6 +460,17 @@ describe("Token inválido — indistinguível", () => {
 });
 
 describe("PATCH /api/public/appointments/:token", () => {
+  it("entrega ao notificador o token puro da URL, para o link do e-mail", async () => {
+    await request(app).patch(url()).send({ notes: "Janela" });
+
+    expect(notificationDispatcher.dispatchAppointmentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "APPOINTMENT_UPDATED",
+        publicAccessToken: TOKEN,
+      }),
+    );
+  });
+
   it("altera a data/hora", async () => {
     const response = await request(app)
       .patch(url())
@@ -881,6 +892,24 @@ describe("DELETE /api/public/appointments/:token", () => {
     expect(notificationDispatcher.dispatchAppointmentEvent).toHaveBeenCalledWith(
       expect.objectContaining({ type: "APPOINTMENT_CANCELLED" }),
     );
+  });
+
+  it("entrega ao notificador o token puro da URL, para o link do e-mail", async () => {
+    await request(app).delete(url());
+
+    expect(notificationDispatcher.dispatchAppointmentEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ publicAccessToken: TOKEN }),
+    );
+  });
+
+  it("não entrega o hash do token ao notificador", async () => {
+    await request(app).delete(url());
+
+    const dispatched = notificationDispatcher.dispatchAppointmentEvent.mock
+      .calls[0][0];
+
+    expect(dispatched.publicAccessToken).not.toContain("sha256:");
+    expect(dispatched.publicAccessToken).toBe(TOKEN);
   });
 });
 

@@ -19,6 +19,15 @@ export interface AppointmentEmailData {
   timeLabel: string;
   endTimeLabel: string;
   notes?: string | null;
+  /**
+   * Link absoluto de gestão do agendamento (`/agendar/:token`).
+   *
+   * Só é preenchido no FLUXO PÚBLICO. Um agendamento criado
+   * pela administração não tem token público, logo não tem link
+   * de gestão — o bloco é omitido em vez de render um botão
+   * partido.
+   */
+  publicManageUrl?: string | null;
 }
 
 interface AppointmentEmailLayoutProps {
@@ -92,6 +101,38 @@ export function appointmentEmailLayout({
       : ""
   }
 </div>
+
+${
+  /**
+   * O bloco só existe no fluxo público. Ausência de link não é
+   * erro: é o caso normal do agendamento administrativo.
+   */
+  data.publicManageUrl
+    ? `
+<p>
+  Pode consultar, alterar ou cancelar este agendamento através
+  do link abaixo:
+</p>
+
+<div style="margin: 32px 0;">
+  <a
+    href="${data.publicManageUrl}"
+    style="
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #2563eb;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: bold;
+    "
+  >
+    Gerenciar meu agendamento
+  </a>
+</div>
+`
+    : ""
+}
 
 <p>
   Obrigado por escolher

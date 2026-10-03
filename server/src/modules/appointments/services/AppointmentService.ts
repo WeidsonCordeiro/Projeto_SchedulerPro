@@ -89,6 +89,17 @@ interface ScheduleAppointmentInput {
    * inacessível) ou com um token que o cliente nunca recebeu.
    */
   publicAccessTokenHash?: string;
+  /**
+   * Token público PURO, apenas para compor o link do e-mail.
+   *
+   * É o valor que o cliente recebeu e nunca é persistido: a
+   * base de dados guarda só `publicAccessTokenHash`. Vive nesta
+   * chamada, no máximo, durante o envio do e-mail.
+   *
+   * É opcional e só é enviado na criação pública. Sem ele, o
+   * e-mail de confirmação é enviado sem link de gestão.
+   */
+  publicManageToken?: string;
 }
 
 class AppointmentService {
@@ -299,6 +310,7 @@ class AppointmentService {
     await this.dispatchAppointmentNotification(
       appointment,
       NotificationType.APPOINTMENT_CREATED,
+      input.publicManageToken,
     );
 
     return appointment;
@@ -311,11 +323,16 @@ class AppointmentService {
    * As notificações (e-mail ao cliente + notificações internas)
    * são "best effort": falhas são registadas e NUNCA alteram o
    * resultado do agendamento já persistido.
+   *
+   * `publicManageToken` é o token puro, disponível apenas nos
+   * fluxos que o possuem em memória. Nunca é registado: nem no
+   * `meta` de sucesso, nem no de erro.
    * ==========================================================
    */
   private async dispatchAppointmentNotification(
     appointment: AppointmentDocument,
     type: NotificationType,
+    publicManageToken?: string,
   ): Promise<void> {
     try {
       await NotificationDispatcher.dispatchAppointmentEvent({
@@ -327,6 +344,9 @@ class AppointmentService {
         employeeId: appointment.employeeId.toString(),
         startAt: appointment.startAt,
         notes: appointment.notes,
+        ...(publicManageToken
+          ? { publicAccessToken: publicManageToken }
+          : {}),
       });
     } catch (error) {
       Logger.error("Falha ao disparar notificações de agendamento", {
@@ -539,6 +559,12 @@ class AppointmentService {
       publicAccessTokenHash: this.publicTokenProvider.hash(
         publicAccessToken,
       ),
+      /**
+       * O token PURO segue apenas para a composição do link do
+       * e-mail. Não entra em nenhuma escrita: a base de dados
+       * recebe só o hash, acima.
+       */
+      publicManageToken: publicAccessToken,
     });
 
     return {
@@ -855,6 +881,26 @@ class AppointmentService {
 
   /**
    * ==========================================================
+   * Token puro para compor o link de gestão do e-mail, ou
+   * `undefined` se não for utilizável.
+   *
+   * Só é chamado DEPOIS de `resolveByPublicToken` ter devolvido um
+   * agendamento, o que implica que o token passou
+   * `hasValidFormat`. A guarda repete o FORMATO (43 caracteres
+   * base64url), não o segredo: serve para narrowing de `unknown`
+   * para `string` e para deixar o invariante explícito no ponto
+   * onde o link é montado.
+   *
+   * Se um dia a resolução passar a aceitar outro formato, o
+   * e-mail é enviado SEM link em vez de receber um link inválido.
+   * ==========================================================
+   */
+  private publicManageToken(token: unknown): string | undefined {
+    return this.publicTokenProvider.hasValidFormat(token) ? token : undefined;
+  }
+
+  /**
+   * ==========================================================
    * Erro único para qualquer falha de token.
    * ==========================================================
    */
@@ -1110,6 +1156,13 @@ class AppointmentService {
     await this.dispatchAppointmentNotification(
       updated,
       NotificationType.APPOINTMENT_UPDATED,
+      /**
+       * O cliente acabou de apresentar o token puro na URL (e
+       * `resolveByPublicToken` já o validou). É a única forma
+       * segura de voltar a ter o valor: a base de dados só
+       * guarda o hash.
+       */
+      this.publicManageToken(token),
     );
 
     return this.toPublicResult(updated);
@@ -1162,7 +1215,15 @@ class AppointmentService {
      * essa regra e evita depender de uma job ter corrido.
      */
 
-    await this.cancel(appointment._id.toString(), appointment.companyId.toString());
+    await this.cancel(
+      appointment._id.toString(),
+      appointment.companyId.toString(),
+      /**
+       * Token puro apresentado na URL, para o e-mail de
+       * cancelamento poder repetir o link de gestão.
+       */
+      this.publicManageToken(token),
+    );
 
     const cancelled =
       (await this.appointmentRepository.findById(appointment._id)) ??
@@ -1177,6 +1238,10 @@ class AppointmentService {
    *
    * Valida se o agendamento pertence à empresa e se
    * a transição de status é permitida.
+   *
+   * `publicManageToken` atravessa a transição para que o
+   * e-mail de cancelamento do fluxo público inclua o link de
+   * gestão. É omitido em todas as transições administrativas.
    * ==========================================================
    */
   private async changeStatus(
@@ -1184,6 +1249,7 @@ class AppointmentService {
     companyId: string,
     allowedCurrentStatuses: AppointmentStatus[],
     newStatus: AppointmentStatus,
+    publicManageToken?: string,
   ) {
     const appointment = await this.appointmentRepository.findById(id);
 
@@ -1217,6 +1283,7 @@ class AppointmentService {
       await this.dispatchAppointmentNotification(
         updatedAppointment,
         NotificationType.APPOINTMENT_CANCELLED,
+        publicManageToken,
       );
     }
 
@@ -1254,14 +1321,25 @@ class AppointmentService {
   /**
    * ==========================================================
    * Cancela um agendamento.
+   *
+   * `publicManageToken` é opcional e só é enviado pelo cancelamento
+   * público (ver `cancelPublicByToken`). Na rota administrativa é
+   * omitido: o cancelamento feito por um utilizador autenticado
+   * gera um e-mail sem link público, porque esse agendamento não
+   * tem token público.
    * ==========================================================
    */
-  public async cancel(id: string, companyId: string) {
+  public async cancel(
+    id: string,
+    companyId: string,
+    publicManageToken?: string,
+  ) {
     return this.changeStatus(
       id,
       companyId,
       [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
       AppointmentStatus.CANCELLED,
+      publicManageToken,
     );
   }
 
