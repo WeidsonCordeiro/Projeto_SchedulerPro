@@ -37,6 +37,7 @@ const availability = {
 
 const createdAppointment: PublicAppointment = {
   id: "apt1",
+  companyId: COMPANY_ID,
   startAt: "2026-10-08T08:00:00.000Z",
   endAt: "2026-10-08T08:45:00.000Z",
   timezone: "Europe/Lisbon",

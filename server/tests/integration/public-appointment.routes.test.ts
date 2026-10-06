@@ -234,6 +234,7 @@ describe("Agendamento público — rota sem autenticação", () => {
 
     expect(response.body.data.appointment).toEqual({
       id: ids.appointment,
+      companyId: ids.companyA,
       startAt: "2027-08-29T08:00:00.000Z",
       endAt: "2027-08-29T08:30:00.000Z",
       timezone: "Europe/Lisbon",
@@ -248,7 +249,7 @@ describe("Agendamento público — rota sem autenticação", () => {
     });
 
     expect(response.body.data.appointment).not.toHaveProperty("clientId");
-    expect(response.body.data.appointment).not.toHaveProperty("companyId");
+    expect(response.body.data.appointment.companyId).toBe(ids.companyA);
     expect(response.body.data.appointment).not.toHaveProperty("notes");
     expect(response.body.data).not.toHaveProperty("publicAccessTokenHash");
     expect(response.body.data).not.toHaveProperty("publicAccessTokenCiphertext");

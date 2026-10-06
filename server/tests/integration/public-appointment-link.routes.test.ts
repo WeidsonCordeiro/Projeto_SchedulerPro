@@ -343,6 +343,7 @@ describe("GET /api/public/appointments/:token", () => {
 
     expect(response.body.data).toEqual({
       id: ids.appointment,
+      companyId: ids.companyA,
       startAt: "2027-08-29T08:00:00.000Z",
       endAt: "2027-08-29T08:30:00.000Z",
       timezone: "Europe/Lisbon",
@@ -363,7 +364,7 @@ describe("GET /api/public/appointments/:token", () => {
 
     expect(response.body.data).not.toHaveProperty("publicAccessTokenHash");
     expect(response.body.data).not.toHaveProperty("clientId");
-    expect(response.body.data).not.toHaveProperty("companyId");
+    expect(response.body.data.companyId).toBe(ids.companyA);
     expect(response.body.data).not.toHaveProperty("notes");
     expect(serialized).not.toContain(TOKEN_HASH);
     expect(serialized).not.toContain(TOKEN);
@@ -726,7 +727,7 @@ describe("PATCH /api/public/appointments/:token", () => {
       .send({ startAt: "2027-08-30T10:00:00.000Z" });
 
     expect(response.body.data).not.toHaveProperty("clientId");
-    expect(response.body.data).not.toHaveProperty("companyId");
+    expect(response.body.data.companyId).toBe(ids.companyA);
     expect(JSON.stringify(response.body)).not.toContain(TOKEN_HASH);
   });
 });

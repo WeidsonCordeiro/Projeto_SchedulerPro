@@ -43,6 +43,7 @@ class PublicAppointmentMapper {
   ): PublicAppointmentResult {
     return {
       id: appointment._id.toString(),
+      companyId: appointment.companyId.toString(),
       startAt: appointment.startAt,
       endAt: appointment.endAt,
       timezone: context.timezone,

@@ -5,6 +5,7 @@ import type { PublicAppointment } from "../../types/publicAppointment";
 
 const appointment: PublicAppointment = {
   id: "apt1",
+  companyId: "company1",
   startAt: "2026-10-10T14:30:00.000Z",
   endAt: "2026-10-10T15:00:00.000Z",
   timezone: "Europe/Lisbon",

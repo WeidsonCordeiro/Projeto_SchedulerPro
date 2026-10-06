@@ -8,6 +8,7 @@ import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
 import companyReducer from "../../store/slices/companySlice";
+import { getPublicBookingUrl } from "../../config/publicBookingUrl";
 import type { Role } from "../../types/auth";
 import type { Company } from "../../types/company";
 
@@ -53,8 +54,14 @@ function renderPage(role: Role | null = "OWNER") {
 }
 
 describe("CompanyPage", () => {
+  const writeText = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
     vi.mocked(companyApi.getCompany).mockResolvedValue({
       success: true,
       message: "ok",
@@ -82,6 +89,13 @@ describe("CompanyPage", () => {
     expect(screen.getByLabelText("Nome")).toHaveValue("salao do centro");
     expect(screen.getByLabelText("Timezone")).toHaveValue("Europe/Lisbon");
     expect(screen.getByText("Ativa")).toBeInTheDocument();
+    const publicUrl = screen.getByLabelText("Link público de agendamento");
+    expect(publicUrl).toHaveValue(
+      `${window.location.origin}/agendar/empresa/${loadedCompany.id}`,
+    );
+    expect((publicUrl as HTMLInputElement).value).not.toMatch(
+      /clientId|notes|publicAccessToken|credential/i,
+    );
     expect(
       screen.getByRole("button", { name: /salvar alterações/i }),
     ).toBeInTheDocument();
@@ -89,6 +103,50 @@ describe("CompanyPage", () => {
     await waitFor(() => {
       expect(store.getState().company.company).toEqual(loadedCompany);
     });
+  });
+
+  it("builds production links from the configured frontend URL", () => {
+    const url = getPublicBookingUrl(loadedCompany.id, "https://frontend.example.com/");
+    expect(url).toBe(`https://frontend.example.com/agendar/empresa/${loadedCompany.id}`);
+    expect(url).not.toContain("localhost");
+  });
+
+  it("copies the public booking link and shows temporary feedback", async () => {
+    writeText.mockResolvedValue(undefined);
+    renderPage();
+
+    await screen.findByLabelText("Link público de agendamento");
+    fireEvent.click(screen.getByRole("button", { name: "Copiar link" }));
+
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/agendar/empresa/${loadedCompany.id}`,
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent("Link público copiado.");
+  });
+
+  it("shows a useful message when clipboard access fails", async () => {
+    writeText.mockRejectedValue(new Error("clipboard denied"));
+    renderPage();
+
+    await screen.findByLabelText("Link público de agendamento");
+    fireEvent.click(screen.getByRole("button", { name: "Copiar link" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Não foi possível copiar o link. Copie-o manualmente.",
+    );
+  });
+
+  it("opens the public booking link in a separate tab", async () => {
+    renderPage();
+
+    await screen.findByLabelText("Link público de agendamento");
+    const openLink = screen.getByRole("link", { name: "Abrir link" });
+    expect(openLink).toHaveAttribute(
+      "href",
+      `${window.location.origin}/agendar/empresa/${loadedCompany.id}`,
+    );
+    expect(openLink).toHaveAttribute("target", "_blank");
+    expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("renders the company data and the edit form for ADMIN", async () => {

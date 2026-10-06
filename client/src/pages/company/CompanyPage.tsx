@@ -8,6 +8,8 @@ import { setCompany } from "../../store/slices/companySlice";
 import type { Company } from "../../types/company";
 import PageHeader from "../../components/common/PageHeader";
 import ImageAvatar from "../../components/common/ImageAvatar";
+import { env } from "../../config/env";
+import { getPublicBookingUrl } from "../../config/publicBookingUrl";
 
 export default function CompanyPage() {
   const dispatch = useAppDispatch();
@@ -18,6 +20,28 @@ export default function CompanyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!copyMessage) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setCopyMessage(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [copyMessage]);
+
+  const publicBookingUrl = company
+    ? getPublicBookingUrl(company.id, env.appUrl)
+    : "";
+
+  async function copyPublicBookingUrl() {
+    try {
+      await navigator.clipboard.writeText(publicBookingUrl);
+      setCopyMessage("Link público copiado.");
+    } catch {
+      setCopyMessage("Não foi possível copiar o link. Copie-o manualmente.");
+    }
+  }
 
   const loadCompany = useCallback(async () => {
     setIsLoading(true);
@@ -109,6 +133,40 @@ export default function CompanyPage() {
             <h2 className="h5 mb-0">Informações da empresa</h2>
           </div>
           <div className="card-body">
+            <div className="mb-4">
+              <label className="form-label" htmlFor="public-booking-url">
+                Link público de agendamento
+              </label>
+              <div className="input-group">
+                <input
+                  id="public-booking-url"
+                  className="form-control"
+                  type="url"
+                  value={publicBookingUrl}
+                  readOnly
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-primary"
+                  onClick={() => void copyPublicBookingUrl()}
+                >
+                  Copiar link
+                </button>
+                <a
+                  className="btn btn-outline-secondary"
+                  href={publicBookingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Abrir link
+                </a>
+              </div>
+              {copyMessage && (
+                <div className="form-text" role="status">
+                  {copyMessage}
+                </div>
+              )}
+            </div>
             <dl className="row mb-4">
               <dt className="col-sm-3">Estado</dt>
               <dd className="col-sm-9">
