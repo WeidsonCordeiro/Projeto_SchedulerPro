@@ -569,6 +569,7 @@ describe("AppointmentService.createPublic — resposta pública", () => {
       id: appointmentId,
       startAt: START_AT,
       endAt: new Date(START_AT.getTime() + 30 * 60 * 1000),
+      timezone: "Europe/Lisbon",
       status: AppointmentStatus.SCHEDULED,
       clientName: "Ana Publica",
       service: { id: serviceId, name: "Corte" },

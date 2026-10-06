@@ -28,6 +28,7 @@ import {
 
 import ClientRepository from "../../Clients/repositories/ClientRepository";
 import { ClientDocument } from "../../Clients/models/Client.model";
+import CompanyRepository from "../../companies/repositories/CompanyRepository";
 import ServiceRepository from "../../services/repositories/ServiceRepository";
 import UserRepository from "../../users/repositories/UserRepository";
 
@@ -43,6 +44,7 @@ import NotificationDispatcher from "../../notifications/services/NotificationDis
 import PublicAppointmentTokenProvider from "../../../providers/security/PublicAppointmentTokenProvider";
 import { NotificationType } from "../../notifications";
 import { AppointmentDocument } from "../models/Appointment.model";
+import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
 
 /**
  * Janela opcional de consulta por período. Repassada ao repositório para
@@ -484,7 +486,7 @@ class AppointmentService {
      * existe mas não aceita agendamentos.
      * ----------------------------------------------------------
      */
-    await PublicBookingEligibility.requireActiveCompany(companyId);
+    const company = await PublicBookingEligibility.requireActiveCompany(companyId);
 
     /**
      * ----------------------------------------------------------
@@ -576,6 +578,9 @@ class AppointmentService {
     return {
       appointment: PublicAppointmentMapper.toResponse(appointment, {
         clientName,
+        timezone: isValidIanaTimezone(company.timezone ?? "")
+          ? company.timezone!
+          : DEFAULT_TIMEZONE,
         service: { id: service._id.toString(), name: service.name },
         employee: {
           id: employee._id.toString(),
@@ -931,14 +936,18 @@ class AppointmentService {
   private async toPublicResult(
     appointment: AppointmentDocument,
   ): Promise<PublicAppointmentResult> {
-    const [client, service, employee] = await Promise.all([
+    const [client, service, employee, company] = await Promise.all([
       this.clientRepository.findById(appointment.clientId),
       this.serviceRepository.findById(appointment.serviceId),
       this.userRepository.findById(appointment.employeeId),
+      CompanyRepository.findById(appointment.companyId),
     ]);
 
     return PublicAppointmentMapper.toResponse(appointment, {
       clientName: client?.name ?? "",
+      timezone: isValidIanaTimezone(company?.timezone ?? "")
+        ? company!.timezone!
+        : DEFAULT_TIMEZONE,
       service: {
         id: appointment.serviceId.toString(),
         name: service?.name ?? "",

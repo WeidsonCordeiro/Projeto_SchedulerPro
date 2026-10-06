@@ -52,7 +52,7 @@ export default function PublicAppointmentSummary({
 
       <div className="public-summary-row">
         <dt>Data</dt>
-        <dd>{formatAppointmentDate(appointment.startAt)}</dd>
+      <dd>{formatAppointmentDate(appointment.startAt, appointment.timezone)}</dd>
       </div>
 
       <div className="public-summary-row">

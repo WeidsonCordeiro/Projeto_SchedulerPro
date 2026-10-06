@@ -23,6 +23,7 @@ function makeAppointment(
     id: "apt1",
     startAt: "2099-10-10T14:30:00.000Z",
     endAt: "2099-10-10T15:00:00.000Z",
+    timezone: "Europe/Lisbon",
     status: "scheduled",
     clientName: "Maria Silva",
     service: { id: "svc1", name: "Corte de cabelo" },

@@ -39,6 +39,7 @@ const createdAppointment: PublicAppointment = {
   id: "apt1",
   startAt: "2026-10-08T08:00:00.000Z",
   endAt: "2026-10-08T08:45:00.000Z",
+  timezone: "Europe/Lisbon",
   status: "scheduled",
   clientName: "Maria Silva",
   service: { id: "svc1", name: "Corte de cabelo" },

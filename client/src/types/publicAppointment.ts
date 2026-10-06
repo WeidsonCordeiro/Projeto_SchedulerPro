@@ -38,6 +38,7 @@ export interface PublicAppointment {
   id: string;
   startAt: string;
   endAt: string;
+  timezone: string;
   status: AppointmentStatus;
   clientName: string;
   service: PublicAppointmentService;

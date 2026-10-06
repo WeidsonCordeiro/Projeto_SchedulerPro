@@ -93,9 +93,7 @@ export const env = {
      * Cloudinary
      */
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
-
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
-
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
   },
   redis: {
@@ -103,9 +101,7 @@ export const env = {
      * Redis
      */
     REDIS_HOST: process.env.REDIS_HOST || "localhost",
-
     REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
-
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
   },
   email: {

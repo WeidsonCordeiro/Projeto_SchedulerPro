@@ -223,14 +223,4 @@ appointmentSchema.index(
   },
 );
 
-/**
-
-* Utilizado para consultas de agendamentos de clientes.
-  */
-appointmentSchema.index({
-  companyId: 1,
-  clientId: 1,
-  startAt: 1,
-});
-
 export default model<AppointmentDocument>("Appointment", appointmentSchema);

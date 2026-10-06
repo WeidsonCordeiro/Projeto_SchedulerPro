@@ -80,6 +80,8 @@ export interface PublicAppointmentResult {
   id: string;
   startAt: Date;
   endAt: Date;
+  /** IANA timezone da empresa, usado para apresentar o horário no link público. */
+  timezone: string;
   status: AppointmentStatus;
   clientName: string;
   service: {
