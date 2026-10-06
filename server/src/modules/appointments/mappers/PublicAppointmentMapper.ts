@@ -36,6 +36,7 @@ class PublicAppointmentMapper {
     appointment: AppointmentDocument,
     context: {
       clientName: string;
+      timezone: string;
       service: { id: string; name: string };
       employee: { id: string; name: string; avatarUrl?: string | null };
     },
@@ -44,6 +45,7 @@ class PublicAppointmentMapper {
       id: appointment._id.toString(),
       startAt: appointment.startAt,
       endAt: appointment.endAt,
+      timezone: context.timezone,
       status: appointment.status,
       clientName: context.clientName,
       service: context.service,

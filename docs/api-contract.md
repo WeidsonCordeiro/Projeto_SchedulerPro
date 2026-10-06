@@ -462,6 +462,7 @@ Example:
           "id": "ObjectId",
           "startAt": "2026-08-30T09:00:00.000Z",
           "endAt": "2026-08-30T09:30:00.000Z",
+          "timezone": "Europe/Lisbon",
           "status": "scheduled",
           "clientName": "Ana Silva",
           "service": { "id": "ObjectId", "name": "Corte" },
@@ -490,7 +491,8 @@ GET /api/public/appointments/:token
 - Any status is readable, including cancelled, completed, no-show and
   past appointments.
 - Success: 200 with the same narrowed public representation used at
-  creation.
+  creation, including the company's IANA `timezone` so the public manage
+  page can display the appointment in the same zone as the booking flow.
 - Errors: 404 invalid or unknown token; 429 rate limit.
 
 PATCH /api/public/appointments/:token

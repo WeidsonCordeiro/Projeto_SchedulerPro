@@ -21,6 +21,7 @@ import { ResponseHandler } from "../utils/response";
 import { logger } from "../config/logger";
 import { HttpStatus } from "../constants/http-status";
 import { HttpMessages } from "../constants/http-messages";
+import { redactPublicAppointmentToken } from "../utils/redact-public-appointment-token";
 
 /**
  * ==========================================================
@@ -49,11 +50,13 @@ export function errorMiddleware(
    * Log completo da requisição.
    */
   logger.error({
-    message: error.message,
+    message: redactPublicAppointmentToken(error.message),
     method: req.method,
-    url: req.originalUrl,
+    url: redactPublicAppointmentToken(req.originalUrl),
     ip: req.ip,
-    stack: error.stack,
+    stack: error.stack
+      ? redactPublicAppointmentToken(error.stack)
+      : undefined,
   });
 
   /**

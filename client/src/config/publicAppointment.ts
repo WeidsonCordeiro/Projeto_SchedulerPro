@@ -155,8 +155,8 @@ export function isPublicAppointmentEditable(
 export function getPublicAppointmentPeriod(
   appointment: PublicAppointment,
 ): string {
-  const start = formatAppointmentTime(appointment.startAt);
-  const end = formatAppointmentTime(appointment.endAt);
+  const start = formatAppointmentTime(appointment.startAt, appointment.timezone);
+  const end = formatAppointmentTime(appointment.endAt, appointment.timezone);
   if (!start || !end) {
     return start || end;
   }

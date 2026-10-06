@@ -236,6 +236,7 @@ describe("Agendamento público — rota sem autenticação", () => {
       id: ids.appointment,
       startAt: "2027-08-29T08:00:00.000Z",
       endAt: "2027-08-29T08:30:00.000Z",
+      timezone: "Europe/Lisbon",
       status: AppointmentStatus.SCHEDULED,
       clientName: "Ana Publica",
       service: { id: ids.service, name: "Corte" },

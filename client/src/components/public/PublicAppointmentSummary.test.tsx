@@ -10,6 +10,7 @@ function makeAppointment(
     id: "apt1",
     startAt: "2026-10-10T14:30:00.000Z",
     endAt: "2026-10-10T15:00:00.000Z",
+    timezone: "Europe/Lisbon",
     status: "scheduled",
     clientName: "Maria Silva",
     service: { id: "svc1", name: "Corte de cabelo" },
@@ -26,6 +27,21 @@ describe("PublicAppointmentSummary", () => {
     expect(screen.getByText("João Silva")).toBeInTheDocument();
     expect(screen.getByText("10/10/2026")).toBeInTheDocument();
     expect(screen.getByText("15:30 – 16:00")).toBeInTheDocument();
+  });
+
+  it("formats the appointment in the company timezone", () => {
+    render(
+      <PublicAppointmentSummary
+        appointment={makeAppointment({
+          startAt: "2026-10-10T14:30:00.000Z",
+          endAt: "2026-10-10T15:00:00.000Z",
+          timezone: "America/Sao_Paulo",
+        })}
+      />,
+    );
+
+    expect(screen.getByText("10/10/2026")).toBeInTheDocument();
+    expect(screen.getByText("11:30 – 12:00")).toBeInTheDocument();
   });
 
   it("pairs each label with its value in a definition list", () => {

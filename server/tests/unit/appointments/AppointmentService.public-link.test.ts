@@ -271,6 +271,7 @@ describe("AppointmentService.findPublicByToken — resposta", () => {
       id: appointmentId,
       startAt: START_AT,
       endAt: END_AT,
+      timezone: "Europe/Lisbon",
       status: AppointmentStatus.SCHEDULED,
       clientName: "Ana Publica",
       service: { id: serviceId, name: "Corte" },
