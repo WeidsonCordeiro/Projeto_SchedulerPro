@@ -269,6 +269,7 @@ describe("AppointmentService.findPublicByToken — resposta", () => {
 
     expect(result).toEqual({
       id: appointmentId,
+      companyId,
       startAt: START_AT,
       endAt: END_AT,
       timezone: "Europe/Lisbon",
@@ -288,7 +289,7 @@ describe("AppointmentService.findPublicByToken — resposta", () => {
 
     expect(result).not.toHaveProperty("publicAccessTokenHash");
     expect(result).not.toHaveProperty("clientId");
-    expect(result).not.toHaveProperty("companyId");
+    expect(result.companyId).toBe(companyId);
     expect(result).not.toHaveProperty("notes");
     expect(result).not.toHaveProperty("createdAt");
   });

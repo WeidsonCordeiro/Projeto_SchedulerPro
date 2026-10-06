@@ -67,8 +67,8 @@ export interface UpdateAppointmentData {
 * ==========================================================
 * Contrato de resposta do agendamento público.
 *
-* Mais estreito que `AppointmentMapper.toResponse`: não expõe
-* `companyId`, `clientId`, `notes` nem timestamps de auditoria.
+* Mais estreito que `AppointmentMapper.toResponse`: expõe apenas o `companyId`
+* público necessário ao catálogo; não expõe `clientId`, `notes` ou timestamps.
 *
 * O `id` é o `_id` interno e serve apenas para identificar o
 * agendamento dentro da resposta. NÃO é credencial de acesso
@@ -78,6 +78,8 @@ export interface UpdateAppointmentData {
   */
 export interface PublicAppointmentResult {
   id: string;
+  /** Identificador público da empresa, usado para voltar ao catálogo público. */
+  companyId: string;
   startAt: Date;
   endAt: Date;
   /** IANA timezone da empresa, usado para apresentar o horário no link público. */

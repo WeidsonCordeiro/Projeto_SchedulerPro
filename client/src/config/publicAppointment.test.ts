@@ -30,6 +30,7 @@ function makeAppointment(
     service: { id: "svc1", name: "Corte de cabelo" },
     employee: { id: "emp1", name: "João Silva", avatarUrl: null },
     ...overrides,
+    companyId: overrides.companyId ?? "company1",
   };
 }
 

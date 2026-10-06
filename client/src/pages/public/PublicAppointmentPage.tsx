@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import publicAppointmentsApi from "../../api/endpoints/publicAppointments.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import type { ApiFailure } from "../../api/errors";
@@ -276,7 +276,14 @@ export default function PublicAppointmentPage() {
                 <PublicAppointmentSummary appointment={appointment} />
 
                 <div className="public-appointment-actions">
-                  {isEditable ? (
+                  {appointment.status === "cancelled" ? (
+                    <Link
+                      className="btn btn-primary"
+                      to={`/agendar/empresa/${encodeURIComponent(appointment.companyId)}`}
+                    >
+                      Fazer novo agendamento
+                    </Link>
+                  ) : isEditable ? (
                     <>
                       <button
                         type="button"

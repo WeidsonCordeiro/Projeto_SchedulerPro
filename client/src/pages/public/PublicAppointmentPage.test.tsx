@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import PublicAppointmentPage from "./PublicAppointmentPage";
 import publicAppointmentsApi from "../../api/endpoints/publicAppointments.api";
@@ -15,12 +15,19 @@ vi.mock("../../api/endpoints/publicAppointments.api", () => ({
 }));
 
 const TOKEN = "tok-abc-123";
+const COMPANY_ID = "507f1f77bcf86cd799439012";
+
+function PublicBookingRouteMarker() {
+  const { companyId, token } = useParams();
+  return <div>Fluxo público da empresa {companyId}; token {token ?? "ausente"}</div>;
+}
 
 function makeAppointment(
   overrides: Partial<PublicAppointment> = {},
 ): PublicAppointment {
   return {
     id: "apt1",
+    companyId: COMPANY_ID,
     startAt: "2099-10-10T14:30:00.000Z",
     endAt: "2099-10-10T15:00:00.000Z",
     timezone: "Europe/Lisbon",
@@ -46,6 +53,7 @@ function renderAt(path: string) {
       <Routes>
         <Route path="/agendar" element={<PublicAppointmentPage />} />
         <Route path="/agendar/:token" element={<PublicAppointmentPage />} />
+        <Route path="/agendar/empresa/:companyId" element={<PublicBookingRouteMarker />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -117,6 +125,9 @@ describe("PublicAppointmentPage", () => {
         "src",
         "https://cdn.example/joao.jpg",
       );
+      expect(
+        screen.queryByRole("link", { name: "Fazer novo agendamento" }),
+      ).toBeNull();
     });
 
     it("trata 404 sem distinguir a causa e sem oferecer repetição", async () => {
@@ -348,6 +359,23 @@ describe("PublicAppointmentPage", () => {
       expect(
         screen.queryByRole("button", { name: /cancelar agendamento/i }),
       ).toBeNull();
+      expect(
+        screen.queryByRole("link", { name: "Fazer novo agendamento" }),
+      ).toBeNull();
+      expect(publicAppointmentsApi.getByToken).toHaveBeenCalledTimes(1);
+    });
+
+    it("abre o fluxo público da mesma empresa sem login nem token antigo", async () => {
+      await renderLoaded(makeAppointment({ status: "cancelled" }));
+
+      fireEvent.click(screen.getByRole("link", { name: "Fazer novo agendamento" }));
+
+      expect(
+        await screen.findByText(`Fluxo público da empresa ${COMPANY_ID}; token ausente`),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: /entrar/i })).toBeNull();
+      expect(publicAppointmentsApi.updateByToken).not.toHaveBeenCalled();
+      expect(publicAppointmentsApi.cancelByToken).not.toHaveBeenCalled();
     });
 
     it("trata 404 no PATCH", async () => {
@@ -485,17 +513,24 @@ describe("PublicAppointmentPage", () => {
       fireEvent.click(screen.getByRole("button", { name: /sim, cancelar/i }));
 
       expect(publicAppointmentsApi.cancelByToken).toHaveBeenCalledWith(TOKEN);
+      expect(publicAppointmentsApi.updateByToken).not.toHaveBeenCalled();
       expect(await screen.findByRole("status")).toHaveTextContent(
         "Agendamento cancelado.",
       );
       expect(screen.getByText("Cancelado")).toBeInTheDocument();
-      expect(screen.getByText("Este agendamento está cancelado.")).toBeInTheDocument();
+      expect(screen.queryByText("Este agendamento está cancelado.")).toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Fazer novo agendamento" }),
+      ).toHaveAttribute("href", `/agendar/empresa/${COMPANY_ID}`);
       expect(
         screen.queryByRole("button", { name: /alterar agendamento/i }),
       ).toBeNull();
       expect(
         screen.queryByRole("button", { name: /cancelar agendamento/i }),
       ).toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Fazer novo agendamento" }),
+      ).toHaveAttribute("href", `/agendar/empresa/${COMPANY_ID}`);
     });
 
     it("aceita a resposta idempotente de um agendamento já cancelado", async () => {
@@ -505,7 +540,10 @@ describe("PublicAppointmentPage", () => {
       ).toBeNull();
 
       expect(publicAppointmentsApi.cancelByToken).not.toHaveBeenCalled();
-      expect(screen.getByText("Este agendamento está cancelado.")).toBeInTheDocument();
+      expect(screen.queryByText("Este agendamento está cancelado.")).toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Fazer novo agendamento" }),
+      ).toHaveAttribute("href", `/agendar/empresa/${COMPANY_ID}`);
     });
 
     it.each([
@@ -573,6 +611,17 @@ describe("PublicAppointmentPage", () => {
   });
 
   describe("agendamentos que já não são editáveis", () => {
+    it.each(["scheduled", "confirmed"] as const)(
+      "não oferece novo agendamento para %s",
+      async (status) => {
+        await renderLoaded(makeAppointment({ status }));
+
+        expect(
+          screen.queryByRole("link", { name: "Fazer novo agendamento" }),
+        ).toBeNull();
+      },
+    );
+
     it.each(["completed", "no-show"] as const)(
       "mostra %s apenas para leitura",
       async (status) => {
@@ -583,6 +632,9 @@ describe("PublicAppointmentPage", () => {
         ).toBeNull();
         expect(
           screen.queryByRole("button", { name: /cancelar agendamento/i }),
+        ).toBeNull();
+        expect(
+          screen.queryByRole("link", { name: "Fazer novo agendamento" }),
         ).toBeNull();
         expect(
           screen.getByText(/já terminou e não pode ser alterado/i),

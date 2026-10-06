@@ -36,6 +36,8 @@ export interface PublicAppointmentEmployee {
 /** Resposta de GET/PATCH/DELETE /api/public/appointments/:token. */
 export interface PublicAppointment {
   id: string;
+  /** Identificador público da empresa para abrir um novo agendamento. */
+  companyId: string;
   startAt: string;
   endAt: string;
   timezone: string;
