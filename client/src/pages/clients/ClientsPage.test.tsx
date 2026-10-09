@@ -17,6 +17,7 @@ vi.mock("../../api/endpoints/clients.api", () => ({
     updateClient: vi.fn(),
     deleteClient: vi.fn(),
     setClientCredentials: vi.fn(),
+    sendClientInvite: vi.fn(),
   },
 }));
 
@@ -459,5 +460,154 @@ describe("ClientsPage", () => {
     ];
     expect(storageKeys).toEqual([]);
     expect(store.getState()).not.toHaveProperty("clients");
+  });
+
+  it("OWNER can invite a client without portal access", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+
+    renderPage(makeStore("OWNER"));
+
+    await screen.findByRole("table");
+    expect(screen.getByRole("button", { name: /convidar/i })).toBeInTheDocument();
+  });
+
+  it("ADMIN can invite the same client", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+
+    renderPage(makeStore("ADMIN"));
+
+    await screen.findByRole("table");
+    expect(screen.getByRole("button", { name: /convidar/i })).toBeInTheDocument();
+  });
+
+  it("MANAGER can edit but cannot invite", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+
+    renderPage(makeStore("MANAGER"));
+
+    await screen.findByRole("table");
+    expect(
+      screen.queryByRole("button", { name: /convidar/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+  });
+
+  it("EMPLOYEE cannot invite", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+
+    renderPage(makeStore("EMPLOYEE"));
+
+    await screen.findByRole("table");
+    expect(
+      screen.queryByRole("button", { name: /convidar/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the invite for a client that already has portal access", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient({ portalAccess: { exists: true, isActive: true } })],
+    });
+
+    renderPage(makeStore("OWNER"));
+
+    await screen.findByRole("table");
+    expect(
+      screen.queryByRole("button", { name: /convidar/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the invite for a client without email", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient({ email: null })],
+    });
+
+    renderPage(makeStore("OWNER"));
+
+    await screen.findByRole("table");
+    expect(
+      screen.queryByRole("button", { name: /convidar/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("sends the invite through the confirmation modal", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+    vi.mocked(clientsApi.sendClientInvite).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { expiresAt: "2026-10-14T00:00:00.000Z" },
+    });
+
+    renderPage(makeStore("OWNER"));
+    await screen.findByRole("table");
+
+    fireEvent.click(screen.getByRole("button", { name: /convidar/i }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("ana@example.com")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: /enviar convite/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Convite enviado para ana@example.com.",
+    );
+    expect(clientsApi.sendClientInvite).toHaveBeenCalledWith("abc123");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps the modal open with the conflict message when the client already has an account", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+    vi.mocked(clientsApi.sendClientInvite).mockRejectedValue(
+      httpError(409, {
+        success: false,
+        message: "Este cliente já possui uma conta de acesso.",
+      }),
+    );
+
+    renderPage(makeStore("OWNER"));
+    await screen.findByRole("table");
+
+    fireEvent.click(screen.getByRole("button", { name: /convidar/i }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /enviar convite/i,
+      }),
+    );
+
+    expect(
+      await within(screen.getByRole("dialog")).findByText(
+        "Este cliente já possui uma conta de acesso.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/convite enviado para/i),
+    ).not.toBeInTheDocument();
   });
 });

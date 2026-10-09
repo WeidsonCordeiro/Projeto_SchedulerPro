@@ -111,6 +111,17 @@ export const HttpMessages = {
   CLIENT_PHOTO_REMOVED: "Foto do cliente removida com sucesso.",
   MY_APPOINTMENTS_FOUND: "Meus agendamentos encontrados.",
 
+  /*Convite de conta CLIENT (Stage 32)*/
+  CLIENT_INVITE_SENT: "Convite enviado para o e-mail do cliente.",
+  CLIENT_INVITE_FOUND: "Convite válido.",
+  CLIENT_INVITE_INVALID: "Este convite não é mais válido.",
+  CLIENT_INVITE_EXPIRED:
+    "Este convite expirou. Solicite um novo convite ao responsável.",
+  CLIENT_ALREADY_HAS_ACCOUNT: "Este cliente já possui uma conta de acesso.",
+  CLIENT_EMAIL_INVALID: "O e-mail do cliente não é válido.",
+  CLIENT_ACCOUNT_CREATED:
+    "Conta criada com sucesso. Já pode iniciar sessão.",
+
   /*Agendamentos*/
   APPOINTMENT_CREATED: "Agendamento criado com sucesso.",
   APPOINTMENT_UPDATED: "Agendamento atualizado com sucesso.",

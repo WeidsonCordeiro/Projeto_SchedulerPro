@@ -7,6 +7,8 @@ import AppRoutes from "./AppRoutes";
 import authReducer from "../store/slices/authSlice";
 import type { AuthState } from "../store/slices/authSlice";
 import { user } from "../test/fixtures";
+import clientInvitesApi from "../api/endpoints/clientInvites.api";
+import { httpError } from "../test/http";
 
 vi.mock("../api/endpoints/clients.api", () => ({
   default: {
@@ -120,6 +122,22 @@ vi.mock("../api/endpoints/publicBooking.api", () => ({
       slots: [],
     }),
     createAppointment: vi.fn(),
+  },
+}));
+
+vi.mock("../api/endpoints/clientInvites.api", () => ({
+  default: {
+    inspect: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: {
+        clientName: "Maria Silva",
+        companyName: "Studio Aurora",
+        email: "maria@email.com",
+        expiresAt: "2026-10-14T00:00:00.000Z",
+      },
+    }),
+    accept: vi.fn(),
   },
 }));
 
@@ -554,6 +572,75 @@ describe("AppRoutes", () => {
       expect(
         screen.queryByRole("heading", { name: /marcar atendimento/i }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("rota pública /convite/cliente/:token", () => {
+    it.each([
+      ["sem sessão", { isInitializing: false }],
+      [
+        "com sessão administrativa aberta",
+        { user, isAuthenticated: true, isInitializing: false },
+      ],
+    ])("abre %s sem redirecionar para o login", async (_case, auth) => {
+      renderAt("/convite/cliente/qualquer-token", auth);
+
+      expect(
+        await screen.findByRole(
+          "heading",
+          { name: /criar conta de cliente/i },
+          { timeout: 15000 },
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /entrar/i }),
+      ).not.toBeInTheDocument();
+    }, 15000);
+
+    it("não usa o layout autenticado", async () => {
+      renderAt("/convite/cliente/qualquer-token", { isInitializing: false });
+
+      await screen.findByRole("heading", { name: /criar conta de cliente/i });
+      expect(document.querySelector(".app-sidebar")).toBeNull();
+      expect(document.querySelector(".app-navbar")).toBeNull();
+    });
+
+    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+      renderAt("/convite/cliente/qualquer-token", {});
+
+      expect(
+        screen.getByRole("heading", { name: /criar conta de cliente/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
+    });
+
+    it("mostra o convite consultado pelo token da rota", async () => {
+      renderAt("/convite/cliente/qualquer-token", { isInitializing: false });
+
+      expect(await screen.findByText("Studio Aurora")).toBeInTheDocument();
+      expect(screen.getByText("maria@email.com")).toBeInTheDocument();
+      expect(clientInvitesApi.inspect).toHaveBeenCalledWith({
+        token: "qualquer-token",
+      });
+    });
+
+    it("mostra o estado inválido quando o convite expirou", async () => {
+      vi.mocked(clientInvitesApi.inspect).mockRejectedValueOnce(
+        httpError(404, {
+          success: false,
+          message:
+            "Este convite expirou. Solicite um novo convite ao responsável.",
+        }),
+      );
+
+      renderAt("/convite/cliente/token-expirado", { isInitializing: false });
+
+      expect(
+        await screen.findByText(
+          "Este convite expirou. Solicite um novo convite ao responsável.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
     });
   });
 

@@ -94,6 +94,24 @@ describe("clientsApi", () => {
     });
   });
 
+  it("posts /clients/:id/invite without a payload (token never travels)", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: {
+        success: true,
+        message: "convite enviado",
+        data: { expiresAt: "2026-10-14T00:00:00.000Z" },
+      },
+    });
+
+    const response = await clientsApi.sendClientInvite("abc123");
+
+    expect(apiClient.post).toHaveBeenCalledWith("/clients/abc123/invite");
+    expect(response.data).toEqual({
+      expiresAt: "2026-10-14T00:00:00.000Z",
+    });
+    expect(response.data).not.toHaveProperty("token");
+  });
+
   it("patches /clients/:id with the update payload", async () => {
     vi.mocked(apiClient.patch).mockResolvedValue({
       data: { success: true, message: "atualizado", data: null },

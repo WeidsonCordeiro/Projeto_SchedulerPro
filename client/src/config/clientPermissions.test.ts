@@ -8,6 +8,7 @@ describe("getClientAbilities", () => {
       canCreate: false,
       canUpdate: false,
       canDelete: false,
+      canInvite: false,
     });
   });
 
@@ -17,24 +18,27 @@ describe("getClientAbilities", () => {
       canCreate: true,
       canUpdate: true,
       canDelete: true,
+      canInvite: true,
     });
   });
 
-  it("gives ADMIN create/update/read but not delete", () => {
+  it("gives ADMIN create/update/read but not delete, and allows invite", () => {
     expect(getClientAbilities("ADMIN")).toEqual({
       canList: true,
       canCreate: true,
       canUpdate: true,
       canDelete: false,
+      canInvite: true,
     });
   });
 
-  it("gives MANAGER create/update/read but not delete", () => {
+  it("gives MANAGER create/update/read but neither delete nor invite", () => {
     expect(getClientAbilities("MANAGER")).toEqual({
       canList: true,
       canCreate: true,
       canUpdate: true,
       canDelete: false,
+      canInvite: false,
     });
   });
 
@@ -44,6 +48,7 @@ describe("getClientAbilities", () => {
       canCreate: false,
       canUpdate: false,
       canDelete: false,
+      canInvite: false,
     });
   });
 
@@ -53,6 +58,7 @@ describe("getClientAbilities", () => {
       canCreate: false,
       canUpdate: false,
       canDelete: false,
+      canInvite: false,
     });
   });
 });

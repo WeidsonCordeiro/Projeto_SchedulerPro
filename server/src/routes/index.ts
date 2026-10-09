@@ -28,6 +28,7 @@ import availabilityRoutes from "../modules/availability/routes/AvailabilityRoute
 import availabilityExceptionRoutes from "../modules/availability/routes/AvailabilityExceptionRoutes";
 import reportRoutes from "../modules/reports/routes/ReportRoutes";
 import notificationRoutes from "../modules/notifications/routes/NotificationRoutes";
+import publicClientInviteRoutes from "../modules/client-invites/routes/PublicClientInviteRoutes";
 
 const router = Router();
 
@@ -55,6 +56,12 @@ router.use("/appointments", appointmentRoutes);
  */
 router.use("/public", publicAppointmentRoutes);
 router.use("/public", publicBookingRoutes);
+/**
+ * Convites de conta CLIENT (Stage 32): superfície pública
+ * sem autenticação — o token do convite (corpo do pedido) é a
+ * credencial, com expiração e uso único.
+ */
+router.use("/public", publicClientInviteRoutes);
 router.use("/availability", availabilityRoutes);
 router.use("/availability-exceptions", availabilityExceptionRoutes);
 router.use("/reports", reportRoutes);

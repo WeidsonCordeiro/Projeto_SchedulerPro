@@ -19,6 +19,7 @@ import PortalAppointmentsPage from "../pages/portal/PortalAppointmentsPage";
 import PortalProfilePage from "../pages/portal/PortalProfilePage";
 import PublicAppointmentPage from "../pages/public/PublicAppointmentPage";
 import PublicBookingPage from "../pages/public/PublicBookingPage";
+import ClientInvitePage from "../pages/public/ClientInvitePage";
 import ProtectedRoute from "./ProtectedRoute";
 import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
@@ -54,6 +55,19 @@ export default function AppRoutes() {
 
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+      {/**
+        Convite de conta CLIENT: `/convite/cliente/:token`.
+
+        Declarada FORA de GuestRoute/ProtectedRoute/AppLayout — quem
+        abre o link não tem conta (é ela que o convite vai criar) e uma
+        sessão administrativa aberta não pode redirecionar o convite
+        para o login. Colocada antes do `*` para nunca cair no catch-all.
+      */}
+      <Route
+        path="/convite/cliente/:token"
+        element={<ClientInvitePage />}
+      />
 
       <Route element={<ChangePasswordRoute />}>
         <Route path="/change-password" element={<ChangePasswordPage />} />
