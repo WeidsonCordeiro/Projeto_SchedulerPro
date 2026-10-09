@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { clientRepository, userRepository, passwordProvider, clientMapper } =
-  vi.hoisted(() => ({
+const { clientRepository, userRepository, clientMapper } = vi.hoisted(() => ({
     clientRepository: {
       create: vi.fn(),
       findByCompanyId: vi.fn(),
@@ -17,10 +16,8 @@ const { clientRepository, userRepository, passwordProvider, clientMapper } =
       findByClientIdIncludingDeleted: vi.fn(),
       findByClientIdsAndCompanyIncludingDeleted: vi.fn(),
       update: vi.fn(),
-      updateIncludingDeleted: vi.fn(),
       create: vi.fn(),
     },
-    passwordProvider: { hash: vi.fn() },
     clientMapper: {
       toResponse: vi.fn(
         (client: unknown, access?: unknown) => ({
@@ -36,9 +33,6 @@ vi.mock("../../../src/modules/Clients/repositories/ClientRepository", () => ({
 }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
-}));
-vi.mock("../../../src/providers/security/PasswordProvider", () => ({
-  default: passwordProvider,
 }));
 vi.mock("../../../src/modules/Clients/mappers/ClientMapper", () => ({
   default: clientMapper,
@@ -89,7 +83,6 @@ const updatedClient = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  passwordProvider.hash.mockResolvedValue("hashed-password");
   userRepository.findByClientIdIncludingDeleted.mockResolvedValue(null);
   userRepository.findByEmailIncludingDeleted.mockResolvedValue(null);
   userRepository.findByClientIdsAndCompanyIncludingDeleted.mockResolvedValue(
@@ -437,26 +430,6 @@ describe("ClientService.findById — portalAccess", () => {
     expect(result).toEqual(
       expect.objectContaining({
         portalAccess: { exists: false, isActive: false },
-      }),
-    );
-  });
-});
-
-// ---------------------------------------------------------------------------
-// setCredentials — response com portalAccess
-// ---------------------------------------------------------------------------
-describe("ClientService.setCredentials — portalAccess na resposta", () => {
-  it("retorna portalAccess { exists: true, isActive: true } após criar conta", async () => {
-    clientRepository.findByIdAndCompany.mockResolvedValue(updatedClient);
-
-    const result = await ClientService.setCredentials(clientId, companyId, {
-      password: "12345678",
-      confirmPassword: "12345678",
-    });
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        portalAccess: { exists: true, isActive: true },
       }),
     );
   });

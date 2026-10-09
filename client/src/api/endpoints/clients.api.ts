@@ -4,7 +4,6 @@ import type { ClientInviteEmission } from "../../types/clientInvite";
 import type {
   Client,
   CreateClientPayload,
-  SetClientCredentialsPayload,
   UpdateClientPayload,
 } from "../../types/client";
 
@@ -25,18 +24,6 @@ export const clientsApi = {
    */
   async getClientMe() {
     const { data } = await apiClient.get<ApiResponse<Client>>("/clients/me");
-    return data;
-  },
-
-  /**
-   * Define (ou atualiza) as credenciais de acesso do cliente ao portal.
-   * Cria um utilizador com role CLIENT vinculado ao cliente.
-   */
-  async setClientCredentials(id: string, payload: SetClientCredentialsPayload) {
-    const { data } = await apiClient.post<ApiResponse<Client>>(
-      `/clients/${id}/credentials`,
-      payload,
-    );
     return data;
   },
 

@@ -14,7 +14,6 @@ vi.mock("../../api/endpoints/clients.api", () => ({
     createClient: vi.fn(),
     updateClient: vi.fn(),
     deleteClient: vi.fn(),
-    setClientCredentials: vi.fn(),
     uploadClientPhoto: vi.fn(),
     removeClientPhoto: vi.fn(),
   },

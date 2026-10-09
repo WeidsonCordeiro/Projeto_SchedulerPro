@@ -54,7 +54,7 @@ class UserService {
      * Contas CLIENT representam acesso ao portal e só existem vinculadas
      * a um cliente. A criação via /users não possui clientId e geraria
      * uma conta órfã (FAIL OPEN). O vínculo correto é criado pelo fluxo
-     * de credenciais do cliente (setCredentials).
+     * de convite do cliente (POST /clients/:id/invite + aceite público).
      */
     if (dto.role === Role.CLIENT) {
       throw new AppError(
@@ -211,7 +211,8 @@ class UserService {
     if (dto.role !== undefined) {
       /**
        * Alterar o role de um usuário para CLIENT também criaria uma conta
-       * órfã sem clientId; o acesso ao portal deve passar por setCredentials.
+       * órfã sem clientId; o acesso ao portal deve passar pelo fluxo de
+       * convite (POST /clients/:id/invite + aceite público).
        */
       if (dto.role === Role.CLIENT) {
         throw new AppError(

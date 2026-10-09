@@ -104,16 +104,6 @@ describe("soft delete nos repositories", () => {
     expect(mocks.user.findOne).toHaveBeenCalledWith({ email: "test@example.com" });
   });
 
-  it("UserRepository.updateIncludingDeleted não filtra por deletedAt e restaura deletedAt", async () => {
-    mocks.user.findOneAndUpdate.mockResolvedValue(null);
-    await UserRepository.updateIncludingDeleted(id, { emailVerified: true, deletedAt: null });
-    expect(mocks.user.findOneAndUpdate).toHaveBeenCalledWith(
-      { _id: id },
-      { emailVerified: true, deletedAt: null },
-      { new: true, runValidators: true },
-    );
-  });
-
   it("AppointmentRepository.updateStatus filtra agendamentos deletados", async () => {
     await AppointmentRepository.updateStatus(id, AppointmentStatus.CONFIRMED);
     expect(mocks.appointment.findOneAndUpdate).toHaveBeenCalledWith(

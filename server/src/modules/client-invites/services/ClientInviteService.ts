@@ -149,8 +149,8 @@ class ClientInviteService {
     }
 
     /**
-     * Cenário B: o cliente já ganhou conta entretanto (ex.:
-     * "Dar acesso" usado em paralelo). Nada a aceitar.
+     * Cenário B: o cliente já ganhou conta entretanto (ex.: outro
+     * convite aceite entretanto). Nada a aceitar.
      */
     const linkedUser = await this.userRepository.findByClientIdIncludingDeleted(
       client._id.toString(),
