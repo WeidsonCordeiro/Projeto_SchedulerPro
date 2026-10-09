@@ -377,6 +377,83 @@ describe("AppointmentService.createPublic — cliente sem conta", () => {
   });
 });
 
+/**
+ * Cenário D (Stage 32): o e-mail usado no agendamento público
+ * pertence a uma CONTA existente. O pedido continua sem criar
+ * conta, sem consultar a coleção User e sem alterar qualquer
+ * User — a associação de contas só acontece por convite.
+ */
+describe("AppointmentService.createPublic — Cenário D: e-mail de conta existente", () => {
+  it("conta User com o mesmo e-mail: cria o agendamento sem criar nem alterar User", async () => {
+    findByEmailIncludingDeleted.mockResolvedValue({
+      _id: ref("user-existing"),
+      clientId: ref("other-client"),
+    });
+    findByClientIdIncludingDeleted.mockResolvedValue(null);
+
+    const result = await AppointmentService.createPublic(
+      publicDto(),
+      companyId,
+      NOW,
+    );
+
+    expect(result.publicAccessToken).toBeDefined();
+    expect(result.publicAccessToken).toHaveLength(43);
+    expect(appointmentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ companyId: expect.anything() }),
+    );
+
+    /**
+     * Nenhuma escrita nem leitura de User para resolver o
+     * cliente — o simples conhecimento do e-mail nunca
+     * associa nem desbloqueia contas.
+     */
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(findByEmailIncludingDeleted).not.toHaveBeenCalled();
+    expect(findByClientIdIncludingDeleted).not.toHaveBeenCalled();
+  });
+
+  it("e-mail de conta existente sem Client na empresa: cria só o Client", async () => {
+    clientRepository.findByEmailAndCompany.mockResolvedValue(null);
+    findByEmailIncludingDeleted.mockResolvedValue({
+      _id: ref("user-existing"),
+      clientId: ref("other-client"),
+    });
+
+    await AppointmentService.createPublic(publicDto(), companyId, NOW);
+
+    expect(clientRepository.create).toHaveBeenCalledTimes(1);
+    expect(clientRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "ana@exemplo.com" }),
+    );
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(findByEmailIncludingDeleted).not.toHaveBeenCalled();
+  });
+
+  it("Client já existente com e-mail de conta: reutiliza Client e não toca em User", async () => {
+    clientRepository.findByEmailAndCompany.mockResolvedValue({
+      _id: ref(createdClientId),
+      companyId: ref(companyId),
+      isActive: true,
+    });
+    findByEmailIncludingDeleted.mockResolvedValue({
+      _id: ref("user-existing"),
+      clientId: ref(createdClientId),
+    });
+
+    const result = await AppointmentService.createPublic(
+      publicDto(),
+      companyId,
+      NOW,
+    );
+
+    expect(clientRepository.create).not.toHaveBeenCalled();
+    expect(result.appointment.id).toBe(appointmentId);
+    expect(userCreate).not.toHaveBeenCalled();
+    expect(findByEmailIncludingDeleted).not.toHaveBeenCalled();
+  });
+});
+
 describe("AppointmentService.createPublic — regras de agenda", () => {
   it("rejeita startAt no passado antes de escrever", async () => {
     await expect(

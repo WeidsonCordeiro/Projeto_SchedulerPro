@@ -1,5 +1,6 @@
 import { apiClient } from "../apiClient";
 import type { ApiResponse } from "../../types/api";
+import type { ClientInviteEmission } from "../../types/clientInvite";
 import type {
   Client,
   CreateClientPayload,
@@ -35,6 +36,18 @@ export const clientsApi = {
     const { data } = await apiClient.post<ApiResponse<Client>>(
       `/clients/${id}/credentials`,
       payload,
+    );
+    return data;
+  },
+
+  /**
+   * POST /clients/:id/invite — emite um convite por e-mail para o
+   * cliente criar a própria conta de acesso (role CLIENT).
+   * A resposta devolve apenas a validade; o token fica no e-mail.
+   */
+  async sendClientInvite(id: string) {
+    const { data } = await apiClient.post<ApiResponse<ClientInviteEmission>>(
+      `/clients/${id}/invite`,
     );
     return data;
   },

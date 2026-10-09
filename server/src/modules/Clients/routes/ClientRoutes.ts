@@ -21,6 +21,7 @@
 import { Router } from "express";
 
 import ClientController from "../controllers/ClientController";
+import ClientInviteController from "../../client-invites/controllers/ClientInviteController";
 import AuthMiddleware from "../../../middlewares/auth.middleware";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { hasPermission } from "../../../middlewares/permission.middleware";
@@ -77,6 +78,25 @@ router.get(
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
   authorize(Role.CLIENT),
   ClientController.findMe,
+);
+
+/**
+ * ==========================================================
+ * Enviar convite de criação de conta ao cliente.
+ *
+ * Usa `authorize(OWNER, ADMIN)` — o RBAC existente — em vez
+ * de `CLIENT_UPDATE`: esta permission pertence também ao
+ * MANAGER, e o convite é deliberadamente restrito a quem
+ * gere a empresa. Nenhuma permissão nova foi criada.
+ * ==========================================================
+ */
+router.post(
+  "/:id/invite",
+  AuthMiddleware.authenticate,
+  PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  validateObjectId("id"),
+  authorize(Role.OWNER, Role.ADMIN),
+  ClientInviteController.create,
 );
 
 /**

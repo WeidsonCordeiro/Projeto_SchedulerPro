@@ -32,6 +32,7 @@ import Logger from "../../../providers/logger/Logger";
 import { appointmentCreatedEmail } from "../../../providers/mail/templates/appointment-created.template";
 import { appointmentUpdatedEmail } from "../../../providers/mail/templates/appointment-updated.template";
 import { appointmentCancelledEmail } from "../../../providers/mail/templates/appointment-cancelled.template";
+import { clientInviteTemplate } from "../../../providers/mail/templates/client-invite.template";
 import { AppointmentEmailData } from "../../../providers/mail/templates/appointment-email-layout";
 
 import { NotificationType } from "../index";
@@ -73,6 +74,14 @@ export interface ReminderEmailInput {
   to: string;
   subject: string;
   html: string;
+}
+
+export interface ClientInviteEmailInput {
+  to: string;
+  clientName: string;
+  companyName: string;
+  /** URL completa do link de aceite; contém o token puro. NUNCA registar. */
+  inviteUrl: string;
 }
 
 interface AppointmentContext {
@@ -122,6 +131,38 @@ class NotificationDispatcher {
    * reminder service so its existing lease release and retry behavior applies. */
   public async dispatchReminderEmail(input: ReminderEmailInput): Promise<void> {
     await this.resendProvider.send(input);
+  }
+
+  /**
+   * ==========================================================
+   * Envia o e-mail de convite de conta CLIENT.
+   *
+   * Diferente dos eventos de agendamento (best effort), os
+   * erros AQUI são propagados: o serviço emissor depende do
+   * resultado para revogar um convite que não foi entregue.
+   *
+   * O `inviteUrl` contém o token puro — por isso não é
+   * registado em log, nem nesta função nem no chamador.
+   * ==========================================================
+   */
+  public async dispatchClientInviteEmail(
+    input: ClientInviteEmailInput,
+  ): Promise<void> {
+    const html = clientInviteTemplate({
+      clientName: input.clientName,
+      companyName: input.companyName,
+      inviteUrl: input.inviteUrl,
+    });
+
+    await this.resendProvider.send({
+      to: input.to,
+      subject: `${this.emailSubjectPrefix}Convite para o portal do cliente`,
+      html,
+    });
+
+    this.logger.email(`E-mail de convite enviado para ${input.to}`, {
+      type: "CLIENT_INVITE",
+    });
   }
 
   /**

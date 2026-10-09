@@ -3,6 +3,7 @@ import clientsApi from "../../api/endpoints/clients.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import ClientForm from "../../components/clients/ClientForm";
 import DeleteClientModal from "../../components/clients/DeleteClientModal";
+import SendClientInviteModal from "../../components/clients/SendClientInviteModal";
 import SetClientCredentialsModal from "../../components/clients/SetClientCredentialsModal";
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
@@ -36,7 +37,7 @@ function getAccessButtonTitle(client: Client): string {
 
 export default function ClientsPage() {
   const user = useAppSelector((state) => state.auth.user);
-  const { canCreate, canUpdate, canDelete } = getClientAbilities(
+  const { canCreate, canUpdate, canDelete, canInvite } = getClientAbilities(
     user?.role ?? null
   );
 
@@ -51,6 +52,7 @@ export default function ClientsPage() {
   const [credentialingClient, setCredentialingClient] = useState<Client | null>(
     null
   );
+  const [invitingClient, setInvitingClient] = useState<Client | null>(null);
 
   const loadClients = useCallback(async () => {
     setIsLoading(true);
@@ -105,6 +107,16 @@ export default function ClientsPage() {
   function handleCredentialsSaved(client: Client) {
     setSuccessMessage(`Credenciais de acesso definidas para ${client.name}.`);
     setCredentialingClient(null);
+    void loadClients();
+  }
+
+  function handleInviteSent(email: string) {
+    setSuccessMessage(
+      email
+        ? `Convite enviado para ${email}.`
+        : "Convite enviado para o cliente."
+    );
+    setInvitingClient(null);
     void loadClients();
   }
 
@@ -257,6 +269,15 @@ export default function ClientsPage() {
                               {getAccessButtonLabel(client.portalAccess)}
                             </button>
                           )}
+                          {canInvite && client.email && !client.portalAccess.exists && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() => setInvitingClient(client)}
+                            >
+                              Convidar
+                            </button>
+                          )}
                           {canDelete && (
                             <button
                               type="button"
@@ -302,6 +323,15 @@ export default function ClientsPage() {
           client={credentialingClient}
           onClose={() => setCredentialingClient(null)}
           onSaved={handleCredentialsSaved}
+        />
+      )}
+
+      {invitingClient && (
+        <SendClientInviteModal
+          isOpen
+          client={invitingClient}
+          onClose={() => setInvitingClient(null)}
+          onSent={handleInviteSent}
         />
       )}
     </section>
