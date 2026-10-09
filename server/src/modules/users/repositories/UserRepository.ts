@@ -291,22 +291,6 @@ class UserRepository {
 
   /**
    * ==========================================================
-   * Atualiza um utilizador, incluindo documentos soft-deleted.
-   *
-   * Usado para restaurar contas removidas (deletedAt: null).
-   * ==========================================================
-   */
-  public async updateIncludingDeleted(
-    id: string,
-    data: UpdateUserData,
-  ): Promise<UserDocument | null> {
-    return User.findOneAndUpdate({ _id: id }, data, {
-      new: true,
-      runValidators: true,
-    });
-  }
-  /**
-   * ==========================================================
    * Marca o e-mail do utilizador como verificado.
    * ==========================================================
    */

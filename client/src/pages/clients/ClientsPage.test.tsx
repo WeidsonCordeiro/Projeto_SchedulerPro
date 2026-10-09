@@ -16,7 +16,6 @@ vi.mock("../../api/endpoints/clients.api", () => ({
     createClient: vi.fn(),
     updateClient: vi.fn(),
     deleteClient: vi.fn(),
-    setClientCredentials: vi.fn(),
     sendClientInvite: vi.fn(),
   },
 }));
@@ -332,10 +331,14 @@ describe("ClientsPage", () => {
     expect(screen.queryByRole("button", { name: /novo cliente/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /editar/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /excluir/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /dar acesso/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /dar acesso|gerenciar acesso|reativar acesso|convidar/i,
+      }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows 'Dar acesso' for a client without portal access and opens the modal", async () => {
+  it("grants portal access only through Convidar — no legacy access action exists", async () => {
     vi.mocked(clientsApi.getClients).mockResolvedValue({
       success: true,
       message: "ok",
@@ -345,23 +348,16 @@ describe("ClientsPage", () => {
     renderPage();
 
     await screen.findByRole("table");
-    const darAcesso = screen.getByRole("button", { name: /dar acesso/i });
-    expect(darAcesso).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /convidar/i })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /gerenciar acesso/i }),
+      screen.queryByRole("button", {
+        name: /dar acesso|gerenciar acesso|reativar acesso/i,
+      }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /reativar acesso/i }),
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(darAcesso);
-
-    expect(
-      await screen.findByRole("heading", { name: "Dar acesso ao portal do cliente" }),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/credenciais de acesso/i)).not.toBeInTheDocument();
   });
 
-  it("shows 'Gerenciar acesso' for a client with active portal access", async () => {
+  it("shows no access management action for a client that already has portal access", async () => {
     vi.mocked(clientsApi.getClients).mockResolvedValue({
       success: true,
       message: "ok",
@@ -371,46 +367,15 @@ describe("ClientsPage", () => {
     renderPage();
 
     await screen.findByRole("table");
+    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /gerenciar acesso/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /dar acesso/i }),
+      screen.queryByRole("button", {
+        name: /dar acesso|gerenciar acesso|reativar acesso/i,
+      }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /reativar acesso/i }),
+      screen.queryByRole("button", { name: /convidar/i }),
     ).not.toBeInTheDocument();
-  });
-
-  it("shows 'Reativar acesso' for a client with inactive portal access", async () => {
-    vi.mocked(clientsApi.getClients).mockResolvedValue({
-      success: true,
-      message: "ok",
-      data: [makeClient({ portalAccess: { exists: true, isActive: false } })],
-    });
-
-    renderPage();
-
-    await screen.findByRole("table");
-    expect(
-      screen.getByRole("button", { name: /reativar acesso/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /dar acesso/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disables the access button when the client has no email", async () => {
-    vi.mocked(clientsApi.getClients).mockResolvedValue({
-      success: true,
-      message: "ok",
-      data: [makeClient({ email: null, portalAccess: { exists: false, isActive: false } })],
-    });
-
-    renderPage();
-
-    await screen.findByRole("table");
-    expect(screen.getByRole("button", { name: /dar acesso/i })).toBeDisabled();
   });
 
   it("shows create/edit but hides delete for ADMIN", async () => {

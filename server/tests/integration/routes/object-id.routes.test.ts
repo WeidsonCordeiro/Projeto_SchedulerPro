@@ -51,7 +51,6 @@ vi.mock("../../../src/modules/Clients/controllers/ClientController", () => ({
     activate: (_req: express.Request, res: express.Response) => res.json({}),
     deactivate: (_req: express.Request, res: express.Response) => res.json({}),
     findMe: (_req: express.Request, res: express.Response) => res.json({}),
-    setCredentials: (_req: express.Request, res: express.Response) => res.json({}),
     /**
      * Handlers das rotas de foto (POST/DELETE /:id/photo).
      * O registo das rotas exige que todos os handlers

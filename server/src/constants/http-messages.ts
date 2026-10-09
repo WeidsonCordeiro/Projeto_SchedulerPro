@@ -98,14 +98,12 @@ export const HttpMessages = {
   CLIENT_DEACTIVATED: "Cliente desativado com sucesso.",
   CLIENT_NOT_FOUND: "Cliente não encontrado.",
   CLIENT_EMAIL_REQUIRED:
-    "O cliente precisa de um e-mail para receber credenciais de acesso.",
-  CLIENT_CREDENTIALS_SET:
-    "Credenciais de acesso do cliente definidas com sucesso.",
+    "O cliente precisa de um e-mail para receber o convite de acesso.",
   CLIENT_PROFILE_FOUND: "Perfil do cliente encontrado.",
   CLIENT_LINK_REQUIRED:
     "Esta conta de acesso ao portal não está vinculada a um cliente.",
   CLIENT_ROLE_FORBIDDEN:
-    "O acesso de um cliente ao portal deve ser criado pelo fluxo de credenciais.",
+    "O acesso de um cliente ao portal deve ser criado pelo fluxo de convites.",
   CLIENT_ACCESS_DENIED: "Não tem permissão para aceder a este cliente.",
   CLIENT_PHOTO_UPDATED: "Foto do cliente atualizada com sucesso.",
   CLIENT_PHOTO_REMOVED: "Foto do cliente removida com sucesso.",

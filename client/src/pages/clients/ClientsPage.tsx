@@ -4,36 +4,13 @@ import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import ClientForm from "../../components/clients/ClientForm";
 import DeleteClientModal from "../../components/clients/DeleteClientModal";
 import SendClientInviteModal from "../../components/clients/SendClientInviteModal";
-import SetClientCredentialsModal from "../../components/clients/SetClientCredentialsModal";
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
-import type { Client, ClientPortalAccess } from "../../types/client";
+import type { Client } from "../../types/client";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import ImageAvatar from "../../components/common/ImageAvatar";
 import DashboardCard from "../../components/common/DashboardCard";
-
-function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
-  if (!portalAccess.exists) {
-    return "Dar acesso";
-  }
-
-  return portalAccess.isActive ? "Gerenciar acesso" : "Reativar acesso";
-}
-
-function getAccessButtonTitle(client: Client): string {
-  if (!client.email) {
-    return "O cliente precisa de um email para acessar o portal";
-  }
-
-  if (!client.portalAccess.exists) {
-    return "Definir o acesso do cliente ao portal";
-  }
-
-  return client.portalAccess.isActive
-    ? "Gerenciar o acesso do cliente ao portal"
-    : "Reativar o acesso do cliente ao portal";
-}
 
 export default function ClientsPage() {
   const user = useAppSelector((state) => state.auth.user);
@@ -49,9 +26,6 @@ export default function ClientsPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
-  const [credentialingClient, setCredentialingClient] = useState<Client | null>(
-    null
-  );
   const [invitingClient, setInvitingClient] = useState<Client | null>(null);
 
   const loadClients = useCallback(async () => {
@@ -101,12 +75,6 @@ export default function ClientsPage() {
   function handleDeleted() {
     setSuccessMessage("Cliente excluído com sucesso.");
     setDeletingClient(null);
-    void loadClients();
-  }
-
-  function handleCredentialsSaved(client: Client) {
-    setSuccessMessage(`Credenciais de acesso definidas para ${client.name}.`);
-    setCredentialingClient(null);
     void loadClients();
   }
 
@@ -258,17 +226,6 @@ export default function ClientsPage() {
                               Editar
                             </button>
                           )}
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-success"
-                              onClick={() => setCredentialingClient(client)}
-                              disabled={!client.email}
-                              title={getAccessButtonTitle(client)}
-                            >
-                              {getAccessButtonLabel(client.portalAccess)}
-                            </button>
-                          )}
                           {canInvite && client.email && !client.portalAccess.exists && (
                             <button
                               type="button"
@@ -314,15 +271,6 @@ export default function ClientsPage() {
           client={deletingClient}
           onClose={() => setDeletingClient(null)}
           onDeleted={handleDeleted}
-        />
-      )}
-
-      {credentialingClient && (
-        <SetClientCredentialsModal
-          isOpen
-          client={credentialingClient}
-          onClose={() => setCredentialingClient(null)}
-          onSaved={handleCredentialsSaved}
         />
       )}
 

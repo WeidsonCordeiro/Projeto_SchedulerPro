@@ -30,7 +30,6 @@ import { Permission } from "../../../constants/permissions";
 import { Role } from "../../../constants/roles";
 import { createClientValidator } from "../validators/create-client.validator";
 import { updateClientValidator } from "../validators/update-client.validator";
-import { setClientCredentialsValidator } from "../validators/set-client-credentials.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
 import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
@@ -97,22 +96,6 @@ router.post(
   validateObjectId("id"),
   authorize(Role.OWNER, Role.ADMIN),
   ClientInviteController.create,
-);
-
-/**
- * ==========================================================
- * Definir credenciais de acesso do cliente ao portal.
- * ==========================================================
- */
-router.post(
-  "/:id/credentials",
-  AuthMiddleware.authenticate,
-  PasswordChangeMiddleware.requirePasswordChangeCompleted,
-  validateObjectId("id"),
-  hasPermission(Permission.CLIENT_UPDATE),
-  setClientCredentialsValidator,
-  validateRequest,
-  ClientController.setCredentials,
 );
 
 /**
