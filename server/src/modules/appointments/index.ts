@@ -22,10 +22,13 @@ import { AppointmentStatus } from "../../constants/appointment-status";
 /**
 
 * ==========================================================
-* Dados necessários para criar um agendamento.
-*
-* companyId e endAt são definidos internamente pelo backend.
-* ==========================================================
+ * Dados necessários para criar um agendamento.
+ *
+ * companyId e endAt são definidos internamente pelo backend.
+ *
+ * `priceAtTime` é um snapshot do preço do serviço validado,
+ * determinado exclusivamente pelo backend.
+ * ==========================================================
   */
 export interface CreateAppointmentData {
   companyId: Types.ObjectId;
@@ -36,6 +39,7 @@ export interface CreateAppointmentData {
   endAt: Date;
   status: AppointmentStatus;
   notes?: string | null;
+  priceAtTime: number;
   publicAccessTokenHash?: string | null;
   publicAccessTokenCiphertext?: string | null;
 }
@@ -48,10 +52,15 @@ export interface CreateAppointmentData {
 *
 * endAt poderá ser recalculado pelo backend.
 *
-* `publicAccessTokenHash` NÃO entra aqui: a alteração de um
-* agendamento (administrativa ou pública) nunca regenera nem
-* apaga o token, para que o link já entregue continue válido.
-* ==========================================================
+ * `publicAccessTokenHash` NÃO entra aqui: a alteração de um
+ * agendamento (administrativa ou pública) nunca regenera nem
+ * apaga o token, para que o link já entregue continue válido.
+ *
+ * `priceAtTime` só é escrito quando o SERVIÇO do agendamento é
+ * efetivamente alterado; nesse caso recebe o preço atual do novo
+ * serviço. Nas restantes alterações o valor histórico é
+ * preservado (ver `AppointmentService`).
+ * ==========================================================
   */
 export interface UpdateAppointmentData {
   clientId?: Types.ObjectId;
@@ -60,6 +69,7 @@ export interface UpdateAppointmentData {
   startAt?: Date;
   endAt?: Date;
   notes?: string | null;
+  priceAtTime?: number | null;
 }
 
 /**

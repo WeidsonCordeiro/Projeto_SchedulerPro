@@ -62,7 +62,7 @@ describe("ReportRepository", () => {
     });
   });
 
-  it("findRevenue faz lookup do serviço e soma receitas estimadas", async () => {
+  it("findRevenue usa o preço histórico do agendamento e não o preço atual do serviço", async () => {
     aggregate.mockResolvedValueOnce([
       {
         _id: null,
@@ -70,6 +70,8 @@ describe("ReportRepository", () => {
         estimatedRevenue: 40,
         forecastCount: 3,
         forecastRevenue: 60,
+        completedWithoutPrice: 1,
+        forecastWithoutPrice: 2,
       },
     ]);
 
@@ -77,10 +79,36 @@ describe("ReportRepository", () => {
 
     expect(result?.estimatedRevenue).toBe(40);
     expect(result?.forecastRevenue).toBe(60);
-    const lookup = pipelineOf().find((stage) => stage.$lookup)?.$lookup as {
-      from: string;
-    };
-    expect(lookup.from).toBe("services");
+    expect(result?.completedWithoutPrice).toBe(1);
+    expect(result?.forecastWithoutPrice).toBe(2);
+
+    const pipeline = pipelineOf();
+    /**
+     * O valor deixou de depender do serviço atual: não há lookup a
+     * `services` nem uso de `service.price`.
+     */
+    expect(pipeline.some((stage) => stage.$lookup)).toBe(false);
+    expect(JSON.stringify(pipeline)).toContain("$priceAtTime");
+    expect(JSON.stringify(pipeline)).not.toContain("$servicePrice");
+  });
+
+  it("findRevenue conta agendamentos sem preço histórico sem os valorizar", async () => {
+    aggregate.mockResolvedValueOnce([
+      {
+        _id: null,
+        completedCount: 1,
+        estimatedRevenue: 0,
+        forecastCount: 0,
+        forecastRevenue: 0,
+        completedWithoutPrice: 1,
+        forecastWithoutPrice: 0,
+      },
+    ]);
+
+    const result = await ReportRepository.findRevenue(companyId, RANGE);
+
+    expect(result?.estimatedRevenue).toBe(0);
+    expect(result?.completedWithoutPrice).toBe(1);
   });
 
   it("findRevenue devolve null quando não há agendamentos", async () => {

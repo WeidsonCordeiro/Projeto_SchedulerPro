@@ -36,6 +36,24 @@ import {
 
 class ReportRepository {
   /**
+   * Expressão booleana que indica se o agendamento tem um preço
+   * histórico conhecido.
+   *
+   * Usa `$type` para distinguir explicitamente o campo ausente
+   * (agendamentos anteriores à introdução de `priceAtTime`), o
+   * `null` (histórico desconhecido) e um número válido. Um serviço
+   * gratuito tem `priceAtTime === 0`, que é um valor CONHECIDO.
+   */
+  private get HAS_PRICE_EXPRESSION(): Record<string, unknown> {
+    return {
+      $in: [
+        { $type: "$priceAtTime" },
+        ["double", "int", "long", "decimal"],
+      ],
+    };
+  }
+
+  /**
    * Monta o filtro de período baseado no instante de início do
    * agendamento.
    *
@@ -87,15 +105,21 @@ class ReportRepository {
    * ==========================================================
    * Receita estimada no período.
    *
-   * O valor é estimado a partir do preço do serviço:
+   * O valor é estimado a partir do PREÇO HISTÓRICO do próprio
+   * agendamento (`priceAtTime`), gravado na reserva:
    *
-   * • estimatedRevenue: soma dos preços dos agendamentos
-   *   concluídos (status "completed");
-   * • forecastRevenue: soma dos preços dos agendamentos
-   *   previstos (status "scheduled"/"confirmed").
+   * • estimatedRevenue: soma dos preços históricos dos
+   *   agendamentos concluídos (status "completed");
+   * • forecastRevenue: soma dos preços históricos dos
+   *   agendamentos previstos (status "scheduled"/"confirmed").
    *
-   * Referências de serviço soft-deleted continuam sendo
-   * devolvidas pelo lookup, evitando que o valor seja zerado.
+   * Agendamentos sem preço histórico (`priceAtTime` nulo) NÃO são
+   * valorizados com o preço atual do serviço: são apenas contados
+   * em `completedWithoutPrice`/`forecastWithoutPrice`, para que a
+   * receita não seja inventada nem silenciosamente subestimada.
+   *
+   * Não é feito `$lookup` a `services`: o valor deixou de depender
+   * do preço vigente do serviço.
    * ==========================================================
    */
   public async findRevenue(
@@ -104,21 +128,7 @@ class ReportRepository {
   ): Promise<RevenueAggregateRow | null> {
     const pipeline: PipelineStage[] = [
       { $match: this.buildBaseMatch(companyId, range) },
-      {
-        $lookup: {
-          from: "services",
-          localField: "serviceId",
-          foreignField: "_id",
-          as: "service",
-        },
-      },
-      {
-        $addFields: {
-          servicePrice: {
-            $ifNull: [{ $arrayElemAt: ["$service.price", 0] }, 0],
-          },
-        },
-      },
+      { $addFields: { hasPrice: this.HAS_PRICE_EXPRESSION } },
       {
         $group: {
           _id: null,
@@ -134,8 +144,27 @@ class ReportRepository {
           estimatedRevenue: {
             $sum: {
               $cond: [
-                { $eq: ["$status", AppointmentStatus.COMPLETED] },
-                "$servicePrice",
+                {
+                  $and: [
+                    { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                    "$hasPrice",
+                  ],
+                },
+                "$priceAtTime",
+                0,
+              ],
+            },
+          },
+          completedWithoutPrice: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                    { $not: "$hasPrice" },
+                  ],
+                },
+                1,
                 0,
               ],
             },
@@ -161,15 +190,42 @@ class ReportRepository {
             $sum: {
               $cond: [
                 {
-                  $in: [
-                    "$status",
-                    [
-                      AppointmentStatus.SCHEDULED,
-                      AppointmentStatus.CONFIRMED,
-                    ],
+                  $and: [
+                    {
+                      $in: [
+                        "$status",
+                        [
+                          AppointmentStatus.SCHEDULED,
+                          AppointmentStatus.CONFIRMED,
+                        ],
+                      ],
+                    },
+                    "$hasPrice",
                   ],
                 },
-                "$servicePrice",
+                "$priceAtTime",
+                0,
+              ],
+            },
+          },
+          forecastWithoutPrice: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    {
+                      $in: [
+                        "$status",
+                        [
+                          AppointmentStatus.SCHEDULED,
+                          AppointmentStatus.CONFIRMED,
+                        ],
+                      ],
+                    },
+                    { $not: "$hasPrice" },
+                  ],
+                },
+                1,
                 0,
               ],
             },
@@ -208,9 +264,7 @@ class ReportRepository {
           serviceName: {
             $ifNull: [{ $arrayElemAt: ["$service.name", 0] }, null],
           },
-          servicePrice: {
-            $ifNull: [{ $arrayElemAt: ["$service.price", 0] }, 0],
-          },
+          hasPrice: this.HAS_PRICE_EXPRESSION,
         },
       },
       {
@@ -230,8 +284,27 @@ class ReportRepository {
           estimatedRevenue: {
             $sum: {
               $cond: [
-                { $eq: ["$status", AppointmentStatus.COMPLETED] },
-                "$servicePrice",
+                {
+                  $and: [
+                    { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                    "$hasPrice",
+                  ],
+                },
+                "$priceAtTime",
+                0,
+              ],
+            },
+          },
+          completedWithoutPrice: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                    { $not: "$hasPrice" },
+                  ],
+                },
+                1,
                 0,
               ],
             },
@@ -246,6 +319,7 @@ class ReportRepository {
           count: 1,
           completedCount: 1,
           estimatedRevenue: 1,
+          completedWithoutPrice: 1,
         },
       },
       {
@@ -279,14 +353,6 @@ class ReportRepository {
         },
       },
       {
-        $lookup: {
-          from: "services",
-          localField: "serviceId",
-          foreignField: "_id",
-          as: "service",
-        },
-      },
-      {
         $addFields: {
           employeeName: {
             $ifNull: [{ $arrayElemAt: ["$employee.name", 0] }, null],
@@ -294,9 +360,7 @@ class ReportRepository {
           employeeRole: {
             $ifNull: [{ $arrayElemAt: ["$employee.role", 0] }, null],
           },
-          servicePrice: {
-            $ifNull: [{ $arrayElemAt: ["$service.price", 0] }, 0],
-          },
+          hasPrice: this.HAS_PRICE_EXPRESSION,
         },
       },
       {
@@ -326,8 +390,27 @@ class ReportRepository {
           estimatedRevenue: {
             $sum: {
               $cond: [
-                { $eq: ["$status", AppointmentStatus.COMPLETED] },
-                "$servicePrice",
+                {
+                  $and: [
+                    { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                    "$hasPrice",
+                  ],
+                },
+                "$priceAtTime",
+                0,
+              ],
+            },
+          },
+          completedWithoutPrice: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                    { $not: "$hasPrice" },
+                  ],
+                },
+                1,
                 0,
               ],
             },
@@ -346,6 +429,7 @@ class ReportRepository {
           completedCount: 1,
           cancelledCount: 1,
           estimatedRevenue: 1,
+          completedWithoutPrice: 1,
         },
       },
       {
@@ -392,21 +476,11 @@ class ReportRepository {
               },
             },
             {
-              $lookup: {
-                from: "services",
-                localField: "serviceId",
-                foreignField: "_id",
-                as: "service",
-              },
-            },
-            {
               $addFields: {
                 clientName: {
                   $ifNull: [{ $arrayElemAt: ["$client.name", 0] }, null],
                 },
-                servicePrice: {
-                  $ifNull: [{ $arrayElemAt: ["$service.price", 0] }, 0],
-                },
+                hasPrice: this.HAS_PRICE_EXPRESSION,
               },
             },
             {
@@ -426,8 +500,27 @@ class ReportRepository {
                 estimatedRevenue: {
                   $sum: {
                     $cond: [
-                      { $eq: ["$status", AppointmentStatus.COMPLETED] },
-                      "$servicePrice",
+                      {
+                        $and: [
+                          { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                          "$hasPrice",
+                        ],
+                      },
+                      "$priceAtTime",
+                      0,
+                    ],
+                  },
+                },
+                completedWithoutPrice: {
+                  $sum: {
+                    $cond: [
+                      {
+                        $and: [
+                          { $eq: ["$status", AppointmentStatus.COMPLETED] },
+                          { $not: "$hasPrice" },
+                        ],
+                      },
+                      1,
                       0,
                     ],
                   },
@@ -442,6 +535,7 @@ class ReportRepository {
                 count: 1,
                 completedCount: 1,
                 estimatedRevenue: 1,
+                completedWithoutPrice: 1,
               },
             },
             { $sort: { count: -1, estimatedRevenue: -1, clientId: 1 } },
