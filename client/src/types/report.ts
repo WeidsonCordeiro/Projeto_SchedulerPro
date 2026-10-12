@@ -15,6 +15,13 @@ export interface ReportRevenue {
   estimatedRevenue: number;
   forecastCount: number;
   forecastRevenue: number;
+  /**
+   * Agendamentos concluídos/previstos sem preço histórico conhecido.
+   * Não são valorizados com o preço atual; são sinalizados ao
+   * utilizador para que a receita estimada não seja enganadora.
+   */
+  completedWithoutPrice?: number;
+  forecastWithoutPrice?: number;
 }
 
 export interface ReportTopService {
@@ -23,6 +30,7 @@ export interface ReportTopService {
   count: number;
   completedCount: number;
   estimatedRevenue: number;
+  completedWithoutPrice?: number;
 }
 
 export interface ReportEmployee {
@@ -32,6 +40,7 @@ export interface ReportEmployee {
   completedCount: number;
   cancelledCount: number;
   estimatedRevenue: number;
+  completedWithoutPrice?: number;
 }
 
 export interface ReportClientRank {
@@ -40,6 +49,7 @@ export interface ReportClientRank {
   count: number;
   completedCount: number;
   estimatedRevenue: number;
+  completedWithoutPrice?: number;
 }
 
 export interface ReportClients {

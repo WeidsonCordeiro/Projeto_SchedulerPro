@@ -260,6 +260,10 @@ export default function ReportsPage() {
         )} a ${formatReportDate(appliedCustom.end, timezone)}`
       : REPORT_PERIOD_LABELS[period];
 
+  const missingPriceCount =
+    (revenue.completedWithoutPrice ?? 0) +
+    (revenue.forecastWithoutPrice ?? 0);
+
   return (
     <section>
       <PageHeader
@@ -425,6 +429,16 @@ export default function ReportsPage() {
               />
             </div>
           </div>
+          {missingPriceCount > 0 && (
+            <p
+              className="text-muted small mt-2 mb-0"
+              data-testid="missing-price-note"
+            >
+              {formatInteger(missingPriceCount)} agendamento(s) sem preço
+              histórico não entram nos valores acima. Estes são estimativas
+              baseadas no preço registado na reserva, não valores recebidos.
+            </p>
+          )}
 
           <div className="row g-3 mb-4 mt-3">
             <div className="col-xl-6">

@@ -79,6 +79,13 @@ interface ScheduleAppointmentInput {
   serviceId: Types.ObjectId;
   employeeId: Types.ObjectId;
   durationMinutes: number;
+  /**
+   * Preço do serviço validado, no momento da reserva.
+   *
+   * É sempre o `price` do `Service` do tenant, nunca um valor
+   * recebido do cliente. Fica gravado como snapshot histórico.
+   */
+  priceAtTime: number;
   startAt: Date;
   notes?: string | null;
   now: Date;
@@ -227,6 +234,7 @@ class AppointmentService {
       serviceId,
       employeeId,
       durationMinutes,
+      priceAtTime,
       startAt,
       notes,
       now,
@@ -305,6 +313,7 @@ class AppointmentService {
       endAt,
       status: AppointmentStatus.SCHEDULED,
       notes: notes ?? null,
+      priceAtTime,
       ...(publicAccessTokenHash
         ? { publicAccessTokenHash }
         : { publicAccessTokenHash: null }),
@@ -402,6 +411,7 @@ class AppointmentService {
       serviceId: new Types.ObjectId(dto.serviceId),
       employeeId: new Types.ObjectId(dto.employeeId),
       durationMinutes: service.duration,
+      priceAtTime: service.price,
       startAt: new Date(dto.startAt),
       notes: dto.notes ?? null,
       now,
@@ -556,6 +566,7 @@ class AppointmentService {
       serviceId: service._id,
       employeeId: employee._id,
       durationMinutes: service.duration,
+      priceAtTime: service.price,
       startAt: new Date(dto.startAt),
       notes: dto.notes?.trim() || null,
       now,
@@ -734,6 +745,18 @@ class AppointmentService {
 
     /**
      * ----------------------------------------------------------
+     * Preço histórico.
+     *
+     * Por omissão o snapshot é PRESERVADO: alterar estado, notas,
+     * cliente, colaborador ou horário nunca reescreve o valor
+     * acordado. Só uma alteração efetiva de serviço o recalcula
+     * (abaixo), com o preço atual do novo serviço.
+     * ----------------------------------------------------------
+     */
+    let priceAtTime = appointment.priceAtTime ?? null;
+
+    /**
+     * ----------------------------------------------------------
      * Atualiza e valida o cliente.
      * ----------------------------------------------------------
      */
@@ -754,6 +777,19 @@ class AppointmentService {
       service = await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId);
 
       serviceId = new Types.ObjectId(dto.serviceId);
+
+      /**
+       * ----------------------------------------------------------
+       * Regra de alteração de serviço: só quando o serviço muda de
+       * facto é que o preço histórico é recalculado para o preço
+       * atual do novo serviço. Reenviar o MESMO `serviceId` é
+       * tratado como não-alteração, pelo que o snapshot original
+       * permanece.
+       * ----------------------------------------------------------
+       */
+      if (serviceId.toString() !== appointment.serviceId.toString()) {
+        priceAtTime = service.price;
+      }
     }
 
     /**
@@ -839,6 +875,7 @@ class AppointmentService {
       startAt,
       endAt,
       notes,
+      priceAtTime,
     });
 
     await this.dispatchAppointmentNotification(
@@ -1081,6 +1118,19 @@ class AppointmentService {
 
     /**
      * ----------------------------------------------------------
+     * Preço histórico: preservado por omissão. Tal como no fluxo
+     * administrativo, só uma alteração efetiva de serviço o
+     * recalcula — nunca o preço atual de um serviço inalterado.
+     * ----------------------------------------------------------
+     */
+    let priceAtTime = appointment.priceAtTime ?? null;
+
+    if (serviceId.toString() !== appointment.serviceId.toString()) {
+      priceAtTime = service.price;
+    }
+
+    /**
+     * ----------------------------------------------------------
      * Profissional: mesma empresa, ativo e nunca um `CLIENT`.
      *
      * Igual ao serviço, o profissional efetivo é sempre
@@ -1161,6 +1211,7 @@ class AppointmentService {
         startAt,
         endAt,
         notes,
+        priceAtTime,
       },
     );
 

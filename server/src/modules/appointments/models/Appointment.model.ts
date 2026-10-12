@@ -36,6 +36,18 @@ export interface AppointmentDocument extends Document {
   notes?: string | null;
   deletedAt?: Date | null;
 
+  /**
+   * Preço do serviço no momento em que o agendamento foi acordado.
+   *
+   * É o snapshot que preserva o valor histórico: alterações
+   * posteriores ao preço do serviço NÃO reescrevem este campo.
+   *
+   * `null` significa "preço histórico desconhecido" (agendamentos
+   * anteriores à introdução deste campo). Nunca é preenchido com o
+   * preço atual só por estar ausente, para não inventar histórico.
+   */
+  priceAtTime?: number | null;
+
   /** SHA-256 lookup hash. The raw token is never stored in plaintext. */
   publicAccessTokenHash?: string | null;
   /** AES-256-GCM envelope used only to reproduce links in later reminders. */
@@ -127,6 +139,20 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     deletedAt: {
       type: Date,
       default: null,
+    },
+
+    /**
+     * Snapshot do preço do serviço no momento da reserva.
+     *
+     * `default: null` distingue "histórico desconhecido" de um
+     * serviço genuinamente gratuito (`0`). O preenchimento é da
+     * responsabilidade do backend, a partir do preço do serviço
+     * validado — nunca de um valor enviado pelo cliente.
+     */
+    priceAtTime: {
+      type: Number,
+      default: null,
+      min: 0,
     },
 
     /**
