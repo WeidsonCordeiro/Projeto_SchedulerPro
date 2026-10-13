@@ -55,6 +55,13 @@ revocation mechanism.
 
 Roles: OWNER, ADMIN, MANAGER, EMPLOYEE, CLIENT.
 
+Authenticated user object (login, register, refresh and GET /auth/me) includes
+companyTimezone: the effective IANA timezone of the user's company. Available
+for all authenticated roles (not only OWNER/ADMIN). If the company is missing
+or the stored timezone is absent or invalid, the API returns Europe/Lisbon.
+This field is additive; it does not grant COMPANY_READ or expose other company
+fields (name, address, settings, etc.).
+
 Appointment statuses: scheduled, confirmed, completed, cancelled, no-show.
 
 DayOfWeek values:
@@ -85,7 +92,7 @@ POST /api/auth/register
 - Backend creates company, OWNER user, IDs, password hash, status fields,
   timestamps and authentication cookies.
 - Success: 201.
-- Data: authenticated user plus mustChangePassword.
+- Data: authenticated user (including companyTimezone) plus mustChangePassword.
 - Errors: 400 validation/timezone/password mismatch; 409 duplicate email or
   company.
 
@@ -107,7 +114,8 @@ POST /api/auth/login
 - Auth: none.
 - Body: email and password.
 - Success: 200.
-- Data: authenticated user plus mustChangePassword; both cookies are set.
+- Data: authenticated user (including companyTimezone) plus mustChangePassword;
+  both cookies are set.
 - Errors: 400 invalid body; 401 invalid credentials; 403 inactive, blocked or
   unverified user.
 
@@ -116,7 +124,8 @@ POST /api/auth/refresh
 - Auth middleware: none; refreshToken cookie required.
 - Body: none.
 - Success: 200.
-- Data: authenticated user plus mustChangePassword; both cookies are replaced.
+- Data: authenticated user (including companyTimezone) plus mustChangePassword;
+  both cookies are replaced.
 - Errors: 401 missing, invalid or expired token; 403 inactive/blocked user;
   404 user not found.
 
@@ -124,8 +133,8 @@ GET /api/auth/me
 
 - Auth: accessToken cookie.
 - Success: 200.
-- Data: id, name, email, avatar, role, companyId, isActive and
-  mustChangePassword.
+- Data: id, name, email, avatar, role, companyId, companyTimezone, isActive,
+  optional clientId, and mustChangePassword.
 - Errors: 401 invalid/missing token; 403 inactive/blocked; 404 user missing.
 
 POST /api/auth/logout

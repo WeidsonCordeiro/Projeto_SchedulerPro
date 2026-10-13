@@ -2,13 +2,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { userRepository, companyRepository, passwordProvider, jwtProvider, passwordResetRepository, resendProvider, session, authMapper, sessionService, logger } = vi.hoisted(() => ({
   userRepository: { existsByEmail: vi.fn(), findByEmail: vi.fn(), findById: vi.fn(), create: vi.fn(), verifyEmail: vi.fn() },
-  companyRepository: { findByName: vi.fn(), create: vi.fn() },
+  companyRepository: { findByName: vi.fn(), findById: vi.fn(), create: vi.fn() },
   passwordProvider: { compare: vi.fn(), hash: vi.fn() },
   jwtProvider: { generateAccessToken: vi.fn(), generateRefreshToken: vi.fn(), verifyRefreshToken: vi.fn(), generateResetPasswordToken: vi.fn(), verifyResetPasswordToken: vi.fn(), generateEmailVerificationToken: vi.fn(), verifyEmailVerificationToken: vi.fn() },
   passwordResetRepository: { create: vi.fn(), findByToken: vi.fn(), invalidate: vi.fn() },
   resendProvider: { send: vi.fn() },
   session: { startTransaction: vi.fn(), commitTransaction: vi.fn(), abortTransaction: vi.fn(), endSession: vi.fn() },
-  authMapper: { toAuthUser: vi.fn((user: any) => ({ id: user.id, email: user.email, role: user.role, companyId: user.companyId.toString(), isActive: user.isActive })) },
+  authMapper: {
+    toAuthUser: vi.fn((user: any, companyTimezone: string) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId.toString(),
+      companyTimezone,
+      isActive: user.isActive,
+      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
+    })),
+  },
   sessionService: { start: vi.fn(), validate: vi.fn(), touch: vi.fn(), revoke: vi.fn() },
   logger: { auth: vi.fn(), security: vi.fn(), error: vi.fn() },
 }));
@@ -33,6 +44,7 @@ import { TokenType } from "../../../src/constants/token-type";
 import { HttpStatus } from "../../../src/constants/http-status";
 import { ErrorCode } from "../../../src/constants/error-codes";
 import { AppError } from "../../../src/errors/AppError";
+import { DEFAULT_TIMEZONE } from "../../../src/utils/timezone";
 
 const companyId = "507f1f77bcf86cd799439011";
 const userId = "507f1f77bcf86cd799439012";
@@ -49,6 +61,7 @@ const registerDto = { name: "Owner", email: "owner@example.com", password: "pass
 beforeEach(() => {
   vi.clearAllMocks();
   companyRepository.findByName.mockResolvedValue(null);
+  companyRepository.findById.mockResolvedValue(company);
   companyRepository.create.mockResolvedValue(company);
   userRepository.existsByEmail.mockResolvedValue(false);
   userRepository.findByEmail.mockResolvedValue(makeUser());
@@ -113,6 +126,8 @@ describe("AuthService.login e refresh", () => {
     expect(sessionService.start).toHaveBeenCalledWith(userId);
     expect(jwtProvider.generateAccessToken).toHaveBeenCalledWith(expect.objectContaining({ sessionId }));
     expect(user.save).toHaveBeenCalledOnce();
+    expect(companyRepository.findById).toHaveBeenCalledWith(user.companyId);
+    expect(result.user.companyTimezone).toBe("Europe/Lisbon");
     expect(result.tokens).toEqual({ accessToken: "access-token", refreshToken: "refresh-token" });
   });
 
@@ -132,7 +147,10 @@ describe("AuthService.login e refresh", () => {
   });
 
   it("renova token válido reutilizando a mesma sessão", async () => {
-    await expect(AuthService.refresh("refresh-token")).resolves.toMatchObject({ tokens: { accessToken: "access-token" } });
+    await expect(AuthService.refresh("refresh-token")).resolves.toMatchObject({
+      tokens: { accessToken: "access-token" },
+      user: { companyTimezone: "Europe/Lisbon" },
+    });
     expect(sessionService.validate).toHaveBeenCalledWith(sessionId, userId);
     expect(sessionService.start).not.toHaveBeenCalled();
     expect(sessionService.touch).not.toHaveBeenCalled();
@@ -173,6 +191,82 @@ describe("AuthService.login e refresh", () => {
     await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({ statusCode: HttpStatus.NOT_FOUND });
     jwtProvider.verifyRefreshToken.mockImplementation(() => { throw new Error("invalid token"); });
     await expect(AuthService.refresh("bad-token")).rejects.toThrow("invalid token");
+  });
+});
+
+describe("AuthService.me", () => {
+  it("devolve companyTimezone da empresa", async () => {
+    companyRepository.findById.mockResolvedValue({
+      ...company,
+      timezone: "America/Sao_Paulo",
+    });
+    const result = await AuthService.me(userId);
+    expect(companyRepository.findById).toHaveBeenCalledOnce();
+    expect(companyRepository.findById.mock.calls[0][0].toString()).toBe(
+      companyId,
+    );
+    expect(result.companyTimezone).toBe("America/Sao_Paulo");
+    expect(result.mustChangePassword).toBe(false);
+  });
+
+  it("usa Europe/Lisbon quando empresa não existe", async () => {
+    companyRepository.findById.mockResolvedValue(null);
+    const result = await AuthService.me(userId);
+    expect(result.companyTimezone).toBe(DEFAULT_TIMEZONE);
+  });
+
+  it("usa Europe/Lisbon quando timezone é inválido", async () => {
+    companyRepository.findById.mockResolvedValue({
+      ...company,
+      timezone: "Invalid/Zone",
+    });
+    const result = await AuthService.me(userId);
+    expect(result.companyTimezone).toBe(DEFAULT_TIMEZONE);
+  });
+
+  it("devolve companyTimezone para OWNER e CLIENT", async () => {
+    companyRepository.findById.mockResolvedValue({
+      ...company,
+      timezone: "Asia/Tokyo",
+    });
+    userRepository.findById.mockResolvedValue(makeUser({ role: Role.OWNER }));
+    const owner = await AuthService.me(userId);
+    expect(owner.companyTimezone).toBe("Asia/Tokyo");
+    expect(owner.role).toBe(Role.OWNER);
+
+    userRepository.findById.mockResolvedValue(
+      makeUser({
+        role: Role.CLIENT,
+        clientId: { toString: () => "client-doc-id" },
+      }),
+    );
+    const client = await AuthService.me(userId);
+    expect(client.companyTimezone).toBe("Asia/Tokyo");
+    expect(client.role).toBe(Role.CLIENT);
+    expect(client.clientId).toBe("client-doc-id");
+  });
+
+  it("não expõe dados adicionais da empresa no payload", async () => {
+    companyRepository.findById.mockResolvedValue({
+      ...company,
+      name: "Nome secreto",
+      address: "Morada secreta",
+      timezone: "Europe/Lisbon",
+    });
+    const result = await AuthService.me(userId);
+    expect(result.name).toBe("User");
+    expect(result).not.toHaveProperty("address");
+    expect(result.companyTimezone).toBe("Europe/Lisbon");
+    for (const key of ["address", "logo"]) {
+      expect(result).not.toHaveProperty(key);
+    }
+  });
+
+  it("rejeita usuário inexistente", async () => {
+    userRepository.findById.mockResolvedValue(null);
+    await expect(AuthService.me("missing")).rejects.toMatchObject({
+      statusCode: HttpStatus.NOT_FOUND,
+    });
   });
 });
 

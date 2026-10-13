@@ -32,6 +32,7 @@ describe("authSlice", () => {
       avatar: session.avatar,
       role: session.role,
       companyId: session.companyId,
+      companyTimezone: session.companyTimezone,
       isActive: session.isActive,
     });
     expect(state.mustChangePassword).toBe(false);

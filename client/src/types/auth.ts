@@ -9,6 +9,8 @@ export interface AuthUser {
   avatar?: StoredImage | null;
   role: Role;
   companyId: string;
+  /** IANA da empresa; ausente em respostas antigas até o backend estar atualizado. */
+  companyTimezone?: string;
   isActive: boolean;
   clientId?: string;
 }

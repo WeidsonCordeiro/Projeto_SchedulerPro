@@ -29,6 +29,7 @@ export interface AuthUser {
   avatar?: StoredImage | null;
   role: Role;
   companyId: string;
+  companyTimezone: string;
   isActive: boolean;
   clientId?: string;
 }
