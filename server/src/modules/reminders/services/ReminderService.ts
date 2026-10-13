@@ -38,7 +38,10 @@ import { reminder2hEmail } from "../../../providers/mail/templates/reminder-2h.t
 import { ReminderEmailData } from "../../../providers/mail/templates/reminder-email-layout";
 
 import { AppointmentDocument } from "../../appointments/models/Appointment.model";
-import { DEFAULT_TIMEZONE, toCompanyDateTime } from "../../../utils/timezone";
+import {
+  resolveCompanyTimezone,
+  toCompanyDateTime,
+} from "../../../utils/timezone";
 
 import {
   REMINDER_24H_OFFSET_MINUTES,
@@ -187,7 +190,7 @@ class ReminderService {
       return false;
     }
 
-    const timezone = company.timezone || DEFAULT_TIMEZONE;
+    const timezone = resolveCompanyTimezone(company.timezone);
 
     const client = await this.clientRepository.findByIdAndCompany(
       appointment.clientId.toString(),

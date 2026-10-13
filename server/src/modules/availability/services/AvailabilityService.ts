@@ -32,6 +32,7 @@ import CompanyRepository from "../../companies/repositories/CompanyRepository";
 import {
   formatLocalTime,
   luxonWeekdayToDayOfWeek,
+  resolveCompanyTimezone,
   toCompanyDateTime,
 } from "../../../utils/timezone";
 
@@ -361,9 +362,11 @@ class AvailabilityService {
       throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const localStart = toCompanyDateTime(dateStart, company.timezone);
+    const timezone = resolveCompanyTimezone(company.timezone);
 
-    const localEnd = toCompanyDateTime(dateEnd, company.timezone);
+    const localStart = toCompanyDateTime(dateStart, timezone);
+
+    const localEnd = toCompanyDateTime(dateEnd, timezone);
 
     if (
       !localStart.isValid ||
