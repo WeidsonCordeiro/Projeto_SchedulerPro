@@ -38,7 +38,7 @@ import { AppointmentEmailData } from "../../../providers/mail/templates/appointm
 import { NotificationType } from "../index";
 import { Role } from "../../../constants/roles";
 import {
-  DEFAULT_TIMEZONE,
+  resolveCompanyTimezone,
   toCompanyDateTime,
 } from "../../../utils/timezone";
 import { buildPublicManageUrl } from "../../../utils/public-manage-url";
@@ -185,7 +185,7 @@ class NotificationDispatcher {
       }
 
       const company = await this.companyRepository.findById(input.companyId);
-      const timezone = company?.timezone ?? DEFAULT_TIMEZONE;
+      const timezone = resolveCompanyTimezone(company?.timezone);
       const companyName = company?.name ?? "SchedulerPro";
 
       const client = await this.clientRepository.findByIdAndCompany(

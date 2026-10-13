@@ -44,7 +44,7 @@ import NotificationDispatcher from "../../notifications/services/NotificationDis
 import PublicAppointmentTokenProvider from "../../../providers/security/PublicAppointmentTokenProvider";
 import { NotificationType } from "../../notifications";
 import { AppointmentDocument } from "../models/Appointment.model";
-import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
+import { resolveCompanyTimezone } from "../../../utils/timezone";
 
 /**
  * Janela opcional de consulta por período. Repassada ao repositório para
@@ -589,9 +589,7 @@ class AppointmentService {
     return {
       appointment: PublicAppointmentMapper.toResponse(appointment, {
         clientName,
-        timezone: isValidIanaTimezone(company.timezone ?? "")
-          ? company.timezone!
-          : DEFAULT_TIMEZONE,
+        timezone: resolveCompanyTimezone(company.timezone),
         service: { id: service._id.toString(), name: service.name },
         employee: {
           id: employee._id.toString(),
@@ -982,9 +980,7 @@ class AppointmentService {
 
     return PublicAppointmentMapper.toResponse(appointment, {
       clientName: client?.name ?? "",
-      timezone: isValidIanaTimezone(company?.timezone ?? "")
-        ? company!.timezone!
-        : DEFAULT_TIMEZONE,
+      timezone: resolveCompanyTimezone(company?.timezone),
       service: {
         id: appointment.serviceId.toString(),
         name: service?.name ?? "",

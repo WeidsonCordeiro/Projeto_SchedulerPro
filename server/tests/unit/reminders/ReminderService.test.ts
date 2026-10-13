@@ -442,6 +442,23 @@ describe("ReminderService — timezone e DST", () => {
     );
   });
 
+  it("resolve timezone inválido da empresa para Europe/Lisbon no e-mail", async () => {
+    companyRepository.findById.mockResolvedValue(
+      company({ timezone: "Invalid/Zone" }),
+    );
+    appointmentRepository.findUpcomingForReminders.mockResolvedValue([
+      appointment24h(),
+    ]);
+
+    await ReminderService.processDueReminders(now);
+
+    expect(notificationDispatcher.dispatchReminderEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        html: expect.stringContaining("11:00 às 11:30"),
+      }),
+    );
+  });
+
   it("aplica DST: mesmo instante UTC vira horário local diferente antes/depois da transição", async () => {
     const beforeDst = new Date("2026-03-27T10:00:00.000Z");
     const afterDst = new Date("2026-03-30T10:00:00.000Z");

@@ -55,8 +55,10 @@ import {
   PublicServiceResult,
 } from "../index";
 
-import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
-import { luxonWeekdayToDayOfWeek } from "../../../utils/timezone";
+import {
+  luxonWeekdayToDayOfWeek,
+  resolveCompanyTimezone,
+} from "../../../utils/timezone";
 
 class PublicBookingService {
   private readonly appointmentRepository = AppointmentRepository;
@@ -65,22 +67,6 @@ class PublicBookingService {
   private readonly availabilityRepository = AvailabilityRepository;
   private readonly availabilityExceptionRepository =
     AvailabilityExceptionRepository;
-
-  /**
-   * ==========================================================
-   * Resolve o timezone a usar.
-   *
-   * O timezone da EMPRESA é a regra: `Europe/Lisbon` só entra
-   * quando a empresa não tem um válido, o que na prática só
-   * acontece em registos criados antes do campo existir ou
-   * com um valor corrompido.
-   * ==========================================================
-   */
-  private resolveTimezone(companyTimezone: string | undefined | null) {
-    return isValidIanaTimezone(companyTimezone ?? "")
-      ? (companyTimezone as string)
-      : DEFAULT_TIMEZONE;
-  }
 
   /**
    * ==========================================================
@@ -176,7 +162,7 @@ class PublicBookingService {
      */
     const employeeId = employee._id;
 
-    const timezone = this.resolveTimezone(company.timezone);
+    const timezone = resolveCompanyTimezone(company.timezone);
 
     /**
      * ------------------------------------------------------

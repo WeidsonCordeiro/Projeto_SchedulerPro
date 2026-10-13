@@ -134,6 +134,19 @@ describe("NotificationDispatcher", () => {
     expect(item.metadata.employeeId.toString()).toBe(employeeId);
   });
 
+  it("resolve timezone inválido da empresa para Europe/Lisbon nas notificações", async () => {
+    companyRepository.findById.mockResolvedValue({
+      name: "salao do centro",
+      timezone: "Invalid/Zone",
+    });
+    userRepository.findByCompanyId.mockResolvedValue([user()]);
+
+    await NotificationDispatcher.dispatchAppointmentEvent(input);
+
+    const [item] = notificationRepository.createMany.mock.calls[0][0];
+    expect(item.message).toBe("Maria — Corte de cabelo em 30/08/2026 às 18:00.");
+  });
+
   it("envia e-mail ao cliente com os dados do agendamento", async () => {
     userRepository.findByCompanyId.mockResolvedValue([user()]);
 

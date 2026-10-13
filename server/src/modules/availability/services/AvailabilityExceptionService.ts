@@ -33,6 +33,8 @@ import { HttpStatus } from "../../../constants/http-status";
 
 import { DateTime } from "luxon";
 
+import { resolveCompanyTimezone } from "../../../utils/timezone";
+
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const EXCEPTION_MAX_REASON_LENGTH = 500;
@@ -90,7 +92,7 @@ class AvailabilityExceptionService {
       );
     }
 
-    const timezone = company.timezone ?? "UTC";
+    const timezone = resolveCompanyTimezone(company.timezone);
 
     const localDate = DateTime.fromISO(date, { zone: timezone });
 
