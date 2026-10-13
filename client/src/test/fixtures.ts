@@ -8,6 +8,7 @@ export const user: AuthUser = {
   avatar: null,
   role: "OWNER",
   companyId: "507f1f77bcf86cd799439012",
+  companyTimezone: "Europe/Lisbon",
   isActive: true,
 };
 

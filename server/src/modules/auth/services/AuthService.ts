@@ -64,8 +64,12 @@ import ResendProvider from "../../../providers/mail/ResendProvider";
 import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-password.template";
 import { welcomeTemplate } from "../../../providers/mail/templates/welcome.template";
 import { env } from "../../../config/env";
-import mongoose, { ClientSession } from "mongoose";
-import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
+import mongoose, { ClientSession, Types } from "mongoose";
+import {
+  DEFAULT_TIMEZONE,
+  isValidIanaTimezone,
+  resolveCompanyTimezone,
+} from "../../../utils/timezone";
 import SessionService from "./SessionService";
 import { ErrorCode } from "../../../constants/error-codes";
 
@@ -155,11 +159,22 @@ class AuthService {
 
     await this.updateLoginInfo(user);
 
+    const companyTimezone = await this.resolveCompanyTimezoneForUser(
+      user.companyId,
+    );
+
     return {
-      user: AuthMapper.toAuthUser(user),
+      user: AuthMapper.toAuthUser(user, companyTimezone),
       tokens,
       mustChangePassword: user.mustChangePassword,
     };
+  }
+
+  private async resolveCompanyTimezoneForUser(
+    companyId: string | Types.ObjectId,
+  ): Promise<string> {
+    const company = await this.companyRepository.findById(companyId);
+    return resolveCompanyTimezone(company?.timezone);
   }
 
   private generateTokens(user: UserDocument, sessionId: string): AuthTokens {
@@ -354,16 +369,13 @@ class AuthService {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const companyTimezone = await this.resolveCompanyTimezoneForUser(
+      user.companyId,
+    );
+
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      role: user.role,
-      companyId: user.companyId.toString(),
-      isActive: user.isActive,
+      ...AuthMapper.toAuthUser(user, companyTimezone),
       mustChangePassword: user.mustChangePassword,
-      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };
   }
 
