@@ -12,11 +12,13 @@ import {
   formatAppointmentTime,
 } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { PortalAppointment } from "../../types/appointment";
 import PageHeader from "../../components/common/PageHeader";
 
 export default function PortalHomePage() {
   const user = useAppSelector((state) => state.auth.user);
+  const timezone = useAppSelector(selectCompanyTimezone);
 
   const [appointments, setAppointments] = useState<PortalAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,8 +108,8 @@ export default function PortalHomePage() {
                             {appointment.serviceName ?? "Serviço"}
                           </div>
                           <div className="text-muted small">
-                            {formatAppointmentDate(appointment.startAt)} às{" "}
-                            {formatAppointmentTime(appointment.startAt)} ·{" "}
+                            {formatAppointmentDate(appointment.startAt, timezone)} às{" "}
+                            {formatAppointmentTime(appointment.startAt, timezone)} ·{" "}
                             {appointment.employeeName ?? "Funcionário"}
                           </div>
                         </div>

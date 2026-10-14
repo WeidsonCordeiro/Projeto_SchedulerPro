@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PublicBookingPage from "./PublicBookingPage";
 import publicBookingApi from "../../api/endpoints/publicBooking.api";
 import { httpError, networkError } from "../../test/http";
@@ -524,6 +524,23 @@ describe("PublicBookingPage", () => {
       await waitFor(() =>
         expect(mockApi.getAvailability.mock.calls[1][1].date).toBe("2099-12-25"),
       );
+    });
+  });
+
+  describe("data inicial no fuso da empresa", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("usa Europe/Lisbon antes da primeira resposta de disponibilidade", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-06-15T23:30:00.000Z"));
+
+      renderPage();
+      fireEvent.click(await screen.findByRole("radio", { name: /Corte de cabelo/ }));
+      fireEvent.click(await screen.findByRole("radio", { name: /João Silva/ }));
+
+      expect(screen.getByLabelText("Data")).toHaveValue("2026-06-16");
     });
   });
 

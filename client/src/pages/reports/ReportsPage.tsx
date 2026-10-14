@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import reportsApi from "../../api/endpoints/reports.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import { getReportAbilities } from "../../config/reportPermissions";
@@ -115,6 +115,16 @@ export default function ReportsPage() {
     customMonthBounds(timezone)
   );
   const [customError, setCustomError] = useState<string | null>(null);
+  const customDatesTouchedRef = useRef(false);
+
+  useEffect(() => {
+    if (customDatesTouchedRef.current) {
+      return;
+    }
+    const bounds = customMonthBounds(timezone);
+    setCustomInput(bounds);
+    setAppliedCustom(bounds);
+  }, [timezone]);
 
   const [overview, setOverview] = useState<ReportOverview>(EMPTY_OVERVIEW);
   const [revenue, setRevenue] = useState<ReportRevenue>(EMPTY_REVENUE);
@@ -236,6 +246,7 @@ export default function ReportsPage() {
       return;
     }
     setCustomError(null);
+    customDatesTouchedRef.current = true;
     setAppliedCustom({ start, end });
   }
 
@@ -310,12 +321,13 @@ export default function ReportsPage() {
                 type="date"
                 className="form-control form-control-sm"
                 value={customInput.start}
-                onChange={(event) =>
+                onChange={(event) => {
+                  customDatesTouchedRef.current = true;
                   setCustomInput((prev) => ({
                     ...prev,
                     start: event.target.value,
-                  }))
-                }
+                  }));
+                }}
               />
             </div>
             <div className="col-auto">
@@ -327,12 +339,13 @@ export default function ReportsPage() {
                 type="date"
                 className="form-control form-control-sm"
                 value={customInput.end}
-                onChange={(event) =>
+                onChange={(event) => {
+                  customDatesTouchedRef.current = true;
                   setCustomInput((prev) => ({
                     ...prev,
                     end: event.target.value,
-                  }))
-                }
+                  }));
+                }}
               />
             </div>
             <div className="col-auto">

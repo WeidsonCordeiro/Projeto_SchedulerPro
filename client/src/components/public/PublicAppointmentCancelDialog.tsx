@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
 import {
+  APPOINTMENT_TIMEZONE,
   formatAppointmentDate,
   formatAppointmentTime,
 } from "../../config/appointmentTime";
+import { isValidIanaTimezone } from "../../config/timezones";
 import type { PublicAppointment } from "../../types/publicAppointment";
 
 interface PublicAppointmentCancelDialogProps {
@@ -37,6 +39,10 @@ export default function PublicAppointmentCancelDialog({
   onConfirm,
   onClose,
 }: PublicAppointmentCancelDialogProps) {
+  const displayTimezone =
+    appointment.timezone && isValidIanaTimezone(appointment.timezone)
+      ? appointment.timezone
+      : APPOINTMENT_TIMEZONE;
   const dismissButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -104,14 +110,16 @@ export default function PublicAppointmentCancelDialog({
               </div>
               <div className="public-summary-row">
                 <dt>Data</dt>
-                <dd>{formatAppointmentDate(appointment.startAt)}</dd>
+                <dd>
+                  {formatAppointmentDate(appointment.startAt, displayTimezone)}
+                </dd>
               </div>
               <div className="public-summary-row">
                 <dt>Horário</dt>
                 <dd>
-                  {formatAppointmentTime(appointment.startAt)}
+                  {formatAppointmentTime(appointment.startAt, displayTimezone)}
                   {" – "}
-                  {formatAppointmentTime(appointment.endAt)}
+                  {formatAppointmentTime(appointment.endAt, displayTimezone)}
                 </dd>
               </div>
             </dl>

@@ -8,6 +8,7 @@ import appointmentsApi from "../../api/endpoints/appointments.api";
 import { httpError } from "../../test/http";
 import { clientUser } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
 
 vi.mock("../../api/endpoints/appointments.api", () => ({
   default: {
@@ -15,17 +16,18 @@ vi.mock("../../api/endpoints/appointments.api", () => ({
   },
 }));
 
-function makeStore() {
+function makeStore(companyTimezone = "America/Sao_Paulo") {
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
-        user: { ...clientUser, clientId: "client1" },
+        user: { ...clientUser, clientId: "client1", companyTimezone },
         mustChangePassword: false,
         isAuthenticated: true,
         isInitializing: false,
         isLoading: false,
       },
+      company: { company: null },
     },
   });
 }
@@ -109,6 +111,19 @@ describe("PortalAppointmentsPage", () => {
     expect(within(table).getByText("Barba")).toBeInTheDocument();
     expect(within(table).getByText("Maria")).toBeInTheDocument();
     expect(within(table).getByText("João")).toBeInTheDocument();
+  });
+
+  it("formats the appointment hour with companyTimezone from the session", async () => {
+    vi.mocked(appointmentsApi.getMyAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureAppointment],
+    });
+
+    renderPage();
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("07:00")).toBeInTheDocument();
   });
 
   it("uses the shared table surface and status column", async () => {

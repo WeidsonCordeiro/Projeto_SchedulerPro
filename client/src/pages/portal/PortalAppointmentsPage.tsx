@@ -10,6 +10,8 @@ import {
   formatAppointmentDate,
   formatAppointmentTime,
 } from "../../config/appointmentTime";
+import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { PortalAppointment } from "../../types/appointment";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -17,6 +19,7 @@ import EmptyState from "../../components/common/EmptyState";
 type Filter = "all" | "upcoming" | "past";
 
 export default function PortalAppointmentsPage() {
+  const timezone = useAppSelector(selectCompanyTimezone);
   const [appointments, setAppointments] = useState<PortalAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -131,8 +134,8 @@ export default function PortalAppointmentsPage() {
                   <tr key={appointment.id}>
                     <td>{appointment.serviceName ?? "—"}</td>
                     <td>{appointment.employeeName ?? "—"}</td>
-                    <td>{formatAppointmentDate(appointment.startAt)}</td>
-                    <td>{formatAppointmentTime(appointment.startAt)}</td>
+                    <td>{formatAppointmentDate(appointment.startAt, timezone)}</td>
+                    <td>{formatAppointmentTime(appointment.startAt, timezone)}</td>
                     <td>
                       <span
                         className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
