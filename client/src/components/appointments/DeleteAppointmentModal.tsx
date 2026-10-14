@@ -5,6 +5,8 @@ import {
   formatAppointmentDate,
   formatAppointmentTime,
 } from "../../config/appointmentTime";
+import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 
 interface DeleteAppointmentModalProps {
@@ -22,6 +24,7 @@ export default function DeleteAppointmentModal({
   onClose,
   onDeleted,
 }: DeleteAppointmentModalProps) {
+  const timezone = useAppSelector(selectCompanyTimezone);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -48,8 +51,8 @@ export default function DeleteAppointmentModal({
 
   const summary = [
     clientName?.trim() || null,
-    formatAppointmentDate(appointment.startAt),
-    formatAppointmentTime(appointment.startAt),
+    formatAppointmentDate(appointment.startAt, timezone),
+    formatAppointmentTime(appointment.startAt, timezone),
   ]
     .filter(Boolean)
     .join(" · ");

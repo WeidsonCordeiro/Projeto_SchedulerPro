@@ -14,6 +14,7 @@ import BookingReview from "../../components/public/booking/BookingReview";
 import BookingServicePicker from "../../components/public/booking/BookingServicePicker";
 import publicBookingApi from "../../api/endpoints/publicBooking.api";
 import { getApiError } from "../../api/errors";
+import { APPOINTMENT_TIMEZONE } from "../../config/appointmentTime";
 import {
   BOOKING_NO_EMPLOYEES_MESSAGE,
   BOOKING_NO_SERVICES_MESSAGE,
@@ -81,7 +82,7 @@ export default function PublicBookingPage() {
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
-  const [date, setDate] = useState(() => getTodayDateKey());
+  const [date, setDate] = useState(() => getTodayDateKey(APPOINTMENT_TIMEZONE));
   const [userPickedDate, setUserPickedDate] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<PublicAvailabilitySlot | null>(
     null,
@@ -368,7 +369,7 @@ export default function PublicBookingPage() {
     setSelectedSlot(null);
     setAvailability(null);
     setDetails(EMPTY_DETAILS);
-    setDate(getTodayDateKey());
+    setDate(getTodayDateKey(timezone ?? APPOINTMENT_TIMEZONE));
     setUserPickedDate(false);
     setSubmitError(null);
     goToStep("service");

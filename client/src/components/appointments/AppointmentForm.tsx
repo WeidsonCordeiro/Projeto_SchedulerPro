@@ -76,6 +76,7 @@ function validate(
   serviceId: string,
   employeeId: string,
   startAt: string,
+  timezone: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
 
@@ -93,7 +94,7 @@ function validate(
 
   if (!startAt) {
     errors.startAt = "A data e hora do agendamento são obrigatórias.";
-  } else if (!toIsoUtc(startAt)) {
+  } else if (!toIsoUtc(startAt, timezone)) {
     errors.startAt = "A data e hora do agendamento são inválidas.";
   }
 
@@ -139,7 +140,7 @@ export default function AppointmentForm({
   /** Gera o valor datetime-local para preenchimento a partir de initialDate/Time. */
   function buildInitialStartAt(): string {
     if (isEdit) {
-      return toLocalDateTimeInputValue(appointment!.startAt);
+      return toLocalDateTimeInputValue(appointment!.startAt, timezone);
     }
     if (initialDate && initialTime) {
       return `${initialDate}T${initialTime}`;
@@ -152,7 +153,10 @@ export default function AppointmentForm({
 
   function buildInitialSelectedDate(): string | null {
     if (isEdit) {
-      return toLocalDateTimeInputValue(appointment!.startAt).slice(0, 10);
+      return toLocalDateTimeInputValue(appointment!.startAt, timezone).slice(
+        0,
+        10,
+      );
     }
     return initialDate ?? null;
   }
@@ -344,7 +348,7 @@ export default function AppointmentForm({
     event.preventDefault();
     setErrorMessage(null);
 
-    const errors = validate(clientId, serviceId, employeeId, startAt);
+    const errors = validate(clientId, serviceId, employeeId, startAt, timezone);
     setFieldErrors(errors);
 
     if (errors.clientId || errors.serviceId || errors.employeeId || errors.startAt) {
@@ -357,7 +361,7 @@ export default function AppointmentForm({
         clientId,
         serviceId,
         employeeId,
-        startAt: toIsoUtc(startAt),
+        startAt: toIsoUtc(startAt, timezone),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
       };
       const response = isEdit

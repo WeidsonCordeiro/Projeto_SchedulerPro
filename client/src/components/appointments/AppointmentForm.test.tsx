@@ -715,4 +715,74 @@ describe("AppointmentForm", () => {
       expect(getEmployeeOption(getDialog(), "Ana Lima")).toBeDisabled();
     });
   });
+
+  describe("timezone da empresa", () => {
+    it("envia o instante UTC correto ao criar com America/Sao_Paulo", async () => {
+      vi.mocked(appointmentsApi.createAppointment).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: makeAppointment({ id: "appt99" }),
+      });
+
+      renderForm({ timezone: "America/Sao_Paulo" });
+      const dialog = getDialog();
+      fireEvent.change(within(dialog).getByLabelText("Cliente"), {
+        target: { value: "client1" },
+      });
+      fireEvent.change(within(dialog).getByLabelText("Serviço"), {
+        target: { value: "service1" },
+      });
+      await selectEmployeeAndWaitForCalendar("Ana Lima", dialog);
+      fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
+      fireEvent.click(within(dialog).getByRole("button", { name: "10:00" }));
+      fireEvent.click(within(dialog).getByRole("button", { name: /criar agendamento/i }));
+
+      await waitFor(() => expect(appointmentsApi.createAppointment).toHaveBeenCalled());
+      expect(vi.mocked(appointmentsApi.createAppointment).mock.calls[0][0].startAt).toBe(
+        "2026-09-15T13:00:00.000Z",
+      );
+    });
+
+    it("mostra a hora local correta ao editar com timezone explícito", async () => {
+      renderForm({
+        timezone: "America/Sao_Paulo",
+        appointment: makeAppointment({
+          startAt: "2026-09-15T13:00:00.000Z",
+          endAt: "2026-09-15T13:30:00.000Z",
+        }),
+      });
+
+      const dialog = getDialog();
+      await screen.findByRole("button", { name: "2026-09-15" });
+      expect(within(dialog).getByRole("button", { name: "10:00" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    it("preserva o instante ao submeter edição no fuso da empresa", async () => {
+      vi.mocked(appointmentsApi.updateAppointment).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: makeAppointment(),
+      });
+
+      renderForm({
+        timezone: "America/Sao_Paulo",
+        appointment: makeAppointment({
+          startAt: "2026-09-15T13:00:00.000Z",
+          endAt: "2026-09-15T13:30:00.000Z",
+        }),
+      });
+
+      const dialog = getDialog();
+      await screen.findByRole("button", { name: "2026-09-15" });
+      fireEvent.click(within(dialog).getByRole("button", { name: /salvar/i }));
+
+      expect(appointmentsApi.updateAppointment).toHaveBeenCalledWith(
+        "appt1",
+        expect.objectContaining({ startAt: "2026-09-15T13:00:00.000Z" }),
+      );
+    });
+  });
 });

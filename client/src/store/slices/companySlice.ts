@@ -1,15 +1,17 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
 import { APPOINTMENT_TIMEZONE } from "../../config/appointmentTime";
+import { isValidIanaTimezone } from "../../config/timezones";
+import type { AuthUser } from "../../types/auth";
 import type { Company } from "../../types/company";
 
 /**
  * Estado de sessão da empresa autenticada.
  *
  * A empresa é carregada do backend autenticado (GET /companies) quando o
- * usuário possui COMPANY_READ (OWNER/ADMIN). O timezone da empresa precisa ser
- * consumido por AppointmentForm/AppointmentsPage (smart scheduling), por isso
- * fica no estado global de sessão em vez de estado local da página.
+ * usuário possui COMPANY_READ (OWNER/ADMIN). O timezone efetivo para
+ * agendamento vem deste registo quando válido, ou de `auth.user.companyTimezone`
+ * na sessão (todos os roles autenticados).
  */
 export interface CompanyState {
   company: Company | null;
@@ -43,18 +45,31 @@ export function selectCompany(state: {
   return state.company?.company ?? null;
 }
 
+export function resolveEffectiveCompanyTimezone(
+  companyTimezone: string | undefined | null,
+  sessionTimezone: string | undefined | null,
+): string {
+  if (companyTimezone && isValidIanaTimezone(companyTimezone)) {
+    return companyTimezone;
+  }
+  if (sessionTimezone && isValidIanaTimezone(sessionTimezone)) {
+    return sessionTimezone;
+  }
+  return APPOINTMENT_TIMEZONE;
+}
+
 /**
- * Timezone real da empresa quando disponível; caso contrário o mesmo valor
- * padrão assumido pelo backend (DEFAULT_TIMEZONE = "Europe/Lisbon").
- *
- * Usado pelos fluxos de agendamento. Para roles sem COMPANY_READ (MANAGER,
- * EMPLOYEE, CLIENT) o frontend continua usando o fallback enquanto o backend
- * não expuser o timezone a todos os autenticados (ver docs/stage-22 relatório).
+ * Timezone IANA efetivo da empresa: registo carregado, depois sessão
+ * (`companyTimezone`), depois o mesmo fallback do backend (`Europe/Lisbon`).
  */
 export function selectCompanyTimezone(state: {
   company?: CompanyState;
+  auth?: { user: AuthUser | null };
 }): string {
-  return state.company?.company?.timezone ?? APPOINTMENT_TIMEZONE;
+  return resolveEffectiveCompanyTimezone(
+    state.company?.company?.timezone,
+    state.auth?.user?.companyTimezone,
+  );
 }
 
 export default companySlice.reducer;

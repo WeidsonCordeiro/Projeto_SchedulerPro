@@ -8,6 +8,7 @@ import appointmentsApi from "../../api/endpoints/appointments.api";
 import { httpError } from "../../test/http";
 import { clientUser } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
 
 vi.mock("../../api/endpoints/appointments.api", () => ({
   default: {
@@ -15,17 +16,20 @@ vi.mock("../../api/endpoints/appointments.api", () => ({
   },
 }));
 
-function makeStore() {
+function makeStore(
+  companyTimezone: string | undefined = "Europe/Lisbon",
+) {
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
-        user: { ...clientUser, clientId: "client1" },
+        user: { ...clientUser, clientId: "client1", companyTimezone },
         mustChangePassword: false,
         isAuthenticated: true,
         isInitializing: false,
         isLoading: false,
       },
+      company: { company: null },
     },
   });
 }
@@ -97,6 +101,34 @@ describe("PortalHomePage", () => {
     expect(await screen.findByText("Corte de Cabelo")).toBeInTheDocument();
     expect(screen.getByText(/Maria/)).toBeInTheDocument();
     expect(screen.getByText("Agendado")).toBeInTheDocument();
+  });
+
+  it("formats appointment time using companyTimezone from the session", async () => {
+    vi.mocked(appointmentsApi.getMyAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        {
+          id: "apt1",
+          companyId: "comp1",
+          clientId: "client1",
+          serviceId: "svc1",
+          employeeId: "emp1",
+          startAt: "2026-12-01T10:00:00.000Z",
+          endAt: "2026-12-01T10:30:00.000Z",
+          status: "scheduled",
+          notes: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+          serviceName: "Corte",
+          employeeName: "Maria",
+        },
+      ],
+    });
+
+    renderPage(makeStore("America/Sao_Paulo"));
+
+    expect(await screen.findByText(/07:00/)).toBeInTheDocument();
   });
 
   it("shows an error and retry button on load failure", async () => {

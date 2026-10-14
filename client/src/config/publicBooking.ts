@@ -297,11 +297,10 @@ export function formatDateKey(dateKey: string): string {
  * no calendário dias que já passaram é oferecer ao utilizador uma escolha
  * garantidamente inválida.
  *
- * Sem `timezone`, assume a zona do browser. É o melhor disponível antes da
- * primeira resposta de disponibilidade — que é a única fonte de `company.timezone`
- * neste fluxo, já que os endpoints de catálogo não a trazem. Assim que essa
- * resposta chega, a página passa a chamar esta função com o fuso da empresa e
- * o limite é corrigido.
+ * Sem `timezone`, assume a zona do browser (útil em testes utilitários).
+ * A marcação pública inicializa com `APPOINTMENT_TIMEZONE` até a primeira
+ * resposta de disponibilidade trazer o fuso efetivo da empresa; depois a
+ * página corrige data e `min` com o valor da API.
  */
 export function getTodayDateKey(timezone?: string): string {
   const today = timezone

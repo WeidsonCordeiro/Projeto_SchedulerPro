@@ -83,6 +83,15 @@ export default function AppointmentsPage() {
 
   const [viewType, setViewType] = useState<CalendarViewType>("month");
   const [currentDateKey, setCurrentDateKey] = useState(todayKey);
+  const previousTodayKeyRef = useRef(todayKey);
+
+  useEffect(() => {
+    const previousTodayKey = previousTodayKeyRef.current;
+    if (currentDateKey === previousTodayKey && todayKey !== previousTodayKey) {
+      setCurrentDateKey(todayKey);
+    }
+    previousTodayKeyRef.current = todayKey;
+  }, [todayKey, currentDateKey]);
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
