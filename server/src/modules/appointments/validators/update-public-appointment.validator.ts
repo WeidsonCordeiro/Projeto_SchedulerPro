@@ -20,14 +20,10 @@
 
 import { body } from "express-validator";
 
+import { withIsoInstantRules } from "../../../utils/iso-instant";
 import { PUBLIC_APPOINTMENT_UPDATE_FIELDS } from "../dto/UpdatePublicAppointment.dto";
 
 const ALLOWED_FIELDS = new Set<string>(PUBLIC_APPOINTMENT_UPDATE_FIELDS);
-
-/**
- * ISO 8601 com deslocamento explícito: `Z` ou `+HH:MM`/`-HH:MM`.
- */
-const HAS_TIMEZONE_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/i;
 
 /**
  * Valida a data/hora enviada no PATCH.
@@ -35,31 +31,18 @@ const HAS_TIMEZONE_OFFSET = /(?:Z|[+-]\d{2}:?\d{2})$/i;
  * Exposto para ser reutilizado sem duplicar a regra de fuso.
  */
 const startAtRules = [
-  body("startAt")
-    /**
-     * O PATCH é parcial: `startAt` só é validado quando vem.
-     * Sem `optional()`, `notEmpty()` transformava a ausência do
-     * campo em erro e recusava qualquer PATCH que não mexesse na
-     * data (incluindo o corpo vazio).
-     */
-    .optional()
-    .isISO8601()
-    .withMessage("A data e hora do agendamento são inválidas.")
-    .custom(
-      (value: unknown) =>
-        typeof value === "string" && HAS_TIMEZONE_OFFSET.test(value),
-    )
-    .withMessage(
-      "A data e hora do agendamento devem incluir o fuso horário (ex.: 2027-08-29T08:00:00Z).",
-    )
-    .custom((value: unknown) => {
-      if (typeof value !== "string") {
-        return false;
-      }
-
-      return !Number.isNaN(new Date(value).getTime());
-    })
-    .withMessage("A data e hora do agendamento são inválidas."),
+  withIsoInstantRules(
+    body("startAt")
+      /**
+       * O PATCH é parcial: `startAt` só é validado quando vem.
+       * Sem `optional()`, `notEmpty()` transformava a ausência do
+       * campo em erro e recusava qualquer PATCH que não mexesse na
+       * data (incluindo o corpo vazio).
+       */
+      .optional()
+      .isISO8601()
+      .withMessage("A data e hora do agendamento são inválidas."),
+  ),
 ];
 
 /**

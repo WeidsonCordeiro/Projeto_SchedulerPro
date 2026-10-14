@@ -188,6 +188,15 @@ describe("Relatórios HTTP integration", () => {
     expect(reportRepository.findStatusCounts).not.toHaveBeenCalled();
   });
 
+  it("rejeita startAt sem offset explícito", async () => {
+    const response = await request(app).get(
+      "/api/reports/overview?startAt=2026-09-01T00:00:00&endAt=2026-10-01T00:00:00.000Z",
+    );
+
+    expect(response.status).toBe(400);
+    expect(reportRepository.findStatusCounts).not.toHaveBeenCalled();
+  });
+
   it("rejeita início do período posterior ao fim", async () => {
     const response = await request(app).get(
       "/api/reports/overview?startAt=2026-10-01T00:00:00.000Z&endAt=2026-09-01T00:00:00.000Z",
