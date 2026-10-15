@@ -37,6 +37,12 @@ Dates are serialized as ISO 8601 strings. Resource IDs are exposed as id
 strings by the mappers. Company context comes from the authenticated user;
 the frontend must not send companyId to select the active tenant.
 
+Appointment instants (`startAt`, list/report range filters) must use ISO 8601
+with an explicit timezone: suffix `Z` (UTC) or a numeric offset such as
+`+01:00` or `-03:00`. Strings without an offset (for example
+`2026-10-20T09:00:00`) are rejected with 400. Calendar dates for availability
+and exceptions use separate `AAAA-MM-DD` / local `HH:mm` contracts.
+
 ## 2. Authentication and cookies
 
 Cookies:
@@ -374,7 +380,8 @@ DELETE /api/availability/:id
 
 POST /api/appointments
 - Permission: APPOINTMENT_CREATE.
-- Body: clientId, serviceId, employeeId, startAt ISO 8601, optional notes.
+- Body: clientId, serviceId, employeeId, startAt ISO 8601 with explicit
+  offset (`Z` or `+HH:MM`/`-HH:MM`), optional notes.
 - endAt is calculated from service duration.
 - status starts as scheduled.
 - Success: 201, appointment object.
@@ -393,6 +400,9 @@ Example:
 
 GET /api/appointments
 - Permission: APPOINTMENT_READ.
+- Optional query: startAt, endAt — ISO 8601 instants with explicit offset
+  (same rule as POST `startAt`); when both are sent, startAt must be before
+  endAt.
 - Success: 200, array sorted by startAt.
 
 GET /api/appointments/:id
@@ -403,7 +413,8 @@ GET /api/appointments/:id
 
 PATCH /api/appointments/:id
 - Permission: APPOINTMENT_UPDATE.
-- Body: optional clientId, serviceId, employeeId, startAt and notes.
+- Body: optional clientId, serviceId, employeeId, startAt (ISO 8601 with
+  explicit offset when present) and notes.
 - endAt and status are not general update fields.
 - Success: 200, updated appointment; endAt is recalculated.
 

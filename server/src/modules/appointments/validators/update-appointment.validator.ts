@@ -13,6 +13,8 @@
 
 import { body } from "express-validator";
 
+import { withIsoInstantRules } from "../../../utils/iso-instant";
+
 export const updateAppointmentValidator = [
   body("clientId")
     .optional()
@@ -29,10 +31,12 @@ export const updateAppointmentValidator = [
     .isMongoId()
     .withMessage("ID do funcionário inválido."),
 
-  body("startAt")
-    .optional()
-    .isISO8601()
-    .withMessage("A data e hora do agendamento são inválidas."),
+  withIsoInstantRules(
+    body("startAt")
+      .optional()
+      .isISO8601()
+      .withMessage("A data e hora do agendamento são inválidas."),
+  ),
 
   body("notes")
     .optional({ nullable: true })

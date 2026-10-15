@@ -213,7 +213,8 @@ describe("DashboardPage", () => {
     expect(screen.getByText(/olá, owner teste/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
 
-    expect(cardValues()).toEqual(["1", "2", "1", "1", "1", "1"]);
+    // Três KPIs: Hoje, Pendentes (scheduled), Confirmados.
+    expect(cardValues()).toEqual(["1", "2", "1"]);
 
     expect(
       screen.getByRole("heading", { name: "Agenda do dia" }),
@@ -292,7 +293,7 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByText("Nenhum agendamento para hoje."),
     ).toBeInTheDocument();
-    expect(cardValues()).toEqual(["0", "0", "0", "1", "1", "1"]);
+    expect(cardValues()).toEqual(["0", "0", "0"]);
     expect(screen.getByText("Nenhum agendamento próximo.")).toBeInTheDocument();
   });
 

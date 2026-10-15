@@ -245,11 +245,11 @@ const inactiveEmployee = {
   name: "Inativo",
 };
 
-/** Quinta-feira, para os testes de dia da semana. */
-const DATE = "2026-10-08";
+/** Quinta-feira futura (evita dia passado em CI); mesmo dia da semana que 2027-10-07. */
+const DATE = "2027-10-07";
 
 /** Sexta-feira. */
-const FRIDAY = "2026-10-09";
+const FRIDAY = "2027-10-08";
 
 /** Ambos os períodos completos de 30 em 30. */
 const availabilityFull = {
@@ -590,12 +590,12 @@ describe("GET /api/public/companies/:companyId/availability", () => {
     // Manhã 09:00-12:00 = 6 slots; tarde 14:00-18:00 = 8 slots.
     expect(response.body.data.slots).toHaveLength(14);
     expect(response.body.data.slots[0]).toEqual({
-      startAt: "2026-10-08T09:00:00.000+01:00",
-      endAt: "2026-10-08T09:30:00.000+01:00",
+      startAt: "2027-10-07T09:00:00.000+01:00",
+      endAt: "2027-10-07T09:30:00.000+01:00",
     });
     expect(response.body.data.slots.at(-1)).toEqual({
-      startAt: "2026-10-08T17:30:00.000+01:00",
-      endAt: "2026-10-08T18:00:00.000+01:00",
+      startAt: "2027-10-07T17:30:00.000+01:00",
+      endAt: "2027-10-07T18:00:00.000+01:00",
     });
   });
 
@@ -627,16 +627,16 @@ describe("GET /api/public/companies/:companyId/availability", () => {
     expect(String(call[1])).toBe(ids.employee);
 
     /**
-     * O dia local inteiro: 2026-10-08 em Lisboa é UTC+1, logo
+     * O dia local inteiro: 2027-10-07 em Lisboa é UTC+1, logo
      * de 23:00 do dia anterior a 23:59:59.999. É o que
      * `endOf("day")` dá — último milissegundo do dia, não a
      * meia-noite seguinte.
      */
     expect((call[2] as Date).toISOString()).toBe(
-      "2026-10-07T23:00:00.000Z",
+      "2027-10-06T23:00:00.000Z",
     );
     expect((call[3] as Date).toISOString()).toBe(
-      "2026-10-08T22:59:59.999Z",
+      "2027-10-07T22:59:59.999Z",
     );
   });
 
@@ -701,8 +701,8 @@ describe("GET /api/public/companies/:companyId/availability", () => {
           companyId: ref(ids.companyA),
           employeeId: ref(ids.employee),
           status,
-          startAt: new Date("2026-10-08T08:00:00.000Z"),
-          endAt: new Date("2026-10-08T08:30:00.000Z"),
+          startAt: new Date("2027-10-07T08:00:00.000Z"),
+          endAt: new Date("2027-10-07T08:30:00.000Z"),
         },
       ]);
 
@@ -711,7 +711,7 @@ describe("GET /api/public/companies/:companyId/availability", () => {
         .query(availabilityQuery());
 
       expect(response.body.data.slots[0].startAt).toBe(
-        "2026-10-08T09:30:00.000+01:00",
+        "2027-10-07T09:30:00.000+01:00",
       );
     },
   );
@@ -885,7 +885,7 @@ describe("GET /api/public/companies/:companyId/availability", () => {
     expect(response.body.message).toBe(message);
   });
 
-  it.each(["2026-10-08T09:00", "2026-10-08T09:00:00Z", "08/10/2026"])(
+  it.each(["2027-10-07T09:00", "2027-10-07T09:00:00Z", "08/10/2026"])(
     "devolve 400 para %s, porque a data não tem hora nem fuso",
     async (date) => {
       const response = await request(app)
