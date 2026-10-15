@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -132,6 +132,13 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
   });
 }
 
+function getRevenueEstimatedValue(): HTMLElement {
+  const title = screen.getByText("Receita estimada (concluídos)");
+  const card =
+    title.closest(".dashboard-kpi") ?? title.closest(".card");
+  return within(card as HTMLElement).getByTestId("card-value");
+}
+
 function renderReports(role: Role | null = "OWNER", timezone: string = TZ) {
   return render(
     <Provider store={makeStore(role, timezone)}>
@@ -197,7 +204,7 @@ describe("ReportsPage", () => {
     renderReports();
 
     expect(await screen.findByText("Visão geral")).toBeInTheDocument();
-    expect(screen.getByTestId("revenue-estimated")).toHaveTextContent("120,00");
+    expect(getRevenueEstimatedValue()).toHaveTextContent("120,00");
     expect(screen.getByText("180,00")).toBeInTheDocument();
     expect(screen.getByTestId("cancellation-rate")).toHaveTextContent("15%");
 
@@ -326,7 +333,7 @@ describe("ReportsPage", () => {
     expect(
       screen.getByText(/não foi possível carregar parte dos relatórios/i),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("revenue-estimated")).toHaveTextContent("0,00");
+    expect(getRevenueEstimatedValue()).toHaveTextContent("0,00");
   });
 
   it("bloqueia a página para roles sem permissão", () => {
