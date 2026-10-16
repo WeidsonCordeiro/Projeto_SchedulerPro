@@ -147,7 +147,7 @@ export default function NotificationBell() {
   }
 
   return (
-    <div className="position-relative" ref={containerRef}>
+    <div className="notification-bell-anchor flex-shrink-0" ref={containerRef}>
       <button
         type="button"
         className="btn btn-outline-light btn-sm position-relative"
