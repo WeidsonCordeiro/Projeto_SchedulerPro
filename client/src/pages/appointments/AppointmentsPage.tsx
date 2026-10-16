@@ -35,6 +35,8 @@ import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import type { Employee, EmployeeRole } from "../../types/employee";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
@@ -419,27 +421,13 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar agendamentos…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadAppointments()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadAppointments()}
+        />
       )}
 
       {!isLoading &&

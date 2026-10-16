@@ -8,6 +8,8 @@ import { useAppSelector } from "../../store";
 import type { Service } from "../../types/service";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import DashboardCard from "../../components/common/DashboardCard";
 
 function formatPrice(price: number): string {
@@ -164,27 +166,13 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar serviços…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadServices()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadServices()}
+        />
       )}
 
       {!isLoading && !loadError && services.length === 0 && (

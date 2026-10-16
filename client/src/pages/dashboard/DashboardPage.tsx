@@ -15,6 +15,8 @@ import DashboardCard from "../../components/common/DashboardCard";
 import DashboardAppointments from "./DashboardAppointments";
 import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import { Link } from "react-router-dom";
 
 /**
@@ -105,26 +107,26 @@ export default function DashboardPage() {
     );
   }, [loadClients, loadServices, loadEmployees, canListEmployees]);
 
-  useEffect(() => {
-    async function loadAll() {
-      setIsLoading(true);
-      setLoadError(null);
-      setRelatedError(null);
+  const loadAll = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    setRelatedError(null);
 
-      try {
-        await loadAppointments();
-      } catch (error) {
-        setLoadError(getFriendlyErrorMessage(getApiError(error)));
-        setIsLoading(false);
-        return;
-      }
-
-      void loadRelated();
+    try {
+      await loadAppointments();
+    } catch (error) {
+      setLoadError(getFriendlyErrorMessage(getApiError(error)));
       setIsLoading(false);
+      return;
     }
 
-    void loadAll();
+    await loadRelated();
+    setIsLoading(false);
   }, [loadAppointments, loadRelated]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   const clientNames = useMemo(
     () => new Map(clients.map((c) => [c.id, c.name])),
@@ -169,14 +171,26 @@ export default function DashboardPage() {
     [appointments]
   );
 
+  const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
+
+  const pageHeader = (
+    <PageHeader
+      title="Bem-vindo ao SchedulerPro"
+      description={greeting}
+      eyebrow="Visão geral"
+      actions={
+        <Link className="btn btn-primary" to="/appointments">
+          Abrir agenda
+        </Link>
+      }
+    />
+  );
+
   if (isLoading) {
     return (
       <section>
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
+        {pageHeader}
+        <LoadingState label="A carregar o painel…" />
       </section>
     );
   }
@@ -184,36 +198,15 @@ export default function DashboardPage() {
   if (loadError) {
     return (
       <section>
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => window.location.reload()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        {pageHeader}
+        <ErrorState message={loadError} onRetry={() => void loadAll()} />
       </section>
     );
   }
 
-  const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
-
   return (
     <section>
-      <PageHeader
-        title="Bem-vindo ao SchedulerPro"
-        description={greeting}
-        eyebrow="Visão geral"
-        actions={
-          <Link className="btn btn-primary" to="/appointments">
-            Abrir agenda
-          </Link>
-        }
-      />
+      {pageHeader}
       {relatedError && (
         <div className="alert alert-warning mt-3" role="alert">
           {relatedError}

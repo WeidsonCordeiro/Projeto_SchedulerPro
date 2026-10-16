@@ -77,7 +77,7 @@ describe("CompanyPage", () => {
     renderPage();
 
     expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+    expect(screen.getByText("A carregar empresa…")).toBeInTheDocument();
   });
 
   it("renders the company data and the edit form for OWNER", async () => {

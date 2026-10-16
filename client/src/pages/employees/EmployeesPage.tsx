@@ -9,6 +9,8 @@ import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import ImageAvatar from "../../components/common/ImageAvatar";
 import DashboardCard from "../../components/common/DashboardCard";
 
@@ -204,27 +206,13 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar funcionários…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadEmployees()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadEmployees()}
+        />
       )}
 
       {!isLoading && !loadError && employees.length === 0 && (
