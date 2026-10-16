@@ -1,11 +1,26 @@
+html {
+  height: 100%;
+}
+
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   color: #172033;
   background: #f5f7fb;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Shell autenticado: um único scroll em `main`, sem documento a crescer além da viewport. */
+body:has(.app-shell) {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#root:has(.app-shell) {
+  height: 100%;
 }
 
 :root {
@@ -373,10 +388,18 @@ button,
 
 .app-shell {
   background: #f5f7fb;
-  height: 100vh;
-  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.app-body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .app-body > main {
+  min-height: 0;
   min-width: 0;
 }
 
@@ -432,7 +455,30 @@ button,
   --sp-navbar-height: 4.25rem;
   background: #17233f;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
   min-height: var(--sp-navbar-height);
+}
+.app-navbar .container-fluid {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.app-navbar .navbar-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+  min-width: 0;
+}
+.app-navbar .navbar-user-cluster {
+  align-items: center;
+  display: flex;
+  flex-shrink: 1;
+  gap: 0.5rem;
+  min-width: 0;
 }
 .app-navbar .navbar-brand {
   font-weight: 750;
@@ -468,10 +514,20 @@ button,
   text-align: center;
 }
 .notification-menu {
-  max-width: calc(100vw - 1rem);
-  width: 22rem;
+  display: flex;
+  flex-direction: column;
+  inset-inline: auto 0.5rem;
+  left: auto;
+  max-height: calc(100dvh - var(--sp-navbar-height) - 1.25rem);
+  max-width: min(22rem, calc(100vw - 1rem));
+  min-height: 0;
+  position: fixed;
+  top: calc(var(--sp-navbar-height) + 0.35rem);
+  width: min(22rem, calc(100vw - 1rem));
+  z-index: 1060;
 }
 .notification-menu-header {
+  flex-shrink: 0;
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -491,7 +547,9 @@ button,
   overflow-wrap: anywhere;
 }
 .dropdown-menu-body {
-  max-height: 18rem;
+  flex: 1 1 auto;
+  max-height: min(18rem, calc(100dvh - var(--sp-navbar-height) - 6rem));
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -1146,9 +1204,10 @@ button,
 @media (max-width: 991.98px) {
   .app-sidebar {
     position: fixed;
-    top: 0;
+    top: var(--sp-navbar-height);
     left: 0;
     bottom: 0;
+    height: calc(100dvh - var(--sp-navbar-height));
     transform: translateX(-100%);
     transition: transform 0.2s ease;
     width: min(260px, 82vw);
@@ -1196,17 +1255,22 @@ button,
     flex-wrap: wrap;
   }
 
-  /* Painel de notificações ancorado à viewport: nunca ultrapassa as margens
-     laterais, independentemente da posição do sino. */
+  /* Painel de notificações: margens laterais simétricas em ecrãs estreitos. */
   .notification-menu {
-    position: fixed;
-    top: calc(var(--sp-navbar-height) + 0.35rem);
+    inset-inline: 0.5rem;
     left: 0.5rem;
     right: 0.5rem;
     width: auto;
     max-width: none;
-    max-height: calc(100vh - var(--sp-navbar-height) - 1.25rem);
-    max-height: calc(100dvh - var(--sp-navbar-height) - 1.25rem);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .app-navbar .user-role {
+    display: none;
+  }
+  .app-navbar .user-name {
+    max-width: 9rem;
   }
 }
 
@@ -1430,7 +1494,10 @@ button,
 }
 
 .table-responsive {
-  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 /* =========================================================

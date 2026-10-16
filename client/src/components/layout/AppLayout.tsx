@@ -38,10 +38,10 @@ export default function AppLayout() {
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <div className="app-shell d-flex flex-column">
+    <div className="app-shell">
       <Navbar onToggleSidebar={openSidebar} isSidebarOpen={sidebarOpen} />
 
-      <div className="app-body d-flex flex-grow-1 overflow-hidden">
+      <div className="app-body d-flex overflow-hidden">
         <aside
           id="app-sidebar"
           data-testid="sidebar"
