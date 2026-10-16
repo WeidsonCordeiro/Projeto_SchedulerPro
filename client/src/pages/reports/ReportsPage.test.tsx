@@ -301,7 +301,9 @@ describe("ReportsPage", () => {
     renderReports();
 
     expect(
-      await screen.findByText("Nenhum agendamento neste período."),
+      await screen.findByRole("heading", {
+        name: "Nenhum agendamento neste período",
+      }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Visão geral")).not.toBeInTheDocument();
   });
@@ -339,6 +341,9 @@ describe("ReportsPage", () => {
   it("bloqueia a página para roles sem permissão", () => {
     renderReports("EMPLOYEE");
 
+    expect(
+      screen.getByRole("heading", { name: "Relatórios" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Você não tem permissão para acessar esta página."),
     ).toBeInTheDocument();

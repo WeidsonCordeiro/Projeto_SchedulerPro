@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -312,6 +312,29 @@ describe("DashboardPage", () => {
     expect(clientsApi.getClients).not.toHaveBeenCalled();
     expect(servicesApi.getServices).not.toHaveBeenCalled();
     expect(employeesApi.getEmployees).not.toHaveBeenCalled();
+  });
+
+  it("retries the initial load without reloading the page", async () => {
+    vi.mocked(appointmentsApi.getAppointments)
+      .mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      )
+      .mockResolvedValueOnce({
+        success: true,
+        message: "ok",
+        data: [],
+      });
+    renderDashboard();
+
+    expect(
+      await screen.findByText("Erro interno do servidor."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Resumo do dia" }),
+    ).toBeInTheDocument();
+    expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(2);
   });
 
   it("still renders the dashboard and shows a warning when related data fails", async () => {

@@ -7,6 +7,8 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { setCompany } from "../../store/slices/companySlice";
 import type { Company } from "../../types/company";
 import PageHeader from "../../components/common/PageHeader";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import ImageAvatar from "../../components/common/ImageAvatar";
 import { env } from "../../config/env";
 import { getPublicBookingUrl } from "../../config/publicBookingUrl";
@@ -104,27 +106,13 @@ export default function CompanyPage() {
         </div>
       )}
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar empresa…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadCompany()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadCompany()}
+        />
       )}
 
       {!isLoading && !loadError && company && (

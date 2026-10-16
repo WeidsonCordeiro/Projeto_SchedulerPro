@@ -23,6 +23,9 @@ import type {
 import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
 import DashboardCard from "../../components/common/DashboardCard";
+import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 
 const STATUSES: AppointmentStatus[] = [
   "scheduled",
@@ -253,9 +256,10 @@ export default function ReportsPage() {
   if (!canView) {
     return (
       <section>
-        <div className="mb-3">
-          <h1 className="h3 mb-0">Relatórios</h1>
-        </div>
+        <PageHeader
+          title="Relatórios"
+          description="Indicadores e rankings do período selecionado."
+        />
         <div className="alert alert-warning" role="alert">
           Você não tem permissão para acessar esta página.
         </div>
@@ -366,35 +370,20 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar relatórios…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadReports(range)}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadReports(range)}
+        />
       )}
 
       {!isLoading && !loadError && overview.total === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">Nenhum agendamento neste período.</p>
-          </div>
-        </div>
+        <EmptyState
+          title="Nenhum agendamento neste período"
+          description="Altere o período ou aguarde novos agendamentos para ver indicadores aqui."
+        />
       )}
 
       {!isLoading && !loadError && overview.total > 0 && (
