@@ -80,7 +80,12 @@ describe("PortalAppointmentsPage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/carregar agendamentos/i);
+    expect(
+      screen.queryByText("Nenhum agendamento encontrado"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    expect(appointmentsApi.getMyAppointments).toHaveBeenCalledTimes(1);
   });
 
   it("shows empty state when there are no appointments", async () => {
@@ -155,6 +160,29 @@ describe("PortalAppointmentsPage", () => {
     expect(
       screen.getByRole("button", { name: /tentar novamente/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Nenhum agendamento encontrado")).not.toBeInTheDocument();
+    expect(appointmentsApi.getMyAppointments).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries loading after an error and renders appointments", async () => {
+    vi.mocked(appointmentsApi.getMyAppointments)
+      .mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      )
+      .mockResolvedValueOnce({
+        success: true,
+        message: "ok",
+        data: [futureAppointment],
+      });
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
+
+    const table = await screen.findByRole("table");
+    expect(within(table).getByText("Corte de Cabelo")).toBeInTheDocument();
+    expect(appointmentsApi.getMyAppointments).toHaveBeenCalledTimes(2);
   });
 
   it("filters to show only upcoming appointments", async () => {
