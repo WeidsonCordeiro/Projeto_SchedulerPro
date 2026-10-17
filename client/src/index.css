@@ -562,6 +562,11 @@ button,
   padding: 1rem;
 }
 
+.appointments-calendar-panel {
+  margin-bottom: 1rem;
+  min-width: 0;
+}
+
 .calendar-toolbar {
   align-items: center;
   background: #fff;
@@ -574,16 +579,41 @@ button,
   margin-bottom: 1rem;
   padding: 0.75rem;
 }
+.calendar-toolbar-nav {
+  flex: 0 0 auto;
+}
+.calendar-toolbar-views {
+  flex: 0 0 auto;
+}
 /* O período é a informação que orienta a leitura da agenda, portanto fica
    sempre visível (todas as vistas, todas as larguras) e encolhe antes das ações. */
-.calendar-toolbar-label {
-  flex: 1 1 100%;
+.calendar-toolbar-label,
+.calendar-toolbar-period {
+  flex: 1 1 auto;
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.25;
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
+  text-align: center;
+}
+@media (min-width: 768px) {
+  .calendar-toolbar {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+  .calendar-toolbar-label,
+  .calendar-toolbar-period {
+    flex: 1 1 0;
+    order: 0;
+  }
+  .calendar-toolbar-nav {
+    order: -1;
+  }
+  .calendar-toolbar-views {
+    order: 1;
+  }
 }
 .calendar-item {
   border-radius: 0.35rem !important;
@@ -604,6 +634,12 @@ button,
 .calendar-item-service {
   font-size: 0.62rem;
   opacity: 0.82;
+}
+.calendar-item-status {
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1.1;
+  opacity: 0.9;
 }
 .status-scheduled {
   background: #526bd8 !important;
@@ -650,6 +686,31 @@ button,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.calendar-event-status {
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1.1;
+  opacity: 0.92;
+}
+.calendar-now-line {
+  border-top: 2px solid #e03131;
+  box-shadow: 0 0 0 1px rgba(224, 49, 49, 0.25);
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  z-index: 15;
+}
+.calendar-now-line::before {
+  background: #e03131;
+  border-radius: 50%;
+  content: "";
+  height: 8px;
+  left: -4px;
+  position: absolute;
+  top: -5px;
+  width: 8px;
+}
 .month-calendar .calendar-day-cell {
   background: #fff;
   border-color: #edf0f5 !important;
@@ -689,6 +750,9 @@ button,
 }
 .month-calendar .calendar-item-service {
   font-size: 0.58rem;
+}
+.month-calendar .calendar-item-status {
+  font-size: 0.52rem;
 }
 .month-calendar .calendar-day-number {
   align-items: center;
@@ -1339,14 +1403,24 @@ button,
   .calendar-toolbar {
     align-items: stretch;
     flex-direction: column;
+    flex-wrap: wrap;
   }
+  .calendar-toolbar-nav,
+  .calendar-toolbar-views,
   .calendar-toolbar > * {
     justify-content: center;
   }
-  .calendar-toolbar .btn-group {
+  .calendar-toolbar-label,
+  .calendar-toolbar-period {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .calendar-toolbar .btn-group,
+  .calendar-toolbar-views {
     width: 100%;
   }
-  .calendar-toolbar .btn-group .btn {
+  .calendar-toolbar .btn-group .btn,
+  .calendar-toolbar-views .btn {
     flex: 1;
   }
   /* Modais: margem lateral garantida e largura limitada à área útil. */

@@ -88,6 +88,9 @@ describe("CalendarToolbar", () => {
     expect(screen.getByRole("button", { name: "Lista" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
     expect(screen.getByText("Setembro 2026")).toBeInTheDocument();
+    expect(document.querySelector(".calendar-toolbar-nav")).toBeTruthy();
+    expect(document.querySelector(".calendar-toolbar-period")).toBeTruthy();
+    expect(document.querySelector(".calendar-toolbar-views")).toBeTruthy();
   });
 
   it("calls the right handlers", () => {
@@ -219,6 +222,28 @@ describe("CalendarView", () => {
     );
     expect(screen.getByText(/07\/09.*–.*13\/09/i)).toBeInTheDocument();
   });
+
+  it("shows loading state without rendering the month grid", () => {
+    renderWithStore(
+      <CalendarView
+        appointments={[makeAppointment()]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="month"
+        onViewTypeChange={noopViewChange}
+        currentDateKey="2026-09-10"
+        onDateChange={noopViewChange}
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        isLoading
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/carregar agendamentos/i);
+    expect(screen.queryByText("Seg")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
+  });
 });
 
 describe("MonthCalendar", () => {
@@ -238,7 +263,9 @@ describe("MonthCalendar", () => {
     expect(screen.getByText("Seg")).toBeInTheDocument();
     expect(screen.getByText("Dom")).toBeInTheDocument();
     // O agendamento aparece como item clicável (título com nome do cliente)
-    expect(screen.getByTitle(/Maria Silva/)).toBeInTheDocument();
+    const item = screen.getByTitle(/Maria Silva/);
+    expect(item).toHaveAccessibleName(/Maria Silva.*Agendado/i);
+    expect(item).toHaveTextContent("Agendado");
   });
 
   it("opens the edit callback when an appointment is clicked", () => {
@@ -329,6 +356,7 @@ describe("WeekCalendar", () => {
         currentDateKey="2026-09-10"
         appointments={[makeAppointment()]}
         clientNames={names}
+        serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
         onSlotClick={noopOnSlotClick}
@@ -337,6 +365,7 @@ describe("WeekCalendar", () => {
 
     expect(screen.getByText("Qui")).toBeInTheDocument();
     expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.getByText("Agendado")).toBeInTheDocument();
   });
 
   it("calls onSlotClick with the date and hour", () => {
@@ -346,6 +375,7 @@ describe("WeekCalendar", () => {
         currentDateKey="2026-09-10"
         appointments={[]}
         clientNames={names}
+        serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
         onSlotClick={onSlotClick}
@@ -476,6 +506,7 @@ describe("WeekCalendar - destaque de hoje", () => {
         currentDateKey="2026-09-10"
         appointments={[]}
         clientNames={names}
+        serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
         onSlotClick={noopOnSlotClick}
@@ -483,6 +514,23 @@ describe("WeekCalendar - destaque de hoje", () => {
     );
 
     expect(container.querySelectorAll(".bg-primary-subtle").length).toBeGreaterThan(0);
+  });
+
+  it("renders the now line on today's column in week view", () => {
+    const { container } = renderWithStore(
+      <WeekCalendar
+        currentDateKey="2026-09-10"
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    expect(container.querySelector(".calendar-now-line")).toBeTruthy();
   });
 });
 

@@ -6,10 +6,12 @@ import {
   computeDayHourRange,
   isSlotHourInPast,
 } from "../../config/appointmentCalendar";
-import { formatAppointmentTime, formatWeekdayDate } from "../../config/appointmentTime";
-import { APPOINTMENT_STATUS_CALENDAR_CLASS } from "../../config/appointmentStatus";
+import { formatWeekdayDate } from "../../config/appointmentTime";
+import { computeNowLineTopPx } from "../../config/calendarNowLine";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import CalendarNowLine from "./CalendarNowLine";
+import CalendarTimeGridEvent from "./CalendarTimeGridEvent";
 import type { Appointment } from "../../types/appointment";
 
 /**
@@ -73,6 +75,16 @@ export default function DayCalendar({
     return list;
   }, [hourRange]);
 
+  const nowLineTop = useMemo(() => {
+    if (!isToday) return null;
+    return computeNowLineTopPx(
+      timezone,
+      hourRange.startHour,
+      hourRange.endHour,
+      HOUR_HEIGHT,
+    );
+  }, [isToday, timezone, hourRange]);
+
   const handleSlotClick = useCallback(
     (hour: number) => {
       onSlotClick(currentDateKey, hour);
@@ -82,7 +94,9 @@ export default function DayCalendar({
 
   return (
     <div className="day-calendar">
-      <div className={`text-center py-2 border-bottom ${isToday ? "bg-primary-subtle" : ""}`}>
+      <div
+        className={`text-center py-2 border-bottom calendar-day-header ${isToday ? "calendar-day-header-today bg-primary-subtle" : ""}`}
+      >
         <div className="fw-semibold">{formatWeekdayDate(currentDateKey, timezone)}</div>
       </div>
 
@@ -102,7 +116,7 @@ export default function DayCalendar({
 
         {/* Day column */}
         <div
-          className={`flex-grow-1 border-start ${isToday ? "bg-primary-subtle" : ""}`}
+          className={`flex-grow-1 border-start calendar-day-column ${isToday ? "calendar-day-column-today bg-primary-subtle" : ""}`}
           style={{ position: "relative" }}
         >
           {/* Hour grid lines */}
@@ -126,6 +140,8 @@ export default function DayCalendar({
               tabIndex={isSlotHourInPast(currentDateKey, h, timezone) ? -1 : 0}
             />
           ))}
+
+          {nowLineTop != null && <CalendarNowLine topPx={nowLineTop} />}
 
           {/* Appointment blocks */}
           {layout.map((item) => {
@@ -153,21 +169,18 @@ export default function DayCalendar({
                   onAppointmentClick(item.appointment);
                 }}
                 role="button"
+                tabIndex={0}
+                aria-label={`Agendamento ${clientNames.get(item.appointment.clientId) ?? "Cliente"}`}
               >
-                <div
-                  className={`calendar-week-event h-100 overflow-hidden p-1 rounded ${APPOINTMENT_STATUS_CALENDAR_CLASS[item.appointment.status]}`}
-                >
-                  <div className="calendar-event-time">
-                    {formatAppointmentTime(item.appointment.startAt, timezone)} –{" "}
-                    {formatAppointmentTime(item.appointment.endAt, timezone)}
-                  </div>
-                  <div className="calendar-event-client text-truncate">
-                    {clientNames.get(item.appointment.clientId) ?? "Cliente"}
-                  </div>
-                  <div className="calendar-event-service text-truncate">
-                    {serviceNames.get(item.appointment.serviceId) ?? "Serviço"}
-                  </div>
-                </div>
+                <CalendarTimeGridEvent
+                  appointment={item.appointment}
+                  clientName={
+                    clientNames.get(item.appointment.clientId) ?? "Cliente"
+                  }
+                  serviceName={serviceNames.get(item.appointment.serviceId)}
+                  timezone={timezone}
+                  heightPx={heightPx}
+                />
               </div>
             );
           })}
