@@ -12,6 +12,8 @@ import CalendarToolbar from "./CalendarToolbar";
 import MonthCalendar from "./MonthCalendar";
 import WeekCalendar from "./WeekCalendar";
 import DayCalendar from "./DayCalendar";
+import LoadingState from "../common/LoadingState";
+import ErrorState from "../common/ErrorState";
 import type { Appointment } from "../../types/appointment";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
@@ -36,6 +38,9 @@ interface CalendarViewProps {
   onAppointmentClick: (appointment: Appointment) => void;
   /** Data de hoje no calendário local da empresa ("AAAA-MM-DD"). */
   todayKey?: string;
+  isLoading?: boolean;
+  loadError?: string | null;
+  onLoadRetry?: () => void;
 }
 
 export default function CalendarView({
@@ -50,6 +55,9 @@ export default function CalendarView({
   onSlotClick,
   onAppointmentClick,
   todayKey,
+  isLoading = false,
+  loadError = null,
+  onLoadRetry,
 }: CalendarViewProps) {
   const timezone = useAppSelector(selectCompanyTimezone);
 
@@ -129,7 +137,15 @@ export default function CalendarView({
         label={title}
       />
 
-      {viewType === "month" && (
+      {isLoading && (
+        <LoadingState compact label="A carregar agendamentos…" />
+      )}
+
+      {!isLoading && loadError && onLoadRetry && (
+        <ErrorState message={loadError} onRetry={onLoadRetry} />
+      )}
+
+      {!isLoading && !loadError && viewType === "month" && (
         <MonthCalendar
           year={DateTime.fromISO(currentDateKey, { zone: timezone }).year}
           month={DateTime.fromISO(currentDateKey, { zone: timezone }).month}
@@ -142,11 +158,12 @@ export default function CalendarView({
         />
       )}
 
-      {viewType === "week" && (
+      {!isLoading && !loadError && viewType === "week" && (
         <WeekCalendar
           currentDateKey={currentDateKey}
           appointments={appointments}
           clientNames={clientNames}
+          serviceNames={serviceNames}
           onDayClick={(dk) => onDayClick(dk)}
           onAppointmentClick={onAppointmentClick}
           onSlotClick={onSlotClick}
@@ -154,7 +171,7 @@ export default function CalendarView({
         />
       )}
 
-      {viewType === "day" && (
+      {!isLoading && !loadError && viewType === "day" && (
         <DayCalendar
           currentDateKey={currentDateKey}
           appointments={appointments}

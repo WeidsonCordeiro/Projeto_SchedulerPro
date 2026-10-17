@@ -375,19 +375,24 @@ export default function AppointmentsPage() {
       )}
 
       {showCalendar && (
-        <CalendarView
-          appointments={appointments}
-          clientNames={clientNames}
-          serviceNames={serviceNames}
-          viewType={viewType}
-          onViewTypeChange={setViewType}
-          currentDateKey={currentDateKey}
-          onDateChange={setCurrentDateKey}
-          onDayClick={handleCalendarDayClick}
-          onSlotClick={handleCalendarSlotClick}
-          onAppointmentClick={handleCalendarAppointmentClick}
-          todayKey={todayKey}
-        />
+        <div className="appointments-calendar-panel">
+          <CalendarView
+            appointments={appointments}
+            clientNames={clientNames}
+            serviceNames={serviceNames}
+            viewType={viewType}
+            onViewTypeChange={setViewType}
+            currentDateKey={currentDateKey}
+            onDateChange={setCurrentDateKey}
+            onDayClick={handleCalendarDayClick}
+            onSlotClick={handleCalendarSlotClick}
+            onAppointmentClick={handleCalendarAppointmentClick}
+            todayKey={todayKey}
+            isLoading={isLoading}
+            loadError={loadError}
+            onLoadRetry={() => void loadAppointments()}
+          />
+        </div>
       )}
 
       {/* Toolbar do calendário (também para view Lista) */}
@@ -421,9 +426,11 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {isLoading && <LoadingState label="A carregar agendamentos…" />}
+      {!showCalendar && isLoading && (
+        <LoadingState label="A carregar agendamentos…" />
+      )}
 
-      {!isLoading && loadError && (
+      {!showCalendar && !isLoading && loadError && (
         <ErrorState
           message={loadError}
           onRetry={() => void loadAppointments()}

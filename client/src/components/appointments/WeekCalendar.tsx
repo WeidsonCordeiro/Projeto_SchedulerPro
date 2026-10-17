@@ -8,10 +8,11 @@ import {
   isSlotHourInPast,
   WEEKDAYS_SHORT,
 } from "../../config/appointmentCalendar";
-import { formatAppointmentTime } from "../../config/appointmentTime";
-import { APPOINTMENT_STATUS_CALENDAR_CLASS } from "../../config/appointmentStatus";
+import { computeNowLineTopPx } from "../../config/calendarNowLine";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import CalendarNowLine from "./CalendarNowLine";
+import CalendarTimeGridEvent from "./CalendarTimeGridEvent";
 import type { Appointment } from "../../types/appointment";
 
 /**
@@ -21,6 +22,7 @@ interface WeekCalendarProps {
   currentDateKey: string;
   appointments: Appointment[];
   clientNames: Map<string, string>;
+  serviceNames: Map<string, string>;
   onDayClick: (dateKey: string) => void;
   onAppointmentClick: (appointment: Appointment) => void;
   onSlotClick: (dateKey: string, hour: number) => void;
@@ -34,6 +36,7 @@ export default function WeekCalendar({
   currentDateKey,
   appointments,
   clientNames,
+  serviceNames,
   onDayClick,
   onAppointmentClick,
   onSlotClick,
@@ -95,7 +98,7 @@ export default function WeekCalendar({
           return (
             <div
               key={dk}
-              className={`flex-fill text-center py-2 border-start ${isToday ? "bg-primary-subtle fw-bold" : ""}`}
+              className={`flex-fill text-center py-2 border-start calendar-week-day-header ${isToday ? "calendar-week-day-header-today bg-primary-subtle fw-bold" : ""}`}
               style={{ cursor: "pointer" }}
               onClick={() => onDayClick(dk)}
             >
@@ -127,11 +130,20 @@ export default function WeekCalendar({
         {dayKeys.map((dk, dayIdx) => {
           const layout = layoutPerDay[dayIdx];
           const isToday = dk === todayKeyInternal;
+          const nowLineTop =
+            isToday
+              ? computeNowLineTopPx(
+                  timezone,
+                  hourRange.startHour,
+                  hourRange.endHour,
+                  HOUR_HEIGHT,
+                )
+              : null;
 
           return (
             <div
               key={dk}
-              className={`flex-fill border-start ${isToday ? "bg-primary-subtle" : ""}`}
+              className={`flex-fill border-start calendar-week-day-column ${isToday ? "calendar-week-day-column-today bg-primary-subtle" : ""}`}
               style={{ position: "relative" }}
             >
               {/* Hour grid lines */}
@@ -155,6 +167,8 @@ export default function WeekCalendar({
                   tabIndex={isSlotHourInPast(dk, h, timezone) ? -1 : 0}
                 />
               ))}
+
+              {nowLineTop != null && <CalendarNowLine topPx={nowLineTop} />}
 
               {/* Appointment blocks */}
               {layout.map((item) => {
@@ -182,16 +196,18 @@ export default function WeekCalendar({
                       onAppointmentClick(item.appointment);
                     }}
                     role="button"
+                    tabIndex={0}
+                    aria-label={`Agendamento ${clientNames.get(item.appointment.clientId) ?? "Cliente"}`}
                   >
-                    <div className={`calendar-week-event h-100 overflow-hidden p-1 rounded ${APPOINTMENT_STATUS_CALENDAR_CLASS[item.appointment.status]}`}>
-                      <div className="calendar-event-time">
-                        {formatAppointmentTime(item.appointment.startAt, timezone)} –{" "}
-                        {formatAppointmentTime(item.appointment.endAt, timezone)}
-                      </div>
-                      <div className="calendar-event-client text-truncate">
-                        {clientNames.get(item.appointment.clientId) ?? "Cliente"}
-                      </div>
-                    </div>
+                    <CalendarTimeGridEvent
+                      appointment={item.appointment}
+                      clientName={
+                        clientNames.get(item.appointment.clientId) ?? "Cliente"
+                      }
+                      serviceName={serviceNames.get(item.appointment.serviceId)}
+                      timezone={timezone}
+                      heightPx={heightPx}
+                    />
                   </div>
                 );
               })}

@@ -249,6 +249,17 @@ describe("AppointmentsPage", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
+  it("does not render month appointments while the calendar is still loading", () => {
+    vi.mocked(appointmentsApi.getAppointments).mockReturnValue(
+      new Promise(() => {}),
+    );
+    renderPage();
+
+    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
+    expect(screen.queryByTitle(/Maria Silva/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Seg")).not.toBeInTheDocument();
+  });
+
   it("shows a friendly error and a retry button when loading fails", async () => {
     vi.mocked(appointmentsApi.getAppointments)
       .mockRejectedValueOnce(

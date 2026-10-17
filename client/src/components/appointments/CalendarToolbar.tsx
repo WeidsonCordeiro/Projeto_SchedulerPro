@@ -30,7 +30,7 @@ export default function CalendarToolbar({
 
   return (
     <div className="calendar-toolbar">
-      <div className="d-flex align-items-center gap-2">
+      <div className="calendar-toolbar-nav d-flex align-items-center gap-2">
         <button
           type="button"
           className="btn btn-sm btn-outline-secondary"
@@ -54,16 +54,24 @@ export default function CalendarToolbar({
         >
           &#8250;
         </button>
-        <h2 className="calendar-toolbar-label">{label}</h2>
       </div>
 
-      <div className="btn-group btn-group-sm" role="group" aria-label="Visualização">
+      <h2 className="calendar-toolbar-label calendar-toolbar-period" aria-live="polite">
+        {label}
+      </h2>
+
+      <div
+        className="calendar-toolbar-views btn-group btn-group-sm"
+        role="group"
+        aria-label="Visualização"
+      >
         {viewOptions.map((opt) => (
           <button
             key={opt.value}
             type="button"
             className={`btn ${viewType === opt.value ? "btn-primary" : "btn-outline-primary"}`}
             onClick={() => onViewTypeChange(opt.value)}
+            aria-pressed={viewType === opt.value}
           >
             {opt.label}
           </button>
