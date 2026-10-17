@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -67,7 +67,9 @@ describe("PortalProfilePage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/carregar perfil/i);
+    expect(screen.queryByText("Dados da conta")).not.toBeInTheDocument();
+    expect(clientsApi.getClientMe).toHaveBeenCalledTimes(1);
   });
 
   it("renders account data and client profile", async () => {
@@ -99,6 +101,29 @@ describe("PortalProfilePage", () => {
     expect(
       screen.getByRole("button", { name: /tentar novamente/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Dados da conta")).not.toBeInTheDocument();
+    expect(clientsApi.getClientMe).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries loading after an error and renders profile data", async () => {
+    vi.mocked(clientsApi.getClientMe)
+      .mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      )
+      .mockResolvedValueOnce({
+        success: true,
+        message: "ok",
+        data: makeClient(),
+      });
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
+
+    expect(await screen.findByText("Dados da conta")).toBeInTheDocument();
+    expect(screen.getAllByText("Cliente Teste")).toHaveLength(2);
+    expect(clientsApi.getClientMe).toHaveBeenCalledTimes(2);
   });
 
   it("shows fallback text when profile is null", async () => {

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -56,7 +56,9 @@ describe("PortalHomePage", () => {
 
     renderPage();
 
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/carregar agendamentos/i);
+    expect(screen.queryByText(/próximos agendamentos/i)).not.toBeInTheDocument();
+    expect(appointmentsApi.getMyAppointments).toHaveBeenCalledTimes(1);
   });
 
   it("shows empty state when there are no upcoming appointments", async () => {
@@ -144,6 +146,27 @@ describe("PortalHomePage", () => {
     expect(
       screen.getByRole("button", { name: /tentar novamente/i }),
     ).toBeInTheDocument();
+    expect(appointmentsApi.getMyAppointments).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries loading after an error without reloading the page", async () => {
+    vi.mocked(appointmentsApi.getMyAppointments)
+      .mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      )
+      .mockResolvedValueOnce({
+        success: true,
+        message: "ok",
+        data: [],
+      });
+
+    renderPage();
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
+
+    expect(await screen.findByText(/próximos agendamentos/i)).toBeInTheDocument();
+    expect(appointmentsApi.getMyAppointments).toHaveBeenCalledTimes(2);
   });
 
   it("renders quick access links", async () => {
