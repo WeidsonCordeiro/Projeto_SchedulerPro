@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import ClientsPage from "../pages/clients/ClientsPage";
@@ -20,6 +20,7 @@ import PortalProfilePage from "../pages/portal/PortalProfilePage";
 import PublicAppointmentPage from "../pages/public/PublicAppointmentPage";
 import PublicBookingPage from "../pages/public/PublicBookingPage";
 import ClientInvitePage from "../pages/public/ClientInvitePage";
+import NotFoundPage from "../pages/NotFoundPage";
 import ProtectedRoute from "./ProtectedRoute";
 import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
@@ -89,7 +90,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

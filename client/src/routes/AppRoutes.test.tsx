@@ -303,10 +303,49 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
   });
 
-  it("redirects unknown paths to the root behavior", () => {
+  it("shows a not-found page for unknown paths when unauthenticated", () => {
     renderAt("/unknown", { isInitializing: false });
 
-    expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /página não encontrada/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /entrar/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir para o início/i })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+  });
+
+  it("shows a not-found page for unknown paths when authenticated", () => {
+    renderAt("/unknown", {
+      user,
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /página não encontrada/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir para o painel/i })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  it("offers portal navigation on unknown paths for CLIENT users", () => {
+    renderAt("/unknown", {
+      user: { ...user, role: "CLIENT", clientId: "client1" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /página não encontrada/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir para o portal/i })).toHaveAttribute(
+      "href",
+      "/portal",
+    );
   });
 
   it.each([

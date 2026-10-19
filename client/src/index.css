@@ -327,6 +327,9 @@ button,
   justify-content: center;
   width: min(100%, 74rem);
 }
+.public-layout-not-found {
+  min-height: 50vh;
+}
 .public-context {
   max-width: 40rem;
 }
