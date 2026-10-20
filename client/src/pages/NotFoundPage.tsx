@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import EmptyState from "../components/common/EmptyState";
+import FullPageLoader from "../components/common/FullPageLoader";
 import {
   getNotFoundHomeLabel,
   getNotFoundHomePath,
@@ -7,9 +8,12 @@ import {
 import { useAppSelector } from "../store";
 
 export default function NotFoundPage() {
-  const { isAuthenticated, mustChangePassword, user } = useAppSelector(
-    (state) => state.auth,
-  );
+  const { isInitializing, isAuthenticated, mustChangePassword, user } =
+    useAppSelector((state) => state.auth);
+
+  if (isInitializing) {
+    return <FullPageLoader />;
+  }
   const homePath = getNotFoundHomePath(
     isAuthenticated,
     mustChangePassword,
