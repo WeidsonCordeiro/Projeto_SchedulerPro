@@ -11,6 +11,7 @@ function renderPage(auth: {
   isAuthenticated: boolean;
   mustChangePassword?: boolean;
   user?: typeof user | null;
+  isInitializing?: boolean;
 }) {
   const store = configureStore({
     reducer: { auth: authReducer },
@@ -19,7 +20,7 @@ function renderPage(auth: {
         user: auth.user ?? null,
         mustChangePassword: auth.mustChangePassword ?? false,
         isAuthenticated: auth.isAuthenticated,
-        isInitializing: false,
+        isInitializing: auth.isInitializing ?? false,
         isLoading: false,
       },
     },
@@ -35,6 +36,17 @@ function renderPage(auth: {
 }
 
 describe("NotFoundPage", () => {
+  it("shows a loading state while the session is initializing", () => {
+    renderPage({ isAuthenticated: false, isInitializing: true });
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /página não encontrada/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /ir para o início/i })).not.toBeInTheDocument();
+  });
+
   it("shows a clear not-found message", () => {
     renderPage({ isAuthenticated: false });
 

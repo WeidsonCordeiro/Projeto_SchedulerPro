@@ -247,6 +247,17 @@ describe("AppRoutes", () => {
     expect(screen.queryByRole("heading", { name: /entrar/i })).not.toBeInTheDocument();
   });
 
+  it("shows loading on unknown paths while the session is being checked", () => {
+    renderAt("/unknown", {});
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /página não encontrada/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /ir para o início/i })).not.toBeInTheDocument();
+  });
+
   it("does not keep an authenticated user on /login", async () => {
     renderAt("/login", {
       user,
