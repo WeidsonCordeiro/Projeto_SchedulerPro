@@ -1,15 +1,22 @@
-import { useCallback } from "react";
-import { DateTime } from "luxon";
-import { useAppSelector } from "../../store";
-import { selectCompanyTimezone } from "../../store/slices/companySlice";
-import MonthCalendar from "./MonthCalendar";
+import MonthView from "./MonthView";
 import WeekCalendar from "./WeekCalendar";
 import DayCalendar from "./DayCalendar";
-import MonthDayAgendaList from "./MonthDayAgendaList";
 import LoadingState from "../common/LoadingState";
 import ErrorState from "../common/ErrorState";
 import type { Appointment } from "../../types/appointment";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
+
+/** Configuração específica da vista mensal (delegada a `MonthView`). */
+export interface CalendarViewMonthConfig {
+  /** Dia em foco na vista Mês mobile (lista abaixo da grelha). */
+  monthFocusedDateKey?: string;
+  onMonthDaySelect?: (dateKey: string) => void;
+  /** "+N mais" no mês → navega para a vista Dia com todas as marcações. */
+  onOverflowDayClick?: (dateKey: string) => void;
+  canCreate?: boolean;
+  onCreateForDay?: (dateKey: string) => void;
+  isMobileViewport: boolean;
+}
 
 /**
  * Container principal do calendário. Delega carregamento de dados e toolbar ao pai.
@@ -22,21 +29,14 @@ interface CalendarViewProps {
   currentDateKey: string;
   /** Chamado ao clicar em uma célula de dia/hora → abre formulário de criação com prefill. */
   onDayClick: (dateKey: string) => void;
-  /** "+N mais" no mês → navega para a vista Dia com todas as marcações. */
-  onOverflowDayClick?: (dateKey: string) => void;
   onSlotClick: (dateKey: string, hour: number) => void;
   onAppointmentClick: (appointment: Appointment) => void;
   /** Data de hoje no calendário local da empresa ("AAAA-MM-DD"). */
   todayKey?: string;
-  /** Dia em foco na vista Mês mobile (lista abaixo da grelha). */
-  monthFocusedDateKey?: string;
-  onMonthDaySelect?: (dateKey: string) => void;
-  canCreate?: boolean;
-  onCreateForDay?: (dateKey: string) => void;
+  month?: CalendarViewMonthConfig;
   isLoading?: boolean;
   loadError?: string | null;
   onLoadRetry?: () => void;
-  isMobileViewport: boolean;
 }
 
 export default function CalendarView({
@@ -46,53 +46,19 @@ export default function CalendarView({
   viewType,
   currentDateKey,
   onDayClick,
-  onOverflowDayClick,
   onSlotClick,
   onAppointmentClick,
   todayKey,
-  monthFocusedDateKey,
-  onMonthDaySelect,
-  canCreate = false,
-  onCreateForDay,
+  month,
   isLoading = false,
   loadError = null,
   onLoadRetry,
-  isMobileViewport,
 }: CalendarViewProps) {
-  const timezone = useAppSelector(selectCompanyTimezone);
-  const isMobileMonth = viewType === "month" && isMobileViewport;
-  const focusedMonthDay = monthFocusedDateKey ?? todayKey ?? currentDateKey;
-
-  const scrollMonthDayPanel = useCallback(() => {
-    queueMicrotask(() => {
-      document
-        .getElementById("month-day-agenda-panel")
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-  }, []);
-
-  const handleMonthOverflowClick = useCallback(
-    (dateKey: string) => {
-      if (isMobileMonth) {
-        onMonthDaySelect?.(dateKey);
-        scrollMonthDayPanel();
-        return;
-      }
-      (onOverflowDayClick ?? onDayClick)(dateKey);
-    },
-    [isMobileMonth, onMonthDaySelect, onOverflowDayClick, onDayClick, scrollMonthDayPanel],
-  );
-
-  const handleMonthDaySelect = useCallback(
-    (dateKey: string) => {
-      onMonthDaySelect?.(dateKey);
-    },
-    [onMonthDaySelect],
-  );
-
   if (viewType === "list") {
     return null;
   }
+
+  const monthViewport = month?.isMobileViewport ?? false;
 
   return (
     <div className="calendar-surface">
@@ -105,35 +71,21 @@ export default function CalendarView({
       )}
 
       {!isLoading && !loadError && viewType === "month" && (
-        <>
-          <MonthCalendar
-            year={DateTime.fromISO(currentDateKey, { zone: timezone }).year}
-            month={DateTime.fromISO(currentDateKey, { zone: timezone }).month}
-            appointments={appointments}
-            clientNames={clientNames}
-            serviceNames={serviceNames}
-            onDayClick={onDayClick}
-            onOverflowClick={handleMonthOverflowClick}
-            onMonthDaySelect={handleMonthDaySelect}
-            onAppointmentClick={onAppointmentClick}
-            selectedDateKey={isMobileMonth ? focusedMonthDay : undefined}
-            layoutMode={isMobileMonth ? "compact" : "default"}
-            className={isMobileMonth ? "month-calendar--with-day-list" : undefined}
-            todayKey={todayKey}
-          />
-          {isMobileMonth && focusedMonthDay && todayKey && (
-            <MonthDayAgendaList
-              dateKey={focusedMonthDay}
-              appointments={appointments}
-              clientNames={clientNames}
-              serviceNames={serviceNames}
-              todayKey={todayKey}
-              canCreate={canCreate}
-              onAppointmentClick={onAppointmentClick}
-              onCreateForDay={onCreateForDay ?? onDayClick}
-            />
-          )}
-        </>
+        <MonthView
+          appointments={appointments}
+          clientNames={clientNames}
+          serviceNames={serviceNames}
+          currentDateKey={currentDateKey}
+          onDayClick={onDayClick}
+          onOverflowDayClick={month?.onOverflowDayClick}
+          onAppointmentClick={onAppointmentClick}
+          todayKey={todayKey}
+          monthFocusedDateKey={month?.monthFocusedDateKey}
+          onMonthDaySelect={month?.onMonthDaySelect}
+          canCreate={month?.canCreate}
+          onCreateForDay={month?.onCreateForDay}
+          isMobileViewport={monthViewport}
+        />
       )}
 
       {!isLoading && !loadError && viewType === "week" && (

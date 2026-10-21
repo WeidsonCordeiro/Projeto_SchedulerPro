@@ -108,13 +108,32 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
-        isMobileViewport={false}
+        month={{ isMobileViewport: false }}
         isLoading
       />,
     );
 
     expect(screen.getByRole("status")).toHaveTextContent(/carregar agendamentos/i);
     expect(screen.queryByText("Seg")).not.toBeInTheDocument();
+  });
+
+  it("renders the month grid when viewType is month and data is ready", () => {
+    renderWithStore(
+      <CalendarView
+        appointments={[makeAppointment()]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="month"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        month={{ isMobileViewport: false }}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    expect(screen.getByText("Seg")).toBeInTheDocument();
   });
 });
 
@@ -629,95 +648,6 @@ describe("MonthCalendar - layout compacto (mobile)", () => {
     fireEvent.click(sep15Cell!);
     expect(onMonthDaySelect).toHaveBeenCalledWith("2026-09-15");
     expect(onDayClick).not.toHaveBeenCalled();
-  });
-});
-
-describe("CalendarView - lista mobile abaixo do mês", () => {
-  beforeEach(() => {
-    HTMLElement.prototype.scrollIntoView = vi.fn();
-  });
-
-  afterEach(() => {
-    delete (HTMLElement.prototype as { scrollIntoView?: () => void }).scrollIntoView;
-  });
-
-  it("lists every appointment for the focused day below the month grid", () => {
-    renderWithStore(
-      <CalendarView
-        appointments={makeBusyDayAppointments(5)}
-        clientNames={names}
-        serviceNames={names}
-        viewType="month"
-        currentDateKey="2026-09-10"
-        onDayClick={noopOnDayClick}
-        onMonthDaySelect={noopOnMonthDaySelect}
-        monthFocusedDateKey="2026-09-15"
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        todayKey="2026-09-10"
-        isMobileViewport={true}
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: /terça-feira, 15 de setembro/i })).toBeInTheDocument();
-    expect(screen.getAllByTitle(/Maria Silva/)).toHaveLength(5);
-  });
-
-  it("routes overflow to onMonthDaySelect on mobile instead of onOverflowDayClick", () => {
-    const onOverflowDayClick = vi.fn();
-    const onMonthDaySelect = vi.fn();
-    renderWithStore(
-      <CalendarView
-        appointments={makeBusyDayAppointments(5)}
-        clientNames={names}
-        serviceNames={names}
-        viewType="month"
-        currentDateKey="2026-09-10"
-        onDayClick={noopOnDayClick}
-        onOverflowDayClick={onOverflowDayClick}
-        onMonthDaySelect={onMonthDaySelect}
-        monthFocusedDateKey="2026-09-10"
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        todayKey="2026-09-10"
-        isMobileViewport={true}
-      />,
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /ver todas as marcações de terça-feira, 15 de setembro/i,
-      }),
-    );
-    expect(onMonthDaySelect).toHaveBeenCalledWith("2026-09-15");
-    expect(onOverflowDayClick).not.toHaveBeenCalled();
-  });
-});
-
-describe("CalendarView - overflow no mês", () => {
-  it("forwards overflow clicks to onOverflowDayClick", () => {
-    const onOverflowDayClick = vi.fn();
-    renderWithStore(
-      <CalendarView
-        appointments={makeBusyDayAppointments(5)}
-        clientNames={names}
-        serviceNames={names}
-        viewType="month"
-        currentDateKey="2026-09-10"
-        onDayClick={noopOnDayClick}
-        onOverflowDayClick={onOverflowDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        isMobileViewport={false}
-      />,
-    );
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: /ver todas as marcações de terça-feira, 15 de setembro/i,
-      }),
-    );
-    expect(onOverflowDayClick).toHaveBeenCalledWith("2026-09-15");
   });
 });
 
