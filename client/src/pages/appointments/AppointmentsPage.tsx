@@ -4,6 +4,7 @@ import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentForm from "../../components/appointments/AppointmentForm";
 import DeleteAppointmentModal from "../../components/appointments/DeleteAppointmentModal";
 import AppointmentsListView from "../../components/appointments/AppointmentsListView";
+import AppointmentsViewSwitcher from "../../components/appointments/AppointmentsViewSwitcher";
 import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import { isInstantInPast } from "../../config/appointmentCalendar";
@@ -70,12 +71,15 @@ export default function AppointmentsPage() {
     todayKey,
     isMobileCalendar,
     showCalendar,
-    handleCalendarDateChange,
     handleMonthDaySelect,
     handleCalendarDayClick,
     handleCalendarOverflowDayClick,
     handleCreateForMonthDay,
     handleCalendarSlotClick,
+    periodLabel,
+    handleToolbarPrev,
+    handleToolbarNext,
+    handleToolbarToday,
   } = useAppointmentsNavigation({
     timezone,
     onOpenCreate: openCreate,
@@ -224,6 +228,15 @@ export default function AppointmentsPage() {
         </div>
       )}
 
+      <AppointmentsViewSwitcher
+        viewType={viewType}
+        onViewTypeChange={setViewType}
+        label={periodLabel}
+        onPrev={handleToolbarPrev}
+        onNext={handleToolbarNext}
+        onToday={handleToolbarToday}
+      />
+
       {showCalendar && (
         <div className="appointments-calendar-panel">
           <CalendarView
@@ -231,9 +244,7 @@ export default function AppointmentsPage() {
             clientNames={clientNames}
             serviceNames={serviceNames}
             viewType={viewType}
-            onViewTypeChange={setViewType}
             currentDateKey={currentDateKey}
-            onDateChange={handleCalendarDateChange}
             onDayClick={handleCalendarDayClick}
             onOverflowDayClick={handleCalendarOverflowDayClick}
             monthFocusedDateKey={monthFocusedDateKey}
@@ -248,36 +259,6 @@ export default function AppointmentsPage() {
             onLoadRetry={() => void loadAppointments()}
             isMobileViewport={isMobileCalendar}
           />
-        </div>
-      )}
-
-      {!showCalendar && (
-        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <div className="d-flex align-items-center gap-2">
-            <h2 className="h5 mb-0">Lista de agendamentos</h2>
-          </div>
-          <div
-            className="btn-group btn-group-sm"
-            role="group"
-            aria-label="Visualização"
-          >
-            {(["month", "week", "day", "list"] as const).map((vt) => (
-              <button
-                key={vt}
-                type="button"
-                className={`btn ${viewType === vt ? "btn-primary" : "btn-outline-primary"}`}
-                onClick={() => setViewType(vt)}
-              >
-                {vt === "month"
-                  ? "Mês"
-                  : vt === "week"
-                    ? "Semana"
-                    : vt === "day"
-                      ? "Dia"
-                      : "Lista"}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 

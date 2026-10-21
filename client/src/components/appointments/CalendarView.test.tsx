@@ -6,7 +6,7 @@ import CalendarView from "./CalendarView";
 import MonthCalendar from "./MonthCalendar";
 import WeekCalendar from "./WeekCalendar";
 import DayCalendar from "./DayCalendar";
-import CalendarToolbar from "./CalendarToolbar";
+import AppointmentsViewSwitcher from "./AppointmentsViewSwitcher";
 import companyReducer from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 
@@ -96,166 +96,7 @@ function makeBusyDayAppointments(count: number, dateKey = "2026-09-15"): Appoint
   });
 }
 
-describe("CalendarToolbar", () => {
-  it("renders view buttons and navigation", () => {
-    render(
-      <CalendarToolbar
-        currentDateKey="2026-09-10"
-        viewType="month"
-        onViewTypeChange={vi.fn()}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        onToday={vi.fn()}
-        label="Setembro 2026"
-      />,
-    );
-
-    expect(screen.getByRole("button", { name: "Mês" })).toHaveClass("btn-primary");
-    expect(screen.getByRole("button", { name: "Semana" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dia" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Lista" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
-    expect(screen.getByText("Setembro 2026")).toBeInTheDocument();
-    expect(document.querySelector(".calendar-toolbar-nav")).toBeTruthy();
-    expect(document.querySelector(".calendar-toolbar-period")).toBeTruthy();
-    expect(document.querySelector(".calendar-toolbar-views")).toBeTruthy();
-  });
-
-  it("calls the right handlers", () => {
-    const onPrev = vi.fn();
-    const onNext = vi.fn();
-    const onToday = vi.fn();
-    const onViewTypeChange = vi.fn();
-    render(
-      <CalendarToolbar
-        currentDateKey="2026-09-10"
-        viewType="month"
-        onViewTypeChange={onViewTypeChange}
-        onPrev={onPrev}
-        onNext={onNext}
-        onToday={onToday}
-        label="Setembro 2026"
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
-    fireEvent.click(screen.getByRole("button", { name: "Próximo" }));
-    fireEvent.click(screen.getByRole("button", { name: "Hoje" }));
-    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
-    expect(onPrev).toHaveBeenCalled();
-    expect(onNext).toHaveBeenCalled();
-    expect(onToday).toHaveBeenCalled();
-    expect(onViewTypeChange).toHaveBeenCalledWith("week");
-  });
-});
-
 describe("CalendarView", () => {
-  it("navigates months with the toolbar", () => {
-    const onDateChange = vi.fn();
-    renderWithStore(
-      <CalendarView
-        appointments={[]}
-        clientNames={names}
-        serviceNames={names}
-        viewType="month"
-        onViewTypeChange={noopViewChange}
-        currentDateKey="2026-09-10"
-        onDateChange={onDateChange}
-        onDayClick={noopOnDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        isMobileViewport={false}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Próximo" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-10-10");
-    fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-08-10");
-  });
-
-  it("navigates weeks when in week view", () => {
-    const onDateChange = vi.fn();
-    renderWithStore(
-      <CalendarView
-        appointments={[]}
-        clientNames={names}
-        serviceNames={names}
-        viewType="week"
-        onViewTypeChange={noopViewChange}
-        currentDateKey="2026-09-10"
-        onDateChange={onDateChange}
-        onDayClick={noopOnDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        isMobileViewport={false}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Próximo" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-09-17");
-  });
-
-  it("jumps to today", () => {
-    const onDateChange = vi.fn();
-    renderWithStore(
-      <CalendarView
-        appointments={[]}
-        clientNames={names}
-        serviceNames={names}
-        viewType="day"
-        onViewTypeChange={noopViewChange}
-        currentDateKey="2026-01-01"
-        onDateChange={onDateChange}
-        onDayClick={noopOnDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        isMobileViewport={false}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Hoje" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-09-10");
-  });
-
-  it("renders the correct title per view", () => {
-    const { rerender } = renderWithStore(
-      <CalendarView
-        appointments={[]}
-        clientNames={names}
-        serviceNames={names}
-        viewType="day"
-        onViewTypeChange={noopViewChange}
-        currentDateKey="2026-09-10"
-        onDateChange={noopViewChange}
-        onDayClick={noopOnDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-        isMobileViewport={false}
-      />,
-    );
-    expect(screen.getByText("10/09/2026")).toBeInTheDocument();
-
-    rerender(
-      <Provider store={makeStore()}>
-        <CalendarView
-          appointments={[]}
-          clientNames={names}
-          serviceNames={names}
-          viewType="week"
-          onViewTypeChange={noopViewChange}
-          currentDateKey="2026-09-10"
-          onDateChange={noopViewChange}
-          onDayClick={noopOnDayClick}
-          onSlotClick={noopOnSlotClick}
-          onAppointmentClick={noopOnAppointmentClick}
-          isMobileViewport={false}
-        />
-      </Provider>,
-    );
-    expect(screen.getByText(/07\/09.*–.*13\/09/i)).toBeInTheDocument();
-  });
-
   it("shows loading state without rendering the month grid", () => {
     renderWithStore(
       <CalendarView
@@ -263,9 +104,7 @@ describe("CalendarView", () => {
         clientNames={names}
         serviceNames={names}
         viewType="month"
-        onViewTypeChange={noopViewChange}
         currentDateKey="2026-09-10"
-        onDateChange={noopViewChange}
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
@@ -276,7 +115,6 @@ describe("CalendarView", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent(/carregar agendamentos/i);
     expect(screen.queryByText("Seg")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
   });
 });
 
@@ -810,9 +648,7 @@ describe("CalendarView - lista mobile abaixo do mês", () => {
         clientNames={names}
         serviceNames={names}
         viewType="month"
-        onViewTypeChange={noopViewChange}
         currentDateKey="2026-09-10"
-        onDateChange={noopOnDayClick}
         onDayClick={noopOnDayClick}
         onMonthDaySelect={noopOnMonthDaySelect}
         monthFocusedDateKey="2026-09-15"
@@ -836,9 +672,7 @@ describe("CalendarView - lista mobile abaixo do mês", () => {
         clientNames={names}
         serviceNames={names}
         viewType="month"
-        onViewTypeChange={noopViewChange}
         currentDateKey="2026-09-10"
-        onDateChange={noopOnDayClick}
         onDayClick={noopOnDayClick}
         onOverflowDayClick={onOverflowDayClick}
         onMonthDaySelect={onMonthDaySelect}
@@ -869,9 +703,7 @@ describe("CalendarView - overflow no mês", () => {
         clientNames={names}
         serviceNames={names}
         viewType="month"
-        onViewTypeChange={noopViewChange}
         currentDateKey="2026-09-10"
-        onDateChange={noopOnDayClick}
         onDayClick={noopOnDayClick}
         onOverflowDayClick={onOverflowDayClick}
         onSlotClick={noopOnSlotClick}
@@ -889,11 +721,10 @@ describe("CalendarView - overflow no mês", () => {
   });
 });
 
-describe("CalendarToolbar - período sempre visível", () => {
+describe("AppointmentsViewSwitcher - período sempre visível", () => {
   it("keeps the period label visible at every width", () => {
     render(
-      <CalendarToolbar
-        currentDateKey="2026-09-10"
+      <AppointmentsViewSwitcher
         viewType="week"
         onViewTypeChange={noopViewChange}
         onPrev={noopOnDayClick}

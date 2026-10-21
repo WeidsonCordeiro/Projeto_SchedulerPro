@@ -906,4 +906,18 @@ describe("AppointmentsPage", () => {
       expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(3),
     );
   });
+
+  it("shows temporal navigation in list view", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+
+    await renderPageList();
+
+    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeInTheDocument();
+    expect(screen.getByText("Lista de agendamentos")).toBeInTheDocument();
+  });
 });

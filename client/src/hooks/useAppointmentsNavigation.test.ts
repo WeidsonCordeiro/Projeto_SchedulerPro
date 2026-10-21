@@ -4,6 +4,7 @@ import {
   calendarNavigateNext,
   calendarNavigatePrev,
   calendarNavigateToday,
+  formatAppointmentsViewPeriodLabel,
   reconcileMonthFocusedDateKey,
   useAppointmentsNavigation,
 } from "./useAppointmentsNavigation";
@@ -80,6 +81,33 @@ describe("calendar period navigation helpers", () => {
 
   it("returns today in the company timezone", () => {
     expect(calendarNavigateToday("Europe/Lisbon")).toBe("2026-09-10");
+  });
+
+  it("navigates list view by day for the date anchor", () => {
+    expect(
+      calendarNavigateNext("list", "2026-09-10", "Europe/Lisbon"),
+    ).toBe("2026-09-11");
+    expect(
+      calendarNavigatePrev("list", "2026-09-10", "Europe/Lisbon"),
+    ).toBe("2026-09-09");
+  });
+});
+
+describe("formatAppointmentsViewPeriodLabel", () => {
+  it("formats labels for each view type", () => {
+    expect(
+      formatAppointmentsViewPeriodLabel(
+        "month",
+        "2026-09-10",
+        "Europe/Lisbon",
+      ),
+    ).toContain("2026");
+    expect(
+      formatAppointmentsViewPeriodLabel("list", "2026-09-10", "Europe/Lisbon"),
+    ).toBe("Lista de agendamentos");
+    expect(
+      formatAppointmentsViewPeriodLabel("day", "2026-09-10", "Europe/Lisbon"),
+    ).toBe("10/09/2026");
   });
 });
 
@@ -227,5 +255,26 @@ describe("useAppointmentsNavigation", () => {
     });
 
     expect(result.current.showCalendar).toBe(false);
+  });
+
+  it("updates currentDateKey from toolbar prev in list view", () => {
+    const onOpenCreate = vi.fn();
+    const { result } = renderHook(() =>
+      useAppointmentsNavigation({
+        timezone: "Europe/Lisbon",
+        onOpenCreate,
+      }),
+    );
+
+    act(() => {
+      result.current.setViewType("list");
+    });
+
+    act(() => {
+      result.current.handleToolbarNext();
+    });
+
+    expect(result.current.currentDateKey).toBe("2026-09-11");
+    expect(result.current.periodLabel).toBe("Lista de agendamentos");
   });
 });
