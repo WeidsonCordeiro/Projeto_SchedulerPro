@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from "react";
 import { DateTime } from "luxon";
 import {
-  navigateMonth,
-  navigateWeek,
-  navigateDay,
-} from "../../config/appointmentCalendar";
+  calendarNavigateNext,
+  calendarNavigatePrev,
+  calendarNavigateToday,
+} from "../../hooks/useAppointmentsNavigation";
 import { formatMonthYear } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
@@ -15,7 +15,6 @@ import DayCalendar from "./DayCalendar";
 import MonthDayAgendaList from "./MonthDayAgendaList";
 import LoadingState from "../common/LoadingState";
 import ErrorState from "../common/ErrorState";
-import { MOBILE_CALENDAR_MEDIA_QUERY, useMatchMedia } from "../../hooks/useMatchMedia";
 import type { Appointment } from "../../types/appointment";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
@@ -50,6 +49,7 @@ interface CalendarViewProps {
   isLoading?: boolean;
   loadError?: string | null;
   onLoadRetry?: () => void;
+  isMobileViewport: boolean;
 }
 
 export default function CalendarView({
@@ -72,10 +72,10 @@ export default function CalendarView({
   isLoading = false,
   loadError = null,
   onLoadRetry,
+  isMobileViewport,
 }: CalendarViewProps) {
   const timezone = useAppSelector(selectCompanyTimezone);
-  const isMobile = useMatchMedia(MOBILE_CALENDAR_MEDIA_QUERY);
-  const isMobileMonth = viewType === "month" && isMobile;
+  const isMobileMonth = viewType === "month" && isMobileViewport;
   const focusedMonthDay = monthFocusedDateKey ?? todayKey ?? currentDateKey;
 
   const scrollMonthDayPanel = useCallback(() => {
@@ -128,41 +128,21 @@ export default function CalendarView({
   }, [currentDateKey, viewType, timezone]);
 
   const handlePrev = useCallback(() => {
-    switch (viewType) {
-      case "month":
-        onDateChange(navigateMonth(currentDateKey, -1, timezone));
-        break;
-      case "week":
-        onDateChange(navigateWeek(currentDateKey, -1, timezone));
-        break;
-      case "day":
-        onDateChange(navigateDay(currentDateKey, -1, timezone));
-        break;
-      default:
-        break;
+    const nextKey = calendarNavigatePrev(viewType, currentDateKey, timezone);
+    if (nextKey) {
+      onDateChange(nextKey);
     }
   }, [viewType, currentDateKey, timezone, onDateChange]);
 
   const handleNext = useCallback(() => {
-    switch (viewType) {
-      case "month": {
-        const nextKey = navigateMonth(currentDateKey, 1, timezone);
-        onDateChange(nextKey);
-        break;
-      }
-      case "week":
-        onDateChange(navigateWeek(currentDateKey, 1, timezone));
-        break;
-      case "day":
-        onDateChange(navigateDay(currentDateKey, 1, timezone));
-        break;
-      default:
-        break;
+    const nextKey = calendarNavigateNext(viewType, currentDateKey, timezone);
+    if (nextKey) {
+      onDateChange(nextKey);
     }
   }, [viewType, currentDateKey, timezone, onDateChange]);
 
   const handleToday = useCallback(() => {
-    onDateChange(DateTime.now().setZone(timezone).toISODate() ?? "");
+    onDateChange(calendarNavigateToday(timezone));
   }, [timezone, onDateChange]);
 
   if (viewType === "list") {

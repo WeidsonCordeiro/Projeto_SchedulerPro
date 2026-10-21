@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DateTime } from "luxon";
+import { useCallback, useState } from "react";
 import appointmentsApi from "../../api/endpoints/appointments.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentForm from "../../components/appointments/AppointmentForm";
@@ -7,16 +6,9 @@ import DeleteAppointmentModal from "../../components/appointments/DeleteAppointm
 import AppointmentsListView from "../../components/appointments/AppointmentsListView";
 import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
-import {
-  buildMonthGrid,
-  isInstantInPast,
-  isSlotHourInPast,
-} from "../../config/appointmentCalendar";
+import { isInstantInPast } from "../../config/appointmentCalendar";
+import { useAppointmentsNavigation } from "../../hooks/useAppointmentsNavigation";
 import { useAppointmentsSchedule } from "../../hooks/useAppointmentsSchedule";
-import {
-  MOBILE_CALENDAR_MEDIA_QUERY,
-  useMatchMedia,
-} from "../../hooks/useMatchMedia";
 import { APPOINTMENT_ACTION_SUCCESS_MESSAGES } from "../../config/appointmentStatus";
 import type { AppointmentStatusAction } from "../../config/appointmentStatus";
 import { useAppSelector } from "../../store";
@@ -24,31 +16,8 @@ import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 import PageHeader from "../../components/common/PageHeader";
 import type { EmployeeRole } from "../../types/employee";
-import type { CalendarViewType } from "../../config/appointmentCalendar";
 
 const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN", "MANAGER"];
-
-function reconcileMonthFocusedDateKey(
-  focusedKey: string,
-  monthAnchorKey: string,
-  todayKey: string,
-  timezone: string,
-): string {
-  const anchor = DateTime.fromISO(monthAnchorKey, { zone: timezone });
-  if (!anchor.isValid) {
-    return focusedKey;
-  }
-  const gridDates = new Set(
-    buildMonthGrid(anchor.year, anchor.month, timezone).map((cell) => cell.date),
-  );
-  if (gridDates.has(focusedKey)) {
-    return focusedKey;
-  }
-  if (gridDates.has(todayKey)) {
-    return todayKey;
-  }
-  return anchor.toISODate() ?? focusedKey;
-}
 
 export default function AppointmentsPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -61,45 +30,56 @@ export default function AppointmentsPage() {
     currentUser?.role != null &&
     CAN_LIST_EMPLOYEES_ROLES.includes(currentUser.role);
 
-  const todayKey = useMemo(
-    () => DateTime.now().setZone(timezone).toISODate() ?? "",
-    [timezone],
-  );
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingStatusAction, setPendingStatusAction] = useState<{
+    id: string;
+    action: AppointmentStatusAction;
+  } | null>(null);
 
-  const [viewType, setViewType] = useState<CalendarViewType>("month");
-  const [currentDateKey, setCurrentDateKey] = useState(todayKey);
-  const [monthFocusedDateKey, setMonthFocusedDateKey] = useState(todayKey);
-  const isMobileCalendar = useMatchMedia(MOBILE_CALENDAR_MEDIA_QUERY);
-  const previousTodayKeyRef = useRef(todayKey);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] =
+    useState<Appointment | null>(null);
+  const [formReadOnly, setFormReadOnly] = useState(false);
+  const [deletingAppointment, setDeletingAppointment] =
+    useState<Appointment | null>(null);
 
-  useEffect(() => {
-    const previousTodayKey = previousTodayKeyRef.current;
-    if (currentDateKey === previousTodayKey && todayKey !== previousTodayKey) {
-      setCurrentDateKey(todayKey);
-    }
-    previousTodayKeyRef.current = todayKey;
-  }, [todayKey, currentDateKey]);
+  const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined);
+  const [prefillTime, setPrefillTime] = useState<string | undefined>(undefined);
+  const [prefillEmployeeId, setPrefillEmployeeId] = useState<
+    string | undefined
+  >(undefined);
 
-  useEffect(() => {
-    if (viewType !== "month") {
-      return;
-    }
-    setMonthFocusedDateKey((prev) =>
-      reconcileMonthFocusedDateKey(prev, currentDateKey, todayKey, timezone),
-    );
-  }, [viewType, currentDateKey, todayKey, timezone]);
-
-  const handleCalendarDateChange = useCallback(
-    (dateKey: string) => {
-      setCurrentDateKey(dateKey);
-      if (viewType === "month") {
-        setMonthFocusedDateKey((prev) =>
-          reconcileMonthFocusedDateKey(prev, dateKey, todayKey, timezone),
-        );
-      }
+  const openCreate = useCallback(
+    (date?: string, time?: string, employeeId?: string) => {
+      setEditingAppointment(null);
+      setFormReadOnly(false);
+      setPrefillDate(date);
+      setPrefillTime(time);
+      setPrefillEmployeeId(employeeId);
+      setFormOpen(true);
     },
-    [viewType, todayKey, timezone],
+    [],
   );
+
+  const {
+    viewType,
+    setViewType,
+    currentDateKey,
+    monthFocusedDateKey,
+    todayKey,
+    isMobileCalendar,
+    showCalendar,
+    handleCalendarDateChange,
+    handleMonthDaySelect,
+    handleCalendarDayClick,
+    handleCalendarOverflowDayClick,
+    handleCreateForMonthDay,
+    handleCalendarSlotClick,
+  } = useAppointmentsNavigation({
+    timezone,
+    onOpenCreate: openCreate,
+  });
 
   const {
     appointments,
@@ -122,38 +102,8 @@ export default function AppointmentsPage() {
     canListEmployees,
   });
 
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [pendingStatusAction, setPendingStatusAction] = useState<{
-    id: string;
-    action: AppointmentStatusAction;
-  } | null>(null);
-
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingAppointment, setEditingAppointment] =
-    useState<Appointment | null>(null);
-  const [formReadOnly, setFormReadOnly] = useState(false);
-  const [deletingAppointment, setDeletingAppointment] =
-    useState<Appointment | null>(null);
-
-  // Prefill: dados de criação rápida a partir do calendário
-  const [prefillDate, setPrefillDate] = useState<string | undefined>(undefined);
-  const [prefillTime, setPrefillTime] = useState<string | undefined>(undefined);
-  const [prefillEmployeeId, setPrefillEmployeeId] = useState<
-    string | undefined
-  >(undefined);
-
   function nameFor(map: Map<string, string>, id: string): string {
     return map.get(id) ?? "—";
-  }
-
-  function openCreate(date?: string, time?: string, employeeId?: string) {
-    setEditingAppointment(null);
-    setFormReadOnly(false);
-    setPrefillDate(date);
-    setPrefillTime(time);
-    setPrefillEmployeeId(employeeId);
-    setFormOpen(true);
   }
 
   function openEdit(appointment: Appointment) {
@@ -231,43 +181,6 @@ export default function AppointmentsPage() {
     }
   }
 
-  function handleMonthDaySelect(dateKey: string) {
-    setMonthFocusedDateKey(dateKey);
-  }
-
-  function handleCalendarDayClick(dateKey: string) {
-    if (viewType === "month" && isMobileCalendar) {
-      handleMonthDaySelect(dateKey);
-      return;
-    }
-    // Dias passados seguem visíveis (consulta histórica) mas não iniciam a
-    // criação de um novo agendamento.
-    if (dateKey >= todayKey) {
-      openCreate(dateKey);
-    }
-  }
-
-  function handleCalendarOverflowDayClick(dateKey: string) {
-    if (viewType === "month" && isMobileCalendar) {
-      handleMonthDaySelect(dateKey);
-      return;
-    }
-    setCurrentDateKey(dateKey);
-    setViewType("day");
-  }
-
-  function handleCreateForMonthDay(dateKey: string) {
-    if (dateKey >= todayKey) {
-      openCreate(dateKey);
-    }
-  }
-
-  function handleCalendarSlotClick(dateKey: string, hour: number) {
-    if (!isSlotHourInPast(dateKey, hour, timezone)) {
-      openCreate(dateKey, `${String(hour).padStart(2, "0")}:00`);
-    }
-  }
-
   function handleCalendarAppointmentClick(appointment: Appointment) {
     if (isInstantInPast(appointment.startAt)) {
       openDetails(appointment);
@@ -289,24 +202,9 @@ export default function AppointmentsPage() {
     );
   }
 
-  const showCalendar = viewType !== "list";
-
   return (
     <section>
       <PageHeader title="Agendamentos" description="Consulte a agenda e acompanhe o estado de cada atendimento." actions={canCreate && <button type="button" className="btn btn-primary" onClick={() => openCreate()}>Novo agendamento</button>} />
-      {/*
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h1 className="h3 mb-0">Agendamentos</h1>
-        {canCreate && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => openCreate()}
-          >
-            Novo agendamento
-          </button>
-        )}
-      </div> */}
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -348,11 +246,11 @@ export default function AppointmentsPage() {
             isLoading={isLoading}
             loadError={loadError}
             onLoadRetry={() => void loadAppointments()}
+            isMobileViewport={isMobileCalendar}
           />
         </div>
       )}
 
-      {/* Toolbar do calendário (também para view Lista) */}
       {!showCalendar && (
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <div className="d-flex align-items-center gap-2">
