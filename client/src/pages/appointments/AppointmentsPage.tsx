@@ -246,18 +246,20 @@ export default function AppointmentsPage() {
             viewType={viewType}
             currentDateKey={currentDateKey}
             onDayClick={handleCalendarDayClick}
-            onOverflowDayClick={handleCalendarOverflowDayClick}
-            monthFocusedDateKey={monthFocusedDateKey}
-            onMonthDaySelect={handleMonthDaySelect}
-            canCreate={canCreate}
-            onCreateForDay={handleCreateForMonthDay}
             onSlotClick={handleCalendarSlotClick}
             onAppointmentClick={handleCalendarAppointmentClick}
             todayKey={todayKey}
+            month={{
+              monthFocusedDateKey,
+              onMonthDaySelect: handleMonthDaySelect,
+              onOverflowDayClick: handleCalendarOverflowDayClick,
+              onCreateForDay: handleCreateForMonthDay,
+              canCreate,
+              isMobileViewport: isMobileCalendar,
+            }}
             isLoading={isLoading}
             loadError={loadError}
             onLoadRetry={() => void loadAppointments()}
-            isMobileViewport={isMobileCalendar}
           />
         </div>
       )}
