@@ -164,6 +164,7 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        isMobileViewport={false}
       />,
     );
 
@@ -187,6 +188,7 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        isMobileViewport={false}
       />,
     );
 
@@ -208,6 +210,7 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        isMobileViewport={false}
       />,
     );
 
@@ -228,6 +231,7 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        isMobileViewport={false}
       />,
     );
     expect(screen.getByText("10/09/2026")).toBeInTheDocument();
@@ -245,6 +249,7 @@ describe("CalendarView", () => {
           onDayClick={noopOnDayClick}
           onSlotClick={noopOnSlotClick}
           onAppointmentClick={noopOnAppointmentClick}
+          isMobileViewport={false}
         />
       </Provider>,
     );
@@ -264,6 +269,7 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        isMobileViewport={false}
         isLoading
       />,
     );
@@ -790,7 +796,6 @@ describe("MonthCalendar - layout compacto (mobile)", () => {
 
 describe("CalendarView - lista mobile abaixo do mês", () => {
   beforeEach(() => {
-    mockViewportMobile(true);
     HTMLElement.prototype.scrollIntoView = vi.fn();
   });
 
@@ -814,6 +819,7 @@ describe("CalendarView - lista mobile abaixo do mês", () => {
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
         todayKey="2026-09-10"
+        isMobileViewport={true}
       />,
     );
 
@@ -840,6 +846,7 @@ describe("CalendarView - lista mobile abaixo do mês", () => {
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
         todayKey="2026-09-10"
+        isMobileViewport={true}
       />,
     );
 
@@ -869,6 +876,7 @@ describe("CalendarView - overflow no mês", () => {
         onOverflowDayClick={onOverflowDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        isMobileViewport={false}
       />,
     );
 
