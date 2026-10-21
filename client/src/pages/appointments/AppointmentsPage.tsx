@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateTime } from "luxon";
 import appointmentsApi from "../../api/endpoints/appointments.api";
-import clientsApi from "../../api/endpoints/clients.api";
-import servicesApi from "../../api/endpoints/services.api";
-import employeesApi from "../../api/endpoints/employees.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentForm from "../../components/appointments/AppointmentForm";
 import DeleteAppointmentModal from "../../components/appointments/DeleteAppointmentModal";
@@ -12,12 +9,10 @@ import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import {
   buildMonthGrid,
-  getMonthGridRange,
-  getWeekRange,
-  getDayRange,
   isInstantInPast,
   isSlotHourInPast,
 } from "../../config/appointmentCalendar";
+import { useAppointmentsSchedule } from "../../hooks/useAppointmentsSchedule";
 import {
   MOBILE_CALENDAR_MEDIA_QUERY,
   useMatchMedia,
@@ -27,17 +22,11 @@ import type { AppointmentStatusAction } from "../../config/appointmentStatus";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
-import type { Client } from "../../types/client";
-import type { Service } from "../../types/service";
 import PageHeader from "../../components/common/PageHeader";
-import type { Employee, EmployeeRole } from "../../types/employee";
+import type { EmployeeRole } from "../../types/employee";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
 const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN", "MANAGER"];
-
-function canLoadNames(role: string | undefined | null): boolean {
-  return Boolean(role) && role !== "CLIENT";
-}
 
 function reconcileMonthFocusedDateKey(
   focusedKey: string,
@@ -59,27 +48,6 @@ function reconcileMonthFocusedDateKey(
     return todayKey;
   }
   return anchor.toISODate() ?? focusedKey;
-}
-
-function computeRange(
-  viewType: CalendarViewType,
-  currentDateKey: string,
-  timezone: string,
-): { startAt: string; endAt: string } {
-  switch (viewType) {
-    case "month": {
-      const dt = DateTime.fromISO(currentDateKey, { zone: timezone });
-      return getMonthGridRange(dt.year, dt.month, timezone);
-    }
-    case "week":
-      return getWeekRange(currentDateKey, timezone);
-    case "day":
-      return getDayRange(currentDateKey, timezone);
-    case "list":
-      return { startAt: "", endAt: "" };
-    default:
-      return { startAt: "", endAt: "" };
-  }
 }
 
 export default function AppointmentsPage() {
@@ -133,14 +101,27 @@ export default function AppointmentsPage() {
     [viewType, todayKey, timezone],
   );
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const {
+    appointments,
+    clients,
+    services,
+    employees,
+    clientNames,
+    serviceNames,
+    employeeNames,
+    isLoading,
+    loadError,
+    relatedError,
+    loadAppointments,
+  } = useAppointmentsSchedule({
+    canList,
+    viewType,
+    currentDateKey,
+    timezone,
+    actorRole,
+    canListEmployees,
+  });
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [relatedError, setRelatedError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingStatusAction, setPendingStatusAction] = useState<{
@@ -161,95 +142,6 @@ export default function AppointmentsPage() {
   const [prefillEmployeeId, setPrefillEmployeeId] = useState<
     string | undefined
   >(undefined);
-
-  const range = useMemo(
-    () => computeRange(viewType, currentDateKey, timezone),
-    [viewType, currentDateKey, timezone],
-  );
-
-  const requestIdRef = useRef(0);
-
-  const loadAppointments = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    setIsLoading(true);
-    setLoadError(null);
-    try {
-      const params =
-        range.startAt && range.endAt
-          ? { startAt: range.startAt, endAt: range.endAt }
-          : undefined;
-      const response = await appointmentsApi.getAppointments(params);
-      if (requestId === requestIdRef.current) {
-        setAppointments(response.data ?? []);
-      }
-    } catch (error) {
-      if (requestId === requestIdRef.current) {
-        const failure = getApiError(error);
-        setLoadError(getFriendlyErrorMessage(failure));
-      }
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setIsLoading(false);
-      }
-    }
-  }, [range.startAt, range.endAt]);
-
-  const loadRelated = useCallback(async () => {
-    const failures: string[] = [];
-    if (canLoadNames(actorRole)) {
-      try {
-        const response = await clientsApi.getClients();
-        setClients(response.data ?? []);
-      } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
-      }
-    }
-    if (canLoadNames(actorRole)) {
-      try {
-        const response = await servicesApi.getServices();
-        setServices(response.data ?? []);
-      } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
-      }
-    }
-    if (canListEmployees) {
-      try {
-        const response = await employeesApi.getEmployees();
-        
-        setEmployees(
-          (response.data ?? []).filter(
-            (employee) => employee.role !== "CLIENT",
-          ),
-        );
-      } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
-      }
-    }
-    setRelatedError(
-      failures.length > 0
-        ? `Não foi possível carregar alguns nomes. ${failures.join(" ")}`
-        : null,
-    );
-  }, [actorRole, canListEmployees]);
-
-  useEffect(() => {
-    if (!canList) return;
-    void loadAppointments();
-    void loadRelated();
-  }, [canList, loadAppointments, loadRelated]);
-
-  const clientNames = useMemo(
-    () => new Map(clients.map((client) => [client.id, client.name])),
-    [clients],
-  );
-  const serviceNames = useMemo(
-    () => new Map(services.map((service) => [service.id, service.name])),
-    [services],
-  );
-  const employeeNames = useMemo(
-    () => new Map(employees.map((employee) => [employee.id, employee.name])),
-    [employees],
-  );
 
   function nameFor(map: Map<string, string>, id: string): string {
     return map.get(id) ?? "—";
