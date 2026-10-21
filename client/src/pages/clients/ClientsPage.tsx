@@ -193,7 +193,7 @@ export default function ClientsPage() {
                         </span>
                       </div>
                     </td>
-                    <td>{client.email ?? "—"}</td>
+                    <td className="text-nowrap">{client.email ?? "—"}</td>
                     <td>{client.phone}</td>
                     <td>
                       {client.isActive ? (

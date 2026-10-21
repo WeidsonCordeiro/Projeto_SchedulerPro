@@ -67,29 +67,37 @@ export default function PortalAppointmentsPage() {
 
   return (
     <section>
-      <PageHeader title="Meus agendamentos" description="Consulte os seus próximos atendimentos e o histórico." actions={<div className="btn-group" role="group" aria-label="Filtrar agendamentos">
-          <button
-            type="button"
-            className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-outline-primary"}`}
-            onClick={() => setFilter("all")}
-          >
-            Todos
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${filter === "upcoming" ? "btn-primary" : "btn-outline-primary"}`}
-            onClick={() => setFilter("upcoming")}
-          >
-            Próximos
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${filter === "past" ? "btn-primary" : "btn-outline-primary"}`}
-            onClick={() => setFilter("past")}
-          >
-            Passados
-          </button>
-        </div>} />
+      <PageHeader
+        title="Meus agendamentos"
+        description="Consulte os seus próximos atendimentos e o histórico."
+        actions={
+          <div className="filter-bar">
+            <div className="btn-group" role="group" aria-label="Filtrar agendamentos">
+              <button
+                type="button"
+                className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setFilter("all")}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${filter === "upcoming" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setFilter("upcoming")}
+              >
+                Próximos
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${filter === "past" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setFilter("past")}
+              >
+                Passados
+              </button>
+            </div>
+          </div>
+        }
+      />
 
       {isLoading && <LoadingState label="A carregar agendamentos…" />}
 

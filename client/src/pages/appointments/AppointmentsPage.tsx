@@ -10,12 +10,17 @@ import DeleteAppointmentModal from "../../components/appointments/DeleteAppointm
 import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import {
+  buildMonthGrid,
   getMonthGridRange,
   getWeekRange,
   getDayRange,
   isInstantInPast,
   isSlotHourInPast,
 } from "../../config/appointmentCalendar";
+import {
+  MOBILE_CALENDAR_MEDIA_QUERY,
+  useMatchMedia,
+} from "../../hooks/useMatchMedia";
 import {
   APPOINTMENT_ACTION_LABELS,
   APPOINTMENT_ACTION_SUCCESS_MESSAGES,
@@ -44,6 +49,28 @@ const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN", "MANAGER"];
 
 function canLoadNames(role: string | undefined | null): boolean {
   return Boolean(role) && role !== "CLIENT";
+}
+
+function reconcileMonthFocusedDateKey(
+  focusedKey: string,
+  monthAnchorKey: string,
+  todayKey: string,
+  timezone: string,
+): string {
+  const anchor = DateTime.fromISO(monthAnchorKey, { zone: timezone });
+  if (!anchor.isValid) {
+    return focusedKey;
+  }
+  const gridDates = new Set(
+    buildMonthGrid(anchor.year, anchor.month, timezone).map((cell) => cell.date),
+  );
+  if (gridDates.has(focusedKey)) {
+    return focusedKey;
+  }
+  if (gridDates.has(todayKey)) {
+    return todayKey;
+  }
+  return anchor.toISODate() ?? focusedKey;
 }
 
 function computeRange(
@@ -85,6 +112,8 @@ export default function AppointmentsPage() {
 
   const [viewType, setViewType] = useState<CalendarViewType>("month");
   const [currentDateKey, setCurrentDateKey] = useState(todayKey);
+  const [monthFocusedDateKey, setMonthFocusedDateKey] = useState(todayKey);
+  const isMobileCalendar = useMatchMedia(MOBILE_CALENDAR_MEDIA_QUERY);
   const previousTodayKeyRef = useRef(todayKey);
 
   useEffect(() => {
@@ -94,6 +123,27 @@ export default function AppointmentsPage() {
     }
     previousTodayKeyRef.current = todayKey;
   }, [todayKey, currentDateKey]);
+
+  useEffect(() => {
+    if (viewType !== "month") {
+      return;
+    }
+    setMonthFocusedDateKey((prev) =>
+      reconcileMonthFocusedDateKey(prev, currentDateKey, todayKey, timezone),
+    );
+  }, [viewType, currentDateKey, todayKey, timezone]);
+
+  const handleCalendarDateChange = useCallback(
+    (dateKey: string) => {
+      setCurrentDateKey(dateKey);
+      if (viewType === "month") {
+        setMonthFocusedDateKey((prev) =>
+          reconcileMonthFocusedDateKey(prev, dateKey, todayKey, timezone),
+        );
+      }
+    },
+    [viewType, todayKey, timezone],
+  );
 
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -301,9 +351,32 @@ export default function AppointmentsPage() {
     }
   }
 
+  function handleMonthDaySelect(dateKey: string) {
+    setMonthFocusedDateKey(dateKey);
+  }
+
   function handleCalendarDayClick(dateKey: string) {
+    if (viewType === "month" && isMobileCalendar) {
+      handleMonthDaySelect(dateKey);
+      return;
+    }
     // Dias passados seguem visíveis (consulta histórica) mas não iniciam a
     // criação de um novo agendamento.
+    if (dateKey >= todayKey) {
+      openCreate(dateKey);
+    }
+  }
+
+  function handleCalendarOverflowDayClick(dateKey: string) {
+    if (viewType === "month" && isMobileCalendar) {
+      handleMonthDaySelect(dateKey);
+      return;
+    }
+    setCurrentDateKey(dateKey);
+    setViewType("day");
+  }
+
+  function handleCreateForMonthDay(dateKey: string) {
     if (dateKey >= todayKey) {
       openCreate(dateKey);
     }
@@ -383,8 +456,13 @@ export default function AppointmentsPage() {
             viewType={viewType}
             onViewTypeChange={setViewType}
             currentDateKey={currentDateKey}
-            onDateChange={setCurrentDateKey}
+            onDateChange={handleCalendarDateChange}
             onDayClick={handleCalendarDayClick}
+            onOverflowDayClick={handleCalendarOverflowDayClick}
+            monthFocusedDateKey={monthFocusedDateKey}
+            onMonthDaySelect={handleMonthDaySelect}
+            canCreate={canCreate}
+            onCreateForDay={handleCreateForMonthDay}
             onSlotClick={handleCalendarSlotClick}
             onAppointmentClick={handleCalendarAppointmentClick}
             todayKey={todayKey}
