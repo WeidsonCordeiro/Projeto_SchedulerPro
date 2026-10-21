@@ -564,317 +564,6 @@ button,
   overscroll-behavior: contain;
 }
 
-.calendar-surface {
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius);
-  box-shadow: var(--sp-shadow);
-  padding: 1rem;
-}
-
-.appointments-calendar-panel {
-  margin-bottom: 1rem;
-  min-width: 0;
-}
-
-.calendar-toolbar {
-  align-items: center;
-  background: #fff;
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-}
-.calendar-toolbar-nav {
-  flex: 0 0 auto;
-}
-.calendar-toolbar-views {
-  flex: 0 0 auto;
-}
-/* O período é a informação que orienta a leitura da agenda, portanto fica
-   sempre visível (todas as vistas, todas as larguras) e encolhe antes das ações. */
-.calendar-toolbar-label,
-.calendar-toolbar-period {
-  flex: 1 1 auto;
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1.25;
-  margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
-  text-align: center;
-}
-@media (min-width: 768px) {
-  .calendar-toolbar {
-    flex-wrap: nowrap;
-    gap: 0.75rem;
-  }
-  .calendar-toolbar-label,
-  .calendar-toolbar-period {
-    flex: 1 1 0;
-    order: 0;
-  }
-  .calendar-toolbar-nav {
-    order: -1;
-  }
-  .calendar-toolbar-views {
-    order: 1;
-  }
-}
-.calendar-item {
-  border-radius: 0.35rem !important;
-  color: #fff !important;
-  min-height: 3.45rem;
-  overflow: hidden;
-}
-.calendar-item-time {
-  font-size: 0.65rem;
-  font-weight: 750;
-  opacity: 0.82;
-}
-.calendar-item-client {
-  font-size: 0.72rem;
-  font-weight: 750;
-  line-height: 1.15;
-}
-.calendar-item-service {
-  font-size: 0.62rem;
-  opacity: 0.82;
-}
-.calendar-item-status {
-  font-size: 0.58rem;
-  font-weight: 650;
-  line-height: 1.1;
-  opacity: 0.9;
-}
-.status-scheduled {
-  background: #526bd8 !important;
-  color: #fff !important;
-}
-.status-confirmed {
-  background: #168c72 !important;
-  color: #fff !important;
-}
-.status-completed {
-  background: #667085 !important;
-  color: #fff !important;
-}
-.status-cancelled {
-  background: #d95368 !important;
-  color: #fff !important;
-}
-.status-no-show {
-  background: #d18b20 !important;
-  color: #fff !important;
-}
-.status-default {
-  background: #94a3b8 !important;
-  color: #fff !important;
-}
-/* A cor do bloco vem da classe .status-* partilhada pelas vistas Month, Week e
-   Day (APPOINTMENT_STATUS_CALENDAR_CLASS), por isso não é repetida por vista. */
-.calendar-week-event {
-  border-left: 3px solid rgba(255, 255, 255, 0.7) !important;
-  color: #fff;
-  font-size: 0.72rem;
-}
-.calendar-event-time {
-  font-size: 0.64rem;
-  opacity: 0.85;
-}
-.calendar-event-client {
-  font-weight: 750;
-}
-.calendar-event-service {
-  font-size: 0.66rem;
-  opacity: 0.85;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.calendar-event-status {
-  font-size: 0.58rem;
-  font-weight: 650;
-  line-height: 1.1;
-  opacity: 0.92;
-}
-.calendar-now-line {
-  border-top: 2px solid #e03131;
-  box-shadow: 0 0 0 1px rgba(224, 49, 49, 0.25);
-  left: 0;
-  pointer-events: none;
-  position: absolute;
-  right: 0;
-  z-index: 15;
-}
-.calendar-now-line::before {
-  background: #e03131;
-  border-radius: 50%;
-  content: "";
-  height: 8px;
-  left: -4px;
-  position: absolute;
-  top: -5px;
-  width: 8px;
-}
-.month-calendar .calendar-day-cell {
-  background: #fff;
-  border-color: #edf0f5 !important;
-  padding: 0.35rem !important;
-}
-/* As 7 colunas da grelha mensal podem encolher abaixo do conteúdo, para que
-   a grade do mês nunca ultrapasse a largura disponível. */
-.month-calendar .col,
-.month-calendar .calendar-day-cell {
-  min-width: 0;
-}
-
-.month-calendar .calendar-day-cell.bg-light {
-  background: #fafbfc !important;
-}
-.month-calendar .calendar-day-cell-past {
-  opacity: 0.7;
-}
-.month-calendar .calendar-day-cell:focus-visible,
-.week-slot:focus-visible {
-  outline: 2px solid var(--sp-primary);
-  outline-offset: -2px;
-}
-/* Itens do mês: 3 linhas (hora, cliente, serviço) em altura compacta para que
-   4 eventos + indicador "+N mais" caibam no mesmo dia, sem cortar conteúdo. */
-.month-calendar .calendar-item {
-  line-height: 1.2;
-  margin-bottom: 0.15rem;
-  min-height: 0;
-  padding: 0.15rem 0.3rem !important;
-}
-.month-calendar .calendar-item-time {
-  font-size: 0.58rem;
-}
-.month-calendar .calendar-item-client {
-  font-size: 0.66rem;
-}
-.month-calendar .calendar-item-service {
-  font-size: 0.58rem;
-}
-.month-calendar .calendar-item-status {
-  font-size: 0.52rem;
-}
-.month-calendar .calendar-day-number {
-  align-items: center;
-  display: inline-flex;
-  height: 1.5rem;
-  justify-content: center;
-  margin-bottom: 0.1rem;
-  min-width: 1.5rem;
-}
-.month-calendar .calendar-day-cell.today .calendar-day-number {
-  background: var(--sp-primary);
-  border-radius: 50%;
-  color: #fff;
-  font-weight: 750;
-}
-/* "+N mais": abre a vista Dia; clique na célula (fora do botão) continua a criar. */
-.month-calendar .calendar-overflow {
-  background: transparent;
-  border: 0;
-  border-radius: 0.35rem;
-  color: var(--sp-muted);
-  cursor: pointer;
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1.35;
-  min-height: 2.75rem;
-  padding: 0.35rem 0.45rem;
-  text-align: inherit;
-  width: 100%;
-}
-.month-calendar .calendar-overflow:hover,
-.month-calendar .calendar-overflow:focus-visible {
-  background: #eef2ff;
-  color: var(--sp-primary);
-  outline: none;
-}
-
-.month-calendar .calendar-day-cell-selected {
-  box-shadow: inset 0 0 0 2px var(--sp-primary);
-  z-index: 1;
-}
-.month-calendar .calendar-day-event-count {
-  align-items: center;
-  background: #eef2ff;
-  border-radius: 999px;
-  color: var(--sp-primary);
-  display: inline-flex;
-  font-size: 0.65rem;
-  font-weight: 800;
-  justify-content: center;
-  line-height: 1;
-  margin-top: 0.15rem;
-  min-height: 1.35rem;
-  min-width: 1.35rem;
-  padding: 0.1rem 0.35rem;
-}
-.month-day-agenda-list {
-  border-top: 1px solid var(--sp-border);
-  margin-top: 0.75rem;
-  padding-top: 0.85rem;
-}
-.month-day-agenda-list-header {
-  margin-bottom: 0.65rem;
-}
-.month-day-agenda-list-items {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.month-day-agenda-list .calendar-item {
-  min-height: 4.25rem;
-  padding: 0.55rem 0.65rem !important;
-}
-.month-day-agenda-list .calendar-item-time {
-  font-size: 0.8rem;
-}
-.month-day-agenda-list .calendar-item-client {
-  font-size: 0.88rem;
-}
-.month-day-agenda-list .calendar-item-service {
-  font-size: 0.78rem;
-}
-.month-day-agenda-list .calendar-item-status {
-  font-size: 0.72rem;
-}
-
-@media (min-width: 768px) {
-  .month-calendar .calendar-item {
-    margin-bottom: 0.22rem;
-    padding: 0.22rem 0.4rem !important;
-  }
-  .month-calendar .calendar-item-time {
-    font-size: 0.68rem;
-  }
-  .month-calendar .calendar-item-client {
-    font-size: 0.74rem;
-  }
-  .month-calendar .calendar-item-service {
-    font-size: 0.66rem;
-  }
-  .month-calendar .calendar-item-status {
-    font-size: 0.6rem;
-  }
-  .month-calendar .calendar-overflow {
-    background: #f8faff;
-    border: 1px solid #dbe4ff;
-    color: var(--sp-primary);
-    font-size: 0.78rem;
-  }
-}
-
 .insight-strip {
   background: #fff;
   border: 1px solid var(--sp-border);
@@ -1308,52 +997,6 @@ button,
   text-align: center;
 }
 
-/* Seletor de data do formulário de agendamento. As classes existem no
-   AppointmentCalendar.tsx; sem estas regras o mês era desenhado apenas com o
-   Bootstrap base e ficava sem a identidade visual do calendário principal. */
-.calendar-grid {
-  background: #fff;
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius);
-  padding: 0.5rem;
-}
-.calendar-grid .col {
-  min-width: 0;
-}
-.calendar-grid .calendar-day {
-  font-weight: 650;
-  margin-inline: 0.1rem;
-  min-height: 2.1rem;
-  padding: 0.15rem 0.1rem;
-  width: calc(100% - 0.2rem);
-}
-.calendar-grid .calendar-day.btn-primary {
-  box-shadow: inset 0 0 0 2px var(--sp-primary);
-  font-weight: 750;
-}
-.calendar-grid .calendar-day.btn-outline-success {
-  color: #12806a;
-}
-.calendar-grid .calendar-day.btn-outline-secondary {
-  background: #f7f9fc;
-}
-.calendar-grid .calendar-day:disabled {
-  opacity: 0.55;
-}
-.calendar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  justify-content: center;
-  margin-top: 0.65rem;
-  padding: 0 0.35rem;
-}
-.calendar-legend > span {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.3rem;
-}
-
 @media (max-width: 991.98px) {
   .app-sidebar {
     position: fixed;
@@ -1390,24 +1033,6 @@ button,
     cursor: pointer;
   }
 
-  /* Abaixo do breakpoint da sidebar as grelhas do calendário mantêm largura
-     mínima legível; o deslocamento fica dentro da superfície do calendário. */
-  .week-calendar,
-  .day-calendar {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .week-calendar > *,
-  .day-calendar > * {
-    min-width: 620px;
-  }
-
-  .week-calendar .btn-group {
-    flex-wrap: wrap;
-  }
-
   /* Painel de notificações: margens laterais simétricas em ecrãs estreitos. */
   .notification-menu {
     inset-inline: 0.5rem;
@@ -1425,28 +1050,6 @@ button,
   .app-navbar .user-name {
     max-width: 9rem;
   }
-}
-
-/* ------------------------------------------------------------------ */
-/*  Calendário da Agenda                                               */
-/* ------------------------------------------------------------------ */
-
-.month-calendar .calendar-day-cell {
-  transition: background-color 0.12s ease;
-}
-
-.month-calendar .calendar-day-cell:hover {
-  background-color: rgba(13, 110, 253, 0.04);
-}
-
-.month-calendar .calendar-item {
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-
-.week-calendar,
-.day-calendar {
-  min-height: 200px;
 }
 
 /* Responsivo: simplifica grade em telas pequenas */
@@ -1488,29 +1091,6 @@ button,
      vez de forçar deslocamento horizontal. */
   .table-responsive.table-compact .table {
     min-width: 0;
-  }
-  .calendar-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-    flex-wrap: wrap;
-  }
-  .calendar-toolbar-nav,
-  .calendar-toolbar-views,
-  .calendar-toolbar > * {
-    justify-content: center;
-  }
-  .calendar-toolbar-label,
-  .calendar-toolbar-period {
-    flex: 1 1 100%;
-    text-align: center;
-  }
-  .calendar-toolbar .btn-group,
-  .calendar-toolbar-views {
-    width: 100%;
-  }
-  .calendar-toolbar .btn-group .btn,
-  .calendar-toolbar-views .btn {
-    flex: 1;
   }
   /* Modais: margem lateral garantida e largura limitada à área útil. */
   .modal {
@@ -1569,42 +1149,6 @@ button,
   .availability-day-column .availability-timeline {
     margin-bottom: 1rem;
   }
-  .month-calendar .calendar-day-cell {
-    min-height: 64px !important;
-  }
-  /* O "+N mais" passa a ocupar a linha inteira do dia em ecrãs estreitos,
-     para não ficar espremido ao lado dos eventos. */
-  .month-calendar .calendar-overflow {
-    flex-shrink: 0;
-    text-align: center;
-    width: 100%;
-  }
-  .month-calendar--with-day-list .calendar-item {
-    display: none;
-  }
-  .month-calendar--with-day-list .calendar-day-cell {
-    min-height: 3.25rem !important;
-    padding: 0.25rem !important;
-  }
-  .month-calendar--with-day-list .calendar-day-number {
-    font-size: 0.72rem;
-    height: 1.35rem;
-    min-width: 1.35rem;
-  }
-}
-
-@media (max-width: 767.98px) {
-  /* A grelha mensal mantém as 7 colunas (é a leitura do mês que o utilizador
-     espera), mas com largura mínima por coluna e scroll horizontal dentro da
-     própria grelha: comprimir 7 dias em 390px tornaria cada célula ilegível e
-     empurraria a página para fora da viewport. */
-  .month-calendar {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-  .month-calendar > .row {
-    min-width: 40rem;
-  }
 }
 
 @media (max-width: 575.98px) {
@@ -1616,13 +1160,6 @@ button,
   }
   .app-navbar .user-summary {
     display: none;
-  }
-  .calendar-surface {
-    border-left: 0;
-    border-right: 0;
-    border-radius: 0;
-    margin-inline: -0.5rem;
-    padding: 0.5rem;
   }
   .insight-strip {
     display: grid;
@@ -1644,26 +1181,7 @@ button,
     margin-left: 4rem;
     width: 100%;
   }
-  .month-calendar,
-  .week-calendar,
-  .day-calendar {
-    font-size: 0.82rem;
-  }
 }
-
-/* Zebra sutil em linhas de hora (alternância) */
-.week-calendar .border-bottom:nth-child(even),
-.day-calendar .border-bottom:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.015);
-}
-
-/* Bloco de agendamento: efeito hover */
-.week-calendar .position-absolute:hover > div,
-.day-calendar .position-absolute:hover > div {
-  filter: brightness(1.1);
-}
-
-/* Indicador de "mais agendamentos" no mês: ver .calendar-overflow. */
 
 /* Classes customizadas do Bootstrap */
 .invalid-feedback {
