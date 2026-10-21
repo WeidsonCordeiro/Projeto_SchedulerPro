@@ -7,6 +7,7 @@ import employeesApi from "../../api/endpoints/employees.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentForm from "../../components/appointments/AppointmentForm";
 import DeleteAppointmentModal from "../../components/appointments/DeleteAppointmentModal";
+import AppointmentsListView from "../../components/appointments/AppointmentsListView";
 import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import {
@@ -21,27 +22,14 @@ import {
   MOBILE_CALENDAR_MEDIA_QUERY,
   useMatchMedia,
 } from "../../hooks/useMatchMedia";
-import {
-  APPOINTMENT_ACTION_LABELS,
-  APPOINTMENT_ACTION_SUCCESS_MESSAGES,
-  APPOINTMENT_STATUS_BADGE_CLASS,
-  APPOINTMENT_STATUS_LABELS,
-  getAppointmentStatusActions,
-} from "../../config/appointmentStatus";
+import { APPOINTMENT_ACTION_SUCCESS_MESSAGES } from "../../config/appointmentStatus";
 import type { AppointmentStatusAction } from "../../config/appointmentStatus";
-import {
-  formatAppointmentDate,
-  formatAppointmentTime,
-} from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import PageHeader from "../../components/common/PageHeader";
-import EmptyState from "../../components/common/EmptyState";
-import ErrorState from "../../components/common/ErrorState";
-import LoadingState from "../../components/common/LoadingState";
 import type { Employee, EmployeeRole } from "../../types/employee";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
@@ -409,7 +397,6 @@ export default function AppointmentsPage() {
     );
   }
 
-  const hasActions = canUpdate || canStatus || canDelete;
   const showCalendar = viewType !== "list";
 
   return (
@@ -504,138 +491,30 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {!showCalendar && isLoading && (
-        <LoadingState label="A carregar agendamentos…" />
-      )}
-
-      {!showCalendar && !isLoading && loadError && (
-        <ErrorState
-          message={loadError}
+      {!showCalendar && (
+        <AppointmentsListView
+          isLoading={isLoading}
+          loadError={loadError}
           onRetry={() => void loadAppointments()}
+          appointments={appointments}
+          timezone={timezone}
+          clientNames={clientNames}
+          serviceNames={serviceNames}
+          employeeNames={employeeNames}
+          canCreate={canCreate}
+          canUpdate={canUpdate}
+          canStatus={canStatus}
+          canDelete={canDelete}
+          pendingStatusAction={pendingStatusAction}
+          onCreate={() => openCreate()}
+          onViewDetails={openDetails}
+          onEdit={openEdit}
+          onStatusAction={(appointment, action) =>
+            void handleStatusAction(appointment, action)
+          }
+          onDeleteRequest={setDeletingAppointment}
         />
       )}
-
-      {!isLoading &&
-        !loadError &&
-        viewType === "list" &&
-        appointments.length === 0 && (
-          <EmptyState title="Nenhum agendamento encontrado" description="Crie o primeiro agendamento para começar a organizar a agenda." action={canCreate && <button type="button" className="btn btn-primary" onClick={() => openCreate()}>Cadastrar primeiro agendamento</button>} />
-        )}
-
-      {!isLoading &&
-        !loadError &&
-        viewType === "list" &&
-        appointments.length > 0 && (
-          <div className="card table-card">
-            <div className="table-responsive">
-              <table className="table table-hover align-middle">
-                <thead>
-                  <tr>
-                    <th scope="col">Data</th>
-                    <th scope="col">Hora</th>
-                    <th scope="col">Cliente</th>
-                    <th scope="col">Serviço</th>
-                    <th scope="col">Funcionário</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Observações</th>
-                    {hasActions && <th scope="col">Ações</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {appointments.map((appointment) => {
-                    const statusActions = canStatus
-                      ? getAppointmentStatusActions(appointment.status)
-                      : [];
-                    const pending =
-                      pendingStatusAction?.id === appointment.id
-                        ? pendingStatusAction.action
-                        : null;
-
-                    return (
-                      <tr key={appointment.id}>
-                        <td>
-                          {formatAppointmentDate(appointment.startAt, timezone)}
-                        </td>
-                        <td>
-                          {formatAppointmentTime(appointment.startAt, timezone)}
-                          <span className="table-subline">
-                            até{" "}
-                            {formatAppointmentTime(appointment.endAt, timezone)}
-                          </span>
-                        </td>
-                        <td>{nameFor(clientNames, appointment.clientId)}</td>
-                        <td>{nameFor(serviceNames, appointment.serviceId)}</td>
-                        <td>{nameFor(employeeNames, appointment.employeeId)}</td>
-                        <td>
-                          <span
-                            className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
-                          >
-                            {APPOINTMENT_STATUS_LABELS[appointment.status]}
-                          </span>
-                        </td>
-                        <td>{appointment.notes || "—"}</td>
-                        {hasActions && (
-                          <td>
-                            <div className="table-actions">
-                              {canUpdate &&
-                                (isInstantInPast(appointment.startAt) ? (
-                                  // Agendamento histórico: somente leitura.
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => openDetails(appointment)}
-                                    disabled={pending !== null}
-                                  >
-                                    Visualizar
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="btn btn-sm btn-outline-primary"
-                                    onClick={() => openEdit(appointment)}
-                                    disabled={pending !== null}
-                                  >
-                                    Editar
-                                  </button>
-                                ))}
-                              {statusActions.map((action) => (
-                                <button
-                                  key={action}
-                                  type="button"
-                                  className="btn btn-sm btn-outline-secondary"
-                                  onClick={() =>
-                                    void handleStatusAction(appointment, action)
-                                  }
-                                  disabled={pending !== null}
-                                >
-                                  {pending === action
-                                    ? "Aguarde..."
-                                    : APPOINTMENT_ACTION_LABELS[action]}
-                                </button>
-                              ))}
-                              {canDelete && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={() =>
-                                    setDeletingAppointment(appointment)
-                                  }
-                                  disabled={pending !== null}
-                                >
-                                  Excluir
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
       {!isLoading &&
         !loadError &&
