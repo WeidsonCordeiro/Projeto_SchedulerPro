@@ -8,10 +8,39 @@ import {
   navigateWeek,
 } from "../config/appointmentCalendar";
 import type { CalendarViewType } from "../config/appointmentCalendar";
+import { formatMonthYear } from "../config/appointmentTime";
 import {
   MOBILE_CALENDAR_MEDIA_QUERY,
   useMatchMedia,
 } from "./useMatchMedia";
+
+export function formatAppointmentsViewPeriodLabel(
+  viewType: CalendarViewType,
+  currentDateKey: string,
+  timezone: string,
+): string {
+  const dt = DateTime.fromISO(currentDateKey, { zone: timezone });
+  if (!dt.isValid) {
+    return "";
+  }
+  switch (viewType) {
+    case "month":
+      return formatMonthYear(dt.year, dt.month, timezone);
+    case "week": {
+      const ws = dt.minus({ days: dt.weekday - 1 });
+      const we = ws.plus({ days: 6 });
+      const wsShort = ws.toFormat("dd/MM");
+      const weShort = we.toFormat("dd/MM");
+      return `${wsShort} – ${weShort}`;
+    }
+    case "day":
+      return dt.toFormat("dd/MM/yyyy");
+    case "list":
+      return "Lista de agendamentos";
+    default:
+      return "";
+  }
+}
 
 export function reconcileMonthFocusedDateKey(
   focusedKey: string,
@@ -46,6 +75,7 @@ export function calendarNavigatePrev(
     case "week":
       return navigateWeek(currentDateKey, -1, timezone);
     case "day":
+    case "list":
       return navigateDay(currentDateKey, -1, timezone);
     default:
       return null;
@@ -63,6 +93,7 @@ export function calendarNavigateNext(
     case "week":
       return navigateWeek(currentDateKey, 1, timezone);
     case "day":
+    case "list":
       return navigateDay(currentDateKey, 1, timezone);
     default:
       return null;
@@ -175,6 +206,29 @@ export function useAppointmentsNavigation({
 
   const showCalendar = viewType !== "list";
 
+  const periodLabel = useMemo(
+    () => formatAppointmentsViewPeriodLabel(viewType, currentDateKey, timezone),
+    [viewType, currentDateKey, timezone],
+  );
+
+  const handleToolbarPrev = useCallback(() => {
+    const nextKey = calendarNavigatePrev(viewType, currentDateKey, timezone);
+    if (nextKey) {
+      handleCalendarDateChange(nextKey);
+    }
+  }, [viewType, currentDateKey, timezone, handleCalendarDateChange]);
+
+  const handleToolbarNext = useCallback(() => {
+    const nextKey = calendarNavigateNext(viewType, currentDateKey, timezone);
+    if (nextKey) {
+      handleCalendarDateChange(nextKey);
+    }
+  }, [viewType, currentDateKey, timezone, handleCalendarDateChange]);
+
+  const handleToolbarToday = useCallback(() => {
+    handleCalendarDateChange(calendarNavigateToday(timezone));
+  }, [timezone, handleCalendarDateChange]);
+
   return {
     viewType,
     setViewType,
@@ -183,6 +237,10 @@ export function useAppointmentsNavigation({
     todayKey,
     isMobileCalendar,
     showCalendar,
+    periodLabel,
+    handleToolbarPrev,
+    handleToolbarNext,
+    handleToolbarToday,
     handleCalendarDateChange,
     handleMonthDaySelect,
     handleCalendarDayClick,

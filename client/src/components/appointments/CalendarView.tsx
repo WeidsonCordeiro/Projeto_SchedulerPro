@@ -1,14 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { DateTime } from "luxon";
-import {
-  calendarNavigateNext,
-  calendarNavigatePrev,
-  calendarNavigateToday,
-} from "../../hooks/useAppointmentsNavigation";
-import { formatMonthYear } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
-import CalendarToolbar from "./CalendarToolbar";
 import MonthCalendar from "./MonthCalendar";
 import WeekCalendar from "./WeekCalendar";
 import DayCalendar from "./DayCalendar";
@@ -19,20 +12,14 @@ import type { Appointment } from "../../types/appointment";
 import type { CalendarViewType } from "../../config/appointmentCalendar";
 
 /**
- * Container principal do calendário. Gerencia a view ativa, navegação entre
- * períodos, e delega carregamento de dados ao componente pai (AppointmentsPage).
- *
- * O componente é um "controlled container": recebe appointments, labels e
- * callbacks; o pai controla loading/error/range.
+ * Container principal do calendário. Delega carregamento de dados e toolbar ao pai.
  */
 interface CalendarViewProps {
   appointments: Appointment[];
   clientNames: Map<string, string>;
   serviceNames: Map<string, string>;
   viewType: CalendarViewType;
-  onViewTypeChange: (view: CalendarViewType) => void;
   currentDateKey: string;
-  onDateChange: (dateKey: string) => void;
   /** Chamado ao clicar em uma célula de dia/hora → abre formulário de criação com prefill. */
   onDayClick: (dateKey: string) => void;
   /** "+N mais" no mês → navega para a vista Dia com todas as marcações. */
@@ -57,9 +44,7 @@ export default function CalendarView({
   clientNames,
   serviceNames,
   viewType,
-  onViewTypeChange,
   currentDateKey,
-  onDateChange,
   onDayClick,
   onOverflowDayClick,
   onSlotClick,
@@ -105,62 +90,12 @@ export default function CalendarView({
     [onMonthDaySelect],
   );
 
-  const title = useMemo(() => {
-    const dt = DateTime.fromISO(currentDateKey, { zone: timezone });
-    if (!dt.isValid) return "";
-    switch (viewType) {
-      case "month":
-        return formatMonthYear(dt.year, dt.month, timezone);
-      case "week": {
-        const ws = dt.minus({ days: dt.weekday - 1 });
-        const we = ws.plus({ days: 6 });
-        const wsShort = ws.toFormat("dd/MM");
-        const weShort = we.toFormat("dd/MM");
-        return `${wsShort} – ${weShort}`;
-      }
-      case "day":
-        return dt.toFormat("dd/MM/yyyy");
-      case "list":
-        return "Lista de agendamentos";
-      default:
-        return "";
-    }
-  }, [currentDateKey, viewType, timezone]);
-
-  const handlePrev = useCallback(() => {
-    const nextKey = calendarNavigatePrev(viewType, currentDateKey, timezone);
-    if (nextKey) {
-      onDateChange(nextKey);
-    }
-  }, [viewType, currentDateKey, timezone, onDateChange]);
-
-  const handleNext = useCallback(() => {
-    const nextKey = calendarNavigateNext(viewType, currentDateKey, timezone);
-    if (nextKey) {
-      onDateChange(nextKey);
-    }
-  }, [viewType, currentDateKey, timezone, onDateChange]);
-
-  const handleToday = useCallback(() => {
-    onDateChange(calendarNavigateToday(timezone));
-  }, [timezone, onDateChange]);
-
   if (viewType === "list") {
     return null;
   }
 
   return (
     <div className="calendar-surface">
-      <CalendarToolbar
-        currentDateKey={currentDateKey}
-        viewType={viewType}
-        onViewTypeChange={onViewTypeChange}
-        onPrev={handlePrev}
-        onNext={handleNext}
-        onToday={handleToday}
-        label={title}
-      />
-
       {isLoading && (
         <LoadingState compact label="A carregar agendamentos…" />
       )}
