@@ -54,9 +54,27 @@ const names = new Map<string, string>([
   ["service1", "Corte de cabelo"],
 ]);
 
+function mockViewportMobile(mobile: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: mobile,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  });
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-10T12:00:00.000Z"));
+  mockViewportMobile(false);
 });
 
 afterEach(() => {
@@ -65,8 +83,18 @@ afterEach(() => {
 
 const noopViewChange = vi.fn();
 const noopOnDayClick = vi.fn();
+const noopOnOverflowClick = vi.fn();
+const noopOnMonthDaySelect = vi.fn();
 const noopOnSlotClick = vi.fn();
 const noopOnAppointmentClick = vi.fn();
+
+function makeBusyDayAppointments(count: number, dateKey = "2026-09-15"): Appointment[] {
+  return Array.from({ length: count }, (_, i) => {
+    const start = `${dateKey}T${String(8 + i).padStart(2, "0")}:00:00.000Z`;
+    const end = `${dateKey}T${String(9 + i).padStart(2, "0")}:00:00.000Z`;
+    return makeAppointment({ id: `busy${i}`, startAt: start, endAt: end });
+  });
+}
 
 describe("CalendarToolbar", () => {
   it("renders view buttons and navigation", () => {
@@ -256,6 +284,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
       />,
     );
@@ -278,6 +308,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={onAppointmentClick}
       />,
     );
@@ -296,6 +328,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
         todayKey="2026-09-10"
       />,
@@ -316,6 +350,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
         todayKey="2026-09-10"
       />,
@@ -338,6 +374,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={onAppointmentClick}
         todayKey="2026-09-10"
       />,
@@ -535,30 +573,311 @@ describe("WeekCalendar - destaque de hoje", () => {
 });
 
 describe("MonthCalendar - limite de eventos", () => {
-  it("shows an overflow indicator when a day has more events than the limit", () => {
-    const busyDay = Array.from({ length: 5 }, (_, i) => {
-      const start = `2026-09-15T${String(8 + i).padStart(2, "0")}:00:00.000Z`;
-      const end = `2026-09-15T${String(9 + i).padStart(2, "0")}:00:00.000Z`;
-      return makeAppointment({ id: `busy${i}`, startAt: start, endAt: end });
-    });
-
+  it("does not show overflow when a day has at most four events", () => {
     const { container } = renderWithStore(
       <MonthCalendar
         year={2026}
         month={9}
-        appointments={busyDay}
+        appointments={makeBusyDayAppointments(4)}
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
       />,
     );
 
-    // Só 4 eventos são desenhados; o resto fica acessível pelo indicador.
+    expect(container.querySelectorAll(".calendar-item")).toHaveLength(4);
+    expect(container.querySelector(".calendar-overflow")).toBeNull();
+  });
+
+  it("shows an overflow indicator when a day has more events than the limit", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
     expect(container.querySelectorAll(".calendar-item")).toHaveLength(4);
     const indicator = container.querySelector(".calendar-overflow");
     expect(indicator).not.toBeNull();
     expect(indicator?.textContent).toContain("1 mais");
+  });
+
+  it("shows the correct overflow count for six or more events on one day", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(6)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    expect(container.querySelector(".calendar-overflow")?.textContent).toContain("2 mais");
+  });
+
+  it("calls onOverflowClick with the date key and not onDayClick when overflow is activated", () => {
+    const onDayClick = vi.fn();
+    const onOverflowClick = vi.fn();
+    renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={onOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const overflow = screen.getByRole("button", {
+      name: /ver todas as marcações de terça-feira, 15 de setembro/i,
+    });
+    fireEvent.click(overflow);
+    expect(onOverflowClick).toHaveBeenCalledWith("2026-09-15");
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+
+  it("still calls onDayClick when the future day number is clicked with overflow present", () => {
+    const onDayClick = vi.fn();
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const sep15Cell = Array.from(container.querySelectorAll(".calendar-day-cell")).find(
+      (cell) =>
+        cell.querySelector(".calendar-day-number")?.textContent === "15" &&
+        !cell.classList.contains("bg-light"),
+    );
+    expect(sep15Cell).toBeTruthy();
+    fireEvent.click(sep15Cell!);
+    expect(onDayClick).toHaveBeenCalledWith("2026-09-15");
+  });
+
+  it("activates onOverflowClick from the keyboard on the overflow control", () => {
+    const onOverflowClick = vi.fn();
+    renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={onOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    const overflow = screen.getByRole("button", {
+      name: /ver todas as marcações de terça-feira, 15 de setembro/i,
+    });
+    overflow.focus();
+    fireEvent.keyDown(overflow, { key: "Enter" });
+    expect(onOverflowClick).toHaveBeenCalledWith("2026-09-15");
+  });
+
+  it("allows overflow activation on a past day without calling onDayClick", () => {
+    const onDayClick = vi.fn();
+    const onOverflowClick = vi.fn();
+    const pastBusy = makeBusyDayAppointments(5, "2026-09-05");
+    renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={pastBusy}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={onOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const overflow = screen.getByRole("button", {
+      name: /ver todas as marcações de sábado, 5 de setembro/i,
+    });
+    fireEvent.click(overflow);
+    expect(onOverflowClick).toHaveBeenCalledWith("2026-09-05");
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("MonthCalendar - layout compacto (mobile)", () => {
+  it("shows event counts instead of appointment cards", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(3)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        layoutMode="compact"
+        todayKey="2026-09-10"
+      />,
+    );
+
+    expect(container.querySelectorAll(".calendar-item")).toHaveLength(0);
+    expect(container.querySelector(".calendar-day-event-count")).not.toBeNull();
+  });
+
+  it("calls onMonthDaySelect instead of onDayClick when a day cell is activated", () => {
+    const onDayClick = vi.fn();
+    const onMonthDaySelect = vi.fn();
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={onMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        layoutMode="compact"
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const sep15Cell = Array.from(container.querySelectorAll(".calendar-day-cell")).find(
+      (cell) =>
+        cell.querySelector(".calendar-day-number")?.textContent === "15" &&
+        !cell.classList.contains("bg-light"),
+    );
+    fireEvent.click(sep15Cell!);
+    expect(onMonthDaySelect).toHaveBeenCalledWith("2026-09-15");
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("CalendarView - lista mobile abaixo do mês", () => {
+  beforeEach(() => {
+    mockViewportMobile(true);
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+  });
+
+  afterEach(() => {
+    delete (HTMLElement.prototype as { scrollIntoView?: () => void }).scrollIntoView;
+  });
+
+  it("lists every appointment for the focused day below the month grid", () => {
+    renderWithStore(
+      <CalendarView
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        viewType="month"
+        onViewTypeChange={noopViewChange}
+        currentDateKey="2026-09-10"
+        onDateChange={noopOnDayClick}
+        onDayClick={noopOnDayClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        monthFocusedDateKey="2026-09-15"
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: /terça-feira, 15 de setembro/i })).toBeInTheDocument();
+    expect(screen.getAllByTitle(/Maria Silva/)).toHaveLength(5);
+  });
+
+  it("routes overflow to onMonthDaySelect on mobile instead of onOverflowDayClick", () => {
+    const onOverflowDayClick = vi.fn();
+    const onMonthDaySelect = vi.fn();
+    renderWithStore(
+      <CalendarView
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        viewType="month"
+        onViewTypeChange={noopViewChange}
+        currentDateKey="2026-09-10"
+        onDateChange={noopOnDayClick}
+        onDayClick={noopOnDayClick}
+        onOverflowDayClick={onOverflowDayClick}
+        onMonthDaySelect={onMonthDaySelect}
+        monthFocusedDateKey="2026-09-10"
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /ver todas as marcações de terça-feira, 15 de setembro/i,
+      }),
+    );
+    expect(onMonthDaySelect).toHaveBeenCalledWith("2026-09-15");
+    expect(onOverflowDayClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("CalendarView - overflow no mês", () => {
+  it("forwards overflow clicks to onOverflowDayClick", () => {
+    const onOverflowDayClick = vi.fn();
+    renderWithStore(
+      <CalendarView
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        viewType="month"
+        onViewTypeChange={noopViewChange}
+        currentDateKey="2026-09-10"
+        onDateChange={noopOnDayClick}
+        onDayClick={noopOnDayClick}
+        onOverflowDayClick={onOverflowDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /ver todas as marcações de terça-feira, 15 de setembro/i,
+      }),
+    );
+    expect(onOverflowDayClick).toHaveBeenCalledWith("2026-09-15");
   });
 });
 

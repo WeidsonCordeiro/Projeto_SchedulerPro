@@ -233,6 +233,13 @@ button,
   padding-bottom: 0.1rem;
   -webkit-overflow-scrolling: touch;
 }
+.filter-bar .btn-group {
+  flex-wrap: nowrap;
+}
+.filter-bar .btn-group .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
 
 .loading-state {
   align-items: center;
@@ -771,22 +778,101 @@ button,
   color: #fff;
   font-weight: 750;
 }
-/* "+N mais": indica que o dia tem mais eventos e que o clique abre o dia. */
-.calendar-overflow {
-  border-radius: 0.3rem;
+/* "+N mais": abre a vista Dia; clique na célula (fora do botão) continua a criar. */
+.month-calendar .calendar-overflow {
+  background: transparent;
+  border: 0;
+  border-radius: 0.35rem;
   color: var(--sp-muted);
   cursor: pointer;
   display: block;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 700;
-  line-height: 1.4;
-  padding: 0.1rem 0.3rem;
+  line-height: 1.35;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.45rem;
+  text-align: inherit;
+  width: 100%;
 }
-.calendar-overflow:hover,
-.calendar-overflow:focus-visible {
+.month-calendar .calendar-overflow:hover,
+.month-calendar .calendar-overflow:focus-visible {
   background: #eef2ff;
   color: var(--sp-primary);
   outline: none;
+}
+
+.month-calendar .calendar-day-cell-selected {
+  box-shadow: inset 0 0 0 2px var(--sp-primary);
+  z-index: 1;
+}
+.month-calendar .calendar-day-event-count {
+  align-items: center;
+  background: #eef2ff;
+  border-radius: 999px;
+  color: var(--sp-primary);
+  display: inline-flex;
+  font-size: 0.65rem;
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 0.15rem;
+  min-height: 1.35rem;
+  min-width: 1.35rem;
+  padding: 0.1rem 0.35rem;
+}
+.month-day-agenda-list {
+  border-top: 1px solid var(--sp-border);
+  margin-top: 0.75rem;
+  padding-top: 0.85rem;
+}
+.month-day-agenda-list-header {
+  margin-bottom: 0.65rem;
+}
+.month-day-agenda-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.month-day-agenda-list .calendar-item {
+  min-height: 4.25rem;
+  padding: 0.55rem 0.65rem !important;
+}
+.month-day-agenda-list .calendar-item-time {
+  font-size: 0.8rem;
+}
+.month-day-agenda-list .calendar-item-client {
+  font-size: 0.88rem;
+}
+.month-day-agenda-list .calendar-item-service {
+  font-size: 0.78rem;
+}
+.month-day-agenda-list .calendar-item-status {
+  font-size: 0.72rem;
+}
+
+@media (min-width: 768px) {
+  .month-calendar .calendar-item {
+    margin-bottom: 0.22rem;
+    padding: 0.22rem 0.4rem !important;
+  }
+  .month-calendar .calendar-item-time {
+    font-size: 0.68rem;
+  }
+  .month-calendar .calendar-item-client {
+    font-size: 0.74rem;
+  }
+  .month-calendar .calendar-item-service {
+    font-size: 0.66rem;
+  }
+  .month-calendar .calendar-item-status {
+    font-size: 0.6rem;
+  }
+  .month-calendar .calendar-overflow {
+    background: #f8faff;
+    border: 1px solid #dbe4ff;
+    color: var(--sp-primary);
+    font-size: 0.78rem;
+  }
 }
 
 .insight-strip {
@@ -1489,7 +1575,21 @@ button,
   /* O "+N mais" passa a ocupar a linha inteira do dia em ecrãs estreitos,
      para não ficar espremido ao lado dos eventos. */
   .month-calendar .calendar-overflow {
-    padding: 0.15rem 0.3rem;
+    flex-shrink: 0;
+    text-align: center;
+    width: 100%;
+  }
+  .month-calendar--with-day-list .calendar-item {
+    display: none;
+  }
+  .month-calendar--with-day-list .calendar-day-cell {
+    min-height: 3.25rem !important;
+    padding: 0.25rem !important;
+  }
+  .month-calendar--with-day-list .calendar-day-number {
+    font-size: 0.72rem;
+    height: 1.35rem;
+    min-width: 1.35rem;
   }
 }
 
