@@ -1,8 +1,10 @@
 import { formatAppointmentTime } from "../../config/appointmentTime";
+import { APPOINTMENT_STATUS_LABELS } from "../../config/appointmentStatus";
 import {
-  APPOINTMENT_STATUS_CALENDAR_CLASS,
-  APPOINTMENT_STATUS_LABELS,
-} from "../../config/appointmentStatus";
+  APPOINTMENT_STATUS_STRIPE_CLASS,
+  getServiceCalendarStyle,
+  isTerminalAppointmentStatus,
+} from "../../config/appointmentServiceColor";
 import type { Appointment } from "../../types/appointment";
 
 export type TimeGridEventDisplayTier =
@@ -87,10 +89,16 @@ export default function CalendarTimeGridEvent({
   const serviceLabel = serviceName ?? "Serviço";
   const title = `${timeLabel}, ${clientName}, ${serviceLabel}, ${statusLabel}`;
   const ariaLabel = title;
+  const serviceStyle = getServiceCalendarStyle(appointment.serviceId);
+  const muted = isTerminalAppointmentStatus(appointment.status);
 
   return (
     <div
-      className={`calendar-week-event calendar-week-event--${display.tier} h-100 overflow-hidden rounded ${APPOINTMENT_STATUS_CALENDAR_CLASS[appointment.status]}`}
+      className={`calendar-week-event calendar-week-event--${display.tier} calendar-status-stripe ${APPOINTMENT_STATUS_STRIPE_CLASS[appointment.status]} h-100 overflow-hidden rounded${muted ? " calendar-event--muted" : ""}`}
+      style={{
+        backgroundColor: serviceStyle.backgroundColor,
+        color: serviceStyle.color,
+      }}
       aria-label={ariaLabel}
       title={title}
     >

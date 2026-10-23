@@ -117,6 +117,7 @@ describe("AppointmentsListView", () => {
     expect(within(table).getByText("até 09:30")).toBeInTheDocument();
     expect(within(table).getByText("Maria Silva")).toBeInTheDocument();
     expect(within(table).getByText("Corte de cabelo")).toBeInTheDocument();
+    expect(table.querySelector(".appointment-service-swatch")).not.toBeNull();
     expect(within(table).getByText("Ana Lima")).toBeInTheDocument();
     expect(within(table).getByText("Primeira visita")).toBeInTheDocument();
     expect(within(table).getByText("Agendado")).toBeInTheDocument();

@@ -163,11 +163,49 @@
   background: #94a3b8 !important;
   color: #fff !important;
 }
-/* A cor do bloco vem da classe .status-* partilhada pelas vistas Month, Week e
-   Day (APPOINTMENT_STATUS_CALENDAR_CLASS), por isso não é repetida por vista. */
+
+.calendar-status-stripe {
+  border-left: 4px solid #94a3b8;
+  border-left-style: solid;
+}
+
+.calendar-status-stripe--scheduled {
+  border-left-color: #526bd8;
+}
+.calendar-status-stripe--confirmed {
+  border-left-color: #168c72;
+}
+.calendar-status-stripe--completed {
+  border-left-color: #667085;
+}
+.calendar-status-stripe--cancelled {
+  border-left-color: #d95368;
+}
+.calendar-status-stripe--no-show {
+  border-left-color: #d18b20;
+}
+
+.calendar-event--muted {
+  opacity: 0.88;
+}
+
+.appointment-service-swatch-cell {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.appointment-service-swatch {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 2px;
+  flex-shrink: 0;
+  height: 0.65rem;
+  width: 0.65rem;
+}
+
+/* Fundo = serviço (inline); faixa esquerda = estado (.calendar-status-stripe--*). */
 .calendar-week-event {
-  border-left: 3px solid rgba(255, 255, 255, 0.7) !important;
-  color: #fff;
   display: flex;
   flex-direction: column;
   font-size: 0.72rem;
@@ -183,7 +221,7 @@
   font-size: 0.64rem;
   font-weight: 700;
   min-width: 0;
-  opacity: 0.9;
+  opacity: 0.85;
 }
 .calendar-event-client {
   flex: 1 1 auto;

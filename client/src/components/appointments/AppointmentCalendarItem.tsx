@@ -1,10 +1,12 @@
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import { formatAppointmentTime } from "../../config/appointmentTime";
+import { APPOINTMENT_STATUS_LABELS } from "../../config/appointmentStatus";
 import {
-  APPOINTMENT_STATUS_CALENDAR_CLASS,
-  APPOINTMENT_STATUS_LABELS,
-} from "../../config/appointmentStatus";
+  APPOINTMENT_STATUS_STRIPE_CLASS,
+  getServiceCalendarStyle,
+  isTerminalAppointmentStatus,
+} from "../../config/appointmentServiceColor";
 import type { Appointment } from "../../types/appointment";
 
 interface AppointmentCalendarItemProps {
@@ -21,11 +23,17 @@ export default function AppointmentCalendarItem({ appointment, clientName, servi
   const serviceLabel = serviceName ?? "Serviço";
   const statusLabel = APPOINTMENT_STATUS_LABELS[appointment.status];
   const ariaLabel = `${timeLabel}, ${clientLabel}, ${serviceLabel}, ${statusLabel}`;
+  const serviceStyle = getServiceCalendarStyle(appointment.serviceId);
+  const muted = isTerminalAppointmentStatus(appointment.status);
 
   return (
     <button
       type="button"
-      className={`calendar-item btn btn-sm w-100 text-start p-1 mb-1 border-0 ${APPOINTMENT_STATUS_CALENDAR_CLASS[appointment.status]}`}
+      className={`calendar-item btn btn-sm w-100 text-start p-1 mb-1 border-0 calendar-status-stripe ${APPOINTMENT_STATUS_STRIPE_CLASS[appointment.status]}${muted ? " calendar-event--muted" : ""}`}
+      style={{
+        backgroundColor: serviceStyle.backgroundColor,
+        color: serviceStyle.color,
+      }}
       onClick={(event) => {
         event.stopPropagation();
         onClick();

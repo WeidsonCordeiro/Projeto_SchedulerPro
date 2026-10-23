@@ -10,6 +10,7 @@ import {
   formatAppointmentDate,
   formatAppointmentTime,
 } from "../../config/appointmentTime";
+import { getServiceCalendarStyle } from "../../config/appointmentServiceColor";
 import EmptyState from "../common/EmptyState";
 import ErrorState from "../common/ErrorState";
 import LoadingState from "../common/LoadingState";
@@ -145,7 +146,22 @@ export default function AppointmentsListView({
                     </span>
                   </td>
                   <td>{nameFor(clientNames, appointment.clientId)}</td>
-                  <td>{nameFor(serviceNames, appointment.serviceId)}</td>
+                  <td>
+                    <span className="appointment-service-swatch-cell">
+                      <span
+                        className="appointment-service-swatch"
+                        style={{
+                          backgroundColor: getServiceCalendarStyle(
+                            appointment.serviceId,
+                          ).backgroundColor,
+                        }}
+                        aria-hidden
+                      />
+                      <span>
+                        {nameFor(serviceNames, appointment.serviceId)}
+                      </span>
+                    </span>
+                  </td>
                   <td>{nameFor(employeeNames, appointment.employeeId)}</td>
                   <td>
                     <span
