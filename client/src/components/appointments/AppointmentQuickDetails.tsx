@@ -8,6 +8,7 @@ import {
   APPOINTMENT_STATUS_BADGE_CLASS,
   APPOINTMENT_STATUS_LABELS,
 } from "../../config/appointmentStatus";
+import { getServiceCalendarStyle } from "../../config/appointmentServiceColor";
 import { formatBookingPrice } from "../../config/publicBooking";
 import type { Appointment } from "../../types/appointment";
 import { computePopoverPosition } from "./computePopoverPosition";
@@ -57,7 +58,20 @@ function QuickDetailsBody({
         {isMeaningfulLabel(serviceName) && (
           <div className="appointment-quick-details-row">
             <dt>Serviço</dt>
-            <dd>{serviceName}</dd>
+            <dd>
+              <span className="appointment-service-swatch-cell">
+                <span
+                  className="appointment-service-swatch"
+                  style={{
+                    backgroundColor: getServiceCalendarStyle(
+                      appointment.serviceId,
+                    ).backgroundColor,
+                  }}
+                  aria-hidden
+                />
+                <span>{serviceName}</span>
+              </span>
+            </dd>
           </div>
         )}
         <div className="appointment-quick-details-row">

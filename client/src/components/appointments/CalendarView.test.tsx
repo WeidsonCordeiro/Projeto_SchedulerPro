@@ -423,7 +423,7 @@ describe("DayCalendar", () => {
     expect(blocks[0]?.style.width).toBe(blocks[1]?.style.width);
   });
 
-  it("colours each block by its own status, as the week view does", () => {
+  it("applies a status stripe per block while using service backgrounds", () => {
     const { container } = renderWithStore(
       <DayCalendar
         currentDateKey="2026-09-10"
@@ -442,8 +442,12 @@ describe("DayCalendar", () => {
       (el) => el.className,
     );
 
-    expect(classes.some((c) => c.includes("status-scheduled"))).toBe(true);
-    expect(classes.some((c) => c.includes("status-cancelled"))).toBe(true);
+    expect(classes.some((c) => c.includes("calendar-status-stripe--scheduled"))).toBe(
+      true,
+    );
+    expect(classes.some((c) => c.includes("calendar-status-stripe--cancelled"))).toBe(
+      true,
+    );
   });
 });
 

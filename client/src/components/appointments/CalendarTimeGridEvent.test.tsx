@@ -96,11 +96,14 @@ describe("CalendarTimeGridEvent", () => {
     expect(screen.getByText("Agendado", { selector: ".calendar-event-status" })).toBeInTheDocument();
   });
 
-  it("keeps status colour class on the block", () => {
+  it("applies service background and status stripe on the block", () => {
     const { container } = render(
       <CalendarTimeGridEvent {...baseProps} heightPx={24} />,
     );
-    expect(container.querySelector(".status-scheduled")).not.toBeNull();
+    const block = container.querySelector(".calendar-week-event");
+    expect(block).toHaveClass("calendar-status-stripe--scheduled");
+    expect((block as HTMLElement).style.backgroundColor).not.toBe("");
+    expect(block).not.toHaveClass("status-scheduled");
   });
 
   it("exposes full details in title and aria-label for long names", () => {
