@@ -1,4 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import AppointmentScheduleFilters from "../../components/appointments/AppointmentScheduleFilters";
+import {
+  EMPTY_APPOINTMENT_FILTER_CRITERIA,
+  filterAppointments,
+  hasActiveFilters,
+} from "../../config/appointmentFilters";
+import type { AppointmentFilterCriteria } from "../../config/appointmentFilters";
 import appointmentsApi from "../../api/endpoints/appointments.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentForm from "../../components/appointments/AppointmentForm";
@@ -57,6 +64,9 @@ export default function AppointmentsPage() {
     anchorRect: DOMRect;
   } | null>(null);
 
+  const [filterCriteria, setFilterCriteria] =
+    useState<AppointmentFilterCriteria>(EMPTY_APPOINTMENT_FILTER_CRITERIA);
+
   const openCreate = useCallback(
     (date?: string, time?: string, employeeId?: string) => {
       setEditingAppointment(null);
@@ -111,6 +121,27 @@ export default function AppointmentsPage() {
     actorRole,
     canListEmployees,
   });
+
+  const visibleAppointments = useMemo(
+    () => filterAppointments(appointments, filterCriteria),
+    [appointments, filterCriteria],
+  );
+
+  const filtersActive = hasActiveFilters(filterCriteria);
+
+  const clearFilters = useCallback(() => {
+    setFilterCriteria(EMPTY_APPOINTMENT_FILTER_CRITERIA);
+  }, []);
+
+  useEffect(() => {
+    if (!quickDetails) return;
+    const stillVisible = visibleAppointments.some(
+      (item) => item.id === quickDetails.appointment.id,
+    );
+    if (!stillVisible) {
+      setQuickDetails(null);
+    }
+  }, [visibleAppointments, quickDetails]);
 
   function nameFor(map: Map<string, string>, id: string): string {
     return map.get(id) ?? "—";
@@ -248,19 +279,27 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      <AppointmentsViewSwitcher
-        viewType={viewType}
-        onViewTypeChange={setViewType}
-        label={periodLabel}
-        onPrev={handleToolbarPrev}
-        onNext={handleToolbarNext}
-        onToday={handleToolbarToday}
-      />
+      <div className="appointments-schedule-toolbar">
+        <AppointmentsViewSwitcher
+          viewType={viewType}
+          onViewTypeChange={setViewType}
+          label={periodLabel}
+          onPrev={handleToolbarPrev}
+          onNext={handleToolbarNext}
+          onToday={handleToolbarToday}
+        />
+        <AppointmentScheduleFilters
+          criteria={filterCriteria}
+          onCriteriaChange={setFilterCriteria}
+          employees={employees}
+          showEmployeeFilter={canListEmployees}
+        />
+      </div>
 
       {showCalendar && (
         <div className="appointments-calendar-panel">
           <CalendarView
-            appointments={appointments}
+            appointments={visibleAppointments}
             clientNames={clientNames}
             serviceNames={serviceNames}
             viewType={viewType}
@@ -290,7 +329,17 @@ export default function AppointmentsPage() {
           isLoading={isLoading}
           loadError={loadError}
           onRetry={() => void loadAppointments()}
-          appointments={appointments}
+          appointments={visibleAppointments}
+          emptyVariant={
+            !isLoading &&
+            !loadError &&
+            appointments.length > 0 &&
+            visibleAppointments.length === 0 &&
+            filtersActive
+              ? "filters"
+              : "period"
+          }
+          onClearFilters={clearFilters}
           timezone={timezone}
           clientNames={clientNames}
           serviceNames={serviceNames}
@@ -309,6 +358,24 @@ export default function AppointmentsPage() {
           onDeleteRequest={setDeletingAppointment}
         />
       )}
+
+      {!isLoading &&
+        !loadError &&
+        viewType !== "list" &&
+        appointments.length > 0 &&
+        visibleAppointments.length === 0 &&
+        filtersActive && (
+          <div className="text-center py-5 text-muted">
+            <p>Nenhum agendamento corresponde aos filtros seleccionados.</p>
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={clearFilters}
+            >
+              Limpar filtros
+            </button>
+          </div>
+        )}
 
       {!isLoading &&
         !loadError &&

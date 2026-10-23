@@ -34,6 +34,8 @@ export interface AppointmentsListViewProps {
   onEdit: (appointment: Appointment) => void;
   onStatusAction: (appointment: Appointment, action: AppointmentStatusAction) => void;
   onDeleteRequest: (appointment: Appointment) => void;
+  emptyVariant?: "period" | "filters";
+  onClearFilters?: () => void;
 }
 
 function nameFor(map: Map<string, string>, id: string): string {
@@ -59,6 +61,8 @@ export default function AppointmentsListView({
   onEdit,
   onStatusAction,
   onDeleteRequest,
+  emptyVariant = "period",
+  onClearFilters,
 }: AppointmentsListViewProps) {
   const hasActions = canUpdate || canStatus || canDelete;
 
@@ -71,6 +75,25 @@ export default function AppointmentsListView({
   }
 
   if (appointments.length === 0) {
+    if (emptyVariant === "filters") {
+      return (
+        <EmptyState
+          title="Nenhum agendamento corresponde aos filtros"
+          description="Ajuste os filtros ou limpe a seleção para ver todas as marcações deste período."
+          action={
+            onClearFilters && (
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={onClearFilters}
+              >
+                Limpar filtros
+              </button>
+            )
+          }
+        />
+      );
+    }
     return (
       <EmptyState
         title="Nenhum agendamento encontrado"
