@@ -93,15 +93,15 @@ export default function MonthCalendar({
 
   return (
     <div className={rootClassName}>
-      <div className="row g-0 border-bottom">
+      <div className="month-calendar__weekdays border-bottom">
         {WEEKDAYS_SHORT.map((day) => (
-          <div key={day} className="col text-center py-2 fw-semibold small border-end last-border-0 text-muted">
+          <div key={day} className="month-calendar__weekday text-center py-2 fw-semibold small text-muted">
             {day}
           </div>
         ))}
       </div>
 
-      <div className="row g-0">
+      <div className="month-calendar__weeks">
         {cells.map((cell) => {
           const dayAppts = appointmentsForDay(appointments, cell.date, timezone);
           const overflow = dayAppts.length - MAX_VISIBLE_ITEMS;
@@ -112,7 +112,7 @@ export default function MonthCalendar({
           return (
             <div
               key={cell.date}
-              className={`col border-end border-bottom p-1 calendar-day-cell ${cell.isCurrentMonth ? "" : "bg-light text-muted"} ${cell.isToday ? "bg-primary-subtle today" : ""} ${isPastDay ? "calendar-day-cell-past" : ""} ${hasEvents ? "calendar-day-has-events" : ""} ${isSelected ? "calendar-day-cell-selected" : ""}`}
+              className={`border-end border-bottom p-1 calendar-day-cell ${cell.isCurrentMonth ? "" : "bg-light text-muted"} ${cell.isToday ? "bg-primary-subtle today" : ""} ${isPastDay ? "calendar-day-cell-past" : ""} ${hasEvents ? "calendar-day-has-events" : ""} ${isSelected ? "calendar-day-cell-selected" : ""}`}
               style={{
                 minHeight: 90,
                 cursor: isCompact || !isPastDay ? "pointer" : "default",
