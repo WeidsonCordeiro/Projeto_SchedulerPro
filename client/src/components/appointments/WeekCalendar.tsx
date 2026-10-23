@@ -11,6 +11,7 @@ import {
 import { computeNowLineTopPx } from "../../config/calendarNowLine";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import { useTimeGridHourHeightPx } from "../../config/calendarTimeGridLayout";
 import CalendarNowLine from "./CalendarNowLine";
 import CalendarTimeGridEvent from "./CalendarTimeGridEvent";
 import type { Appointment } from "../../types/appointment";
@@ -30,8 +31,6 @@ interface WeekCalendarProps {
   todayKey?: string;
 }
 
-const HOUR_HEIGHT = 48;
-
 export default function WeekCalendar({
   currentDateKey,
   appointments,
@@ -42,6 +41,7 @@ export default function WeekCalendar({
   onSlotClick,
   todayKey,
 }: WeekCalendarProps) {
+  const hourHeight = useTimeGridHourHeightPx();
   const timezone = useAppSelector(selectCompanyTimezone);
   const todayKeyInternal = useMemo(
     () => todayKey ?? (DateTime.now().setZone(timezone).toISODate() ?? ""),
@@ -119,7 +119,7 @@ export default function WeekCalendar({
             <div
               key={h}
               className="text-end pe-2 text-muted small"
-              style={{ height: HOUR_HEIGHT }}
+              style={{ height: hourHeight }}
             >
               {String(h).padStart(2, "0")}:00
             </div>
@@ -136,7 +136,7 @@ export default function WeekCalendar({
                   timezone,
                   hourRange.startHour,
                   hourRange.endHour,
-                  HOUR_HEIGHT,
+                  hourHeight,
                 )
               : null;
 
@@ -152,7 +152,7 @@ export default function WeekCalendar({
                   key={h}
                   className="border-bottom week-slot"
                   style={{
-                    height: HOUR_HEIGHT,
+                    height: hourHeight,
                     cursor: isSlotHourInPast(dk, h, timezone)
                       ? "default"
                       : "pointer",
@@ -174,9 +174,9 @@ export default function WeekCalendar({
               {layout.map((item) => {
                 const colWidth = 100 / item.totalColumns;
                 const left = item.column * colWidth;
-                const topPx = (item.topPercent / 100) * (hours.length * HOUR_HEIGHT);
+                const topPx = (item.topPercent / 100) * (hours.length * hourHeight);
                 const heightPx = Math.max(
-                  (item.heightPercent / 100) * (hours.length * HOUR_HEIGHT),
+                  (item.heightPercent / 100) * (hours.length * hourHeight),
                   24,
                 );
 

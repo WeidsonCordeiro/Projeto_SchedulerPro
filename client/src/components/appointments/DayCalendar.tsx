@@ -10,6 +10,7 @@ import { formatWeekdayDate } from "../../config/appointmentTime";
 import { computeNowLineTopPx } from "../../config/calendarNowLine";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import { useTimeGridHourHeightPx } from "../../config/calendarTimeGridLayout";
 import CalendarNowLine from "./CalendarNowLine";
 import CalendarTimeGridEvent from "./CalendarTimeGridEvent";
 import type { Appointment } from "../../types/appointment";
@@ -28,8 +29,6 @@ interface DayCalendarProps {
   todayKey?: string;
 }
 
-const HOUR_HEIGHT = 48;
-
 export default function DayCalendar({
   currentDateKey,
   appointments,
@@ -39,6 +38,7 @@ export default function DayCalendar({
   onSlotClick,
   todayKey,
 }: DayCalendarProps) {
+  const hourHeight = useTimeGridHourHeightPx();
   const timezone = useAppSelector(selectCompanyTimezone);
   const todayKeyInternal = useMemo(
     () => todayKey ?? (DateTime.now().setZone(timezone).toISODate() ?? ""),
@@ -81,7 +81,7 @@ export default function DayCalendar({
       timezone,
       hourRange.startHour,
       hourRange.endHour,
-      HOUR_HEIGHT,
+      hourHeight,
     );
   }, [isToday, timezone, hourRange]);
 
@@ -93,21 +93,21 @@ export default function DayCalendar({
   );
 
   return (
-    <div className="day-calendar">
+    <div className="day-calendar d-flex flex-column">
       <div
         className={`text-center py-2 border-bottom calendar-day-header ${isToday ? "calendar-day-header-today bg-primary-subtle" : ""}`}
       >
         <div className="fw-semibold">{formatWeekdayDate(currentDateKey, timezone)}</div>
       </div>
 
-      <div className="d-flex overflow-auto" style={{ position: "relative" }}>
+      <div className="d-flex flex-grow-1 overflow-auto" style={{ position: "relative" }}>
         {/* Time axis */}
         <div style={{ width: 56, flexShrink: 0 }}>
           {hours.map((h) => (
             <div
               key={h}
               className="text-end pe-2 text-muted small"
-              style={{ height: HOUR_HEIGHT }}
+              style={{ height: hourHeight }}
             >
               {String(h).padStart(2, "0")}:00
             </div>
@@ -125,7 +125,7 @@ export default function DayCalendar({
               key={h}
               className="border-bottom day-slot"
               style={{
-                height: HOUR_HEIGHT,
+                height: hourHeight,
                 cursor: isSlotHourInPast(currentDateKey, h, timezone)
                   ? "default"
                   : "pointer",
@@ -147,9 +147,9 @@ export default function DayCalendar({
           {layout.map((item) => {
             const colWidth = 100 / item.totalColumns;
             const left = item.column * colWidth;
-            const topPx = (item.topPercent / 100) * (hours.length * HOUR_HEIGHT);
+            const topPx = (item.topPercent / 100) * (hours.length * hourHeight);
             const heightPx = Math.max(
-              (item.heightPercent / 100) * (hours.length * HOUR_HEIGHT),
+              (item.heightPercent / 100) * (hours.length * hourHeight),
               24,
             );
 

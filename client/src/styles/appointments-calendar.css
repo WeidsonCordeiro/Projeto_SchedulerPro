@@ -115,9 +115,12 @@
 /* --- Itens e estados partilhados (mês, semana, dia) --- */
 .calendar-item {
   border-radius: 0.35rem !important;
-  color: #fff !important;
   min-height: 3.45rem;
   overflow: hidden;
+}
+.calendar-item.calendar-status-stripe {
+  min-height: 0;
+  text-align: start;
 }
 .calendar-item-time {
   font-size: 0.65rem;
@@ -325,26 +328,11 @@
   outline: 2px solid var(--sp-primary);
   outline-offset: -2px;
 }
-/* Itens do mês: 3 linhas (hora, cliente, serviço) em altura compacta para que
-   4 eventos + indicador "+N mais" caibam no mesmo dia, sem cortar conteúdo. */
-.month-calendar .calendar-item {
-  font-size: 0.75rem;
-  line-height: 1.2;
+/* Pills do mês: tier comfortable partilhado com a grelha horária (51.6). */
+.month-calendar .calendar-item.calendar-week-event {
   margin-bottom: 0.15rem;
   min-height: 0;
-  padding: 0.15rem 0.3rem !important;
-}
-.month-calendar .calendar-item-time {
-  font-size: 0.58rem;
-}
-.month-calendar .calendar-item-client {
-  font-size: 0.66rem;
-}
-.month-calendar .calendar-item-service {
-  font-size: 0.58rem;
-}
-.month-calendar .calendar-item-status {
-  font-size: 0.52rem;
+  padding: 0.15rem 0.25rem !important;
 }
 .month-calendar .calendar-day-number {
   align-items: center;
@@ -415,20 +403,21 @@
   flex-direction: column;
   gap: 0.5rem;
 }
-.month-day-agenda-list .calendar-item {
+.month-day-agenda-list .calendar-item.calendar-week-event {
   min-height: 4.25rem;
   padding: 0.55rem 0.65rem !important;
 }
-.month-day-agenda-list .calendar-item-time {
+.month-day-agenda-list .calendar-event-time {
   font-size: 0.8rem;
 }
-.month-day-agenda-list .calendar-item-client {
+.month-day-agenda-list .calendar-event-client {
   font-size: 0.88rem;
 }
-.month-day-agenda-list .calendar-item-service {
+.month-day-agenda-list .calendar-event-service {
   font-size: 0.78rem;
 }
-.month-day-agenda-list .calendar-item-status {
+.month-day-agenda-list .calendar-event-status {
+  display: block;
   font-size: 0.72rem;
 }
 
@@ -487,6 +476,30 @@
 
 /* --- Media queries (ordem de cascata preservada) --- */
 
+@media (min-width: 992px) {
+  .calendar-surface--time-grid {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 15rem);
+  }
+  .calendar-surface--time-grid .week-calendar,
+  .calendar-surface--time-grid .day-calendar {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .calendar-surface--time-grid .week-calendar.d-flex.flex-column {
+    min-height: 0;
+  }
+  .calendar-surface--time-grid .week-calendar > .d-flex.flex-grow-1 {
+    flex: 1 1 auto;
+    min-height: 12rem;
+  }
+  .calendar-surface--time-grid .day-calendar > .d-flex.overflow-auto {
+    flex: 1 1 auto;
+    min-height: 12rem;
+  }
+}
+
 @media (min-width: 768px) {
   .calendar-toolbar {
     flex-wrap: nowrap;
@@ -504,21 +517,9 @@
     order: 1;
   }
 
-  .month-calendar .calendar-item {
+  .month-calendar .calendar-item.calendar-week-event {
     margin-bottom: 0.22rem;
-    padding: 0.22rem 0.4rem !important;
-  }
-  .month-calendar .calendar-item-time {
-    font-size: 0.68rem;
-  }
-  .month-calendar .calendar-item-client {
-    font-size: 0.74rem;
-  }
-  .month-calendar .calendar-item-service {
-    font-size: 0.66rem;
-  }
-  .month-calendar .calendar-item-status {
-    font-size: 0.6rem;
+    padding: 0.2rem 0.35rem !important;
   }
   .month-calendar .calendar-overflow {
     background: #f8faff;

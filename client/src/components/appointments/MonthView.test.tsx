@@ -174,10 +174,10 @@ describe("MonthView - overflow", () => {
       delete (HTMLElement.prototype as { scrollIntoView?: () => void }).scrollIntoView;
     });
 
-    it("routes overflow to onMonthDaySelect instead of onOverflowDayClick", async () => {
+    it("selects busy day on cell click without +N mais control (compact grid)", async () => {
       const onOverflowDayClick = vi.fn();
       const onMonthDaySelect = vi.fn();
-      renderWithStore(
+      const { container } = renderWithStore(
         <MonthView
           {...defaultMonthViewProps({
             appointments: makeBusyDayAppointments(5),
@@ -189,17 +189,20 @@ describe("MonthView - overflow", () => {
         />,
       );
 
-      fireEvent.click(
-        screen.getByRole("button", {
+      expect(
+        screen.queryByRole("button", {
           name: /ver todas as marcações de terça-feira, 15 de setembro/i,
         }),
+      ).not.toBeInTheDocument();
+
+      const sep15Cell = Array.from(container.querySelectorAll(".calendar-day-cell")).find(
+        (cell) =>
+          cell.querySelector(".calendar-day-number")?.textContent === "15" &&
+          !cell.classList.contains("bg-light"),
       );
+      fireEvent.click(sep15Cell!);
       expect(onMonthDaySelect).toHaveBeenCalledWith("2026-09-15");
       expect(onOverflowDayClick).not.toHaveBeenCalled();
-      await new Promise<void>((resolve) => {
-        queueMicrotask(() => resolve());
-      });
-      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
     });
   });
 });
