@@ -96,14 +96,27 @@ describe("CalendarTimeGridEvent", () => {
     expect(screen.getByText("Agendado", { selector: ".calendar-event-status" })).toBeInTheDocument();
   });
 
-  it("applies service background and status stripe on the block", () => {
+  it("applies service background without status stripe classes", () => {
     const { container } = render(
       <CalendarTimeGridEvent {...baseProps} heightPx={24} />,
     );
     const block = container.querySelector(".calendar-week-event");
-    expect(block).toHaveClass("calendar-status-stripe--scheduled");
+    expect(block).not.toHaveClass("calendar-status-stripe--scheduled");
     expect((block as HTMLElement).style.backgroundColor).not.toBe("");
     expect(block).not.toHaveClass("status-scheduled");
+  });
+
+  it("applies muted style for terminal statuses", () => {
+    const { container } = render(
+      <CalendarTimeGridEvent
+        {...baseProps}
+        appointment={makeAppointment({ status: "cancelled" })}
+        heightPx={24}
+      />,
+    );
+    expect(container.querySelector(".calendar-week-event")).toHaveClass(
+      "calendar-event--muted",
+    );
   });
 
   it("exposes full details in title and aria-label for long names", () => {

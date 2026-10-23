@@ -156,7 +156,7 @@ export default function DayCalendar({
             return (
               <div
                 key={item.appointment.id}
-                className="position-absolute rounded border"
+                className="position-absolute calendar-time-grid-event-anchor"
                 style={{
                   top: topPx,
                   left: `${left}%`,

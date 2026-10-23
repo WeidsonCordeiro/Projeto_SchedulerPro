@@ -423,7 +423,7 @@ describe("DayCalendar", () => {
     expect(blocks[0]?.style.width).toBe(blocks[1]?.style.width);
   });
 
-  it("applies a status stripe per block while using service backgrounds", () => {
+  it("uses service backgrounds without status stripe on day blocks", () => {
     const { container } = renderWithStore(
       <DayCalendar
         currentDateKey="2026-09-10"
@@ -438,16 +438,13 @@ describe("DayCalendar", () => {
       />,
     );
 
-    const classes = Array.from(container.querySelectorAll(".calendar-week-event")).map(
-      (el) => el.className,
-    );
-
-    expect(classes.some((c) => c.includes("calendar-status-stripe--scheduled"))).toBe(
-      true,
-    );
-    expect(classes.some((c) => c.includes("calendar-status-stripe--cancelled"))).toBe(
-      true,
-    );
+    const blocks = container.querySelectorAll<HTMLElement>(".calendar-week-event");
+    expect(blocks.length).toBeGreaterThanOrEqual(2);
+    for (const block of blocks) {
+      expect(block.className).not.toMatch(/calendar-status-stripe/);
+      expect(block.style.backgroundColor).not.toBe("");
+    }
+    expect(blocks[1]?.classList.contains("calendar-event--muted")).toBe(true);
   });
 });
 

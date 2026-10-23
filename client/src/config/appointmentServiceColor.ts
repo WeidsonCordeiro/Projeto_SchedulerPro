@@ -5,7 +5,7 @@ export interface ServiceCalendarPaletteEntry {
   fg: string;
 }
 
-/** Fundos claros + texto escuro; faixa de estado usa cores saturadas em CSS. */
+/** Fundos claros + texto escuro por serviço; estado em texto/badge/filtros. */
 export const SERVICE_CALENDAR_PALETTE: readonly ServiceCalendarPaletteEntry[] = [
   { bg: "#dbeafe", fg: "#1e3a5f" },
   { bg: "#d1fae5", fg: "#14532d" },
@@ -61,16 +61,6 @@ export function getServiceCalendarStyle(serviceId: string | null | undefined): {
     paletteIndex: index,
   };
 }
-
-/** Classes de faixa esquerda por estado (cores alinhadas a .status-* no CSS). */
-export const APPOINTMENT_STATUS_STRIPE_CLASS: Record<AppointmentStatus, string> =
-  {
-    scheduled: "calendar-status-stripe--scheduled",
-    confirmed: "calendar-status-stripe--confirmed",
-    completed: "calendar-status-stripe--completed",
-    cancelled: "calendar-status-stripe--cancelled",
-    "no-show": "calendar-status-stripe--no-show",
-  };
 
 const TERMINAL_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
   "cancelled",

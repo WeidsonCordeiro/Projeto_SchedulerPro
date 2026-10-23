@@ -118,7 +118,7 @@
   min-height: 3.45rem;
   overflow: hidden;
 }
-.calendar-item.calendar-status-stripe {
+.calendar-item.calendar-week-event {
   min-height: 0;
   text-align: start;
 }
@@ -167,27 +167,6 @@
   color: #fff !important;
 }
 
-.calendar-status-stripe {
-  border-left: 4px solid #94a3b8;
-  border-left-style: solid;
-}
-
-.calendar-status-stripe--scheduled {
-  border-left-color: #526bd8;
-}
-.calendar-status-stripe--confirmed {
-  border-left-color: #168c72;
-}
-.calendar-status-stripe--completed {
-  border-left-color: #667085;
-}
-.calendar-status-stripe--cancelled {
-  border-left-color: #d95368;
-}
-.calendar-status-stripe--no-show {
-  border-left-color: #d18b20;
-}
-
 .calendar-event--muted {
   opacity: 0.88;
 }
@@ -207,8 +186,10 @@
   width: 0.65rem;
 }
 
-/* Fundo = serviço (inline); faixa esquerda = estado (.calendar-status-stripe--*). */
+/* Fundo e texto = serviço (inline via getServiceCalendarStyle). */
 .calendar-week-event {
+  border-radius: 0.35rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1);
   display: flex;
   flex-direction: column;
   font-size: 0.72rem;
@@ -424,7 +405,21 @@
 /* --- Vistas semana e dia (base) --- */
 .week-calendar,
 .day-calendar {
+  --calendar-event-stack-gap: 0.15rem;
   min-height: 200px;
+}
+
+.week-calendar .calendar-time-grid-event-anchor,
+.day-calendar .calendar-time-grid-event-anchor {
+  border: 0;
+  box-sizing: border-box;
+  padding: 0 0.1rem var(--calendar-event-stack-gap) 0.05rem;
+}
+
+.week-calendar .calendar-time-grid-event-anchor .calendar-week-event,
+.day-calendar .calendar-time-grid-event-anchor .calendar-week-event {
+  box-sizing: border-box;
+  height: 100%;
 }
 
 /* --- Grelha do formulário (AppointmentCalendar.tsx) --- */
@@ -515,6 +510,11 @@
   }
   .calendar-toolbar-views {
     order: 1;
+  }
+
+  .week-calendar,
+  .day-calendar {
+    --calendar-event-stack-gap: 0.22rem;
   }
 
   .month-calendar .calendar-item.calendar-week-event {
@@ -629,8 +629,8 @@
 }
 
 /* Bloco de agendamento: efeito hover */
-.week-calendar .position-absolute:hover > div,
-.day-calendar .position-absolute:hover > div {
+.week-calendar .calendar-time-grid-event-anchor:hover > .calendar-week-event,
+.day-calendar .calendar-time-grid-event-anchor:hover > .calendar-week-event {
   filter: brightness(1.1);
 }
 

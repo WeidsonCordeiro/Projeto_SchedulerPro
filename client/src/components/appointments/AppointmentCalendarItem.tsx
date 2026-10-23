@@ -3,7 +3,6 @@ import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import { formatAppointmentTime } from "../../config/appointmentTime";
 import { APPOINTMENT_STATUS_LABELS } from "../../config/appointmentStatus";
 import {
-  APPOINTMENT_STATUS_STRIPE_CLASS,
   getServiceCalendarStyle,
   isTerminalAppointmentStatus,
 } from "../../config/appointmentServiceColor";
@@ -13,7 +12,7 @@ interface AppointmentCalendarItemProps {
   appointment: Appointment;
   clientName?: string;
   serviceName?: string;
-  /** Lista diária mobile: mostrar rótulo de estado (grelha mês usa só faixa). */
+  /** Lista diária mobile: mostrar rótulo de estado visível (grelha mês usa só texto oculto). */
   showStatusText?: boolean;
   onClick: () => void;
 }
@@ -37,7 +36,7 @@ export default function AppointmentCalendarItem({
   return (
     <button
       type="button"
-      className={`calendar-item calendar-week-event calendar-week-event--comfortable btn btn-sm w-100 text-start mb-1 border-0 calendar-status-stripe ${APPOINTMENT_STATUS_STRIPE_CLASS[appointment.status]}${muted ? " calendar-event--muted" : ""}`}
+      className={`calendar-item calendar-week-event calendar-week-event--comfortable btn btn-sm w-100 text-start mb-1 border-0${muted ? " calendar-event--muted" : ""}`}
       style={{
         backgroundColor: serviceStyle.backgroundColor,
         color: serviceStyle.color,

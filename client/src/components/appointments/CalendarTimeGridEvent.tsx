@@ -1,7 +1,6 @@
 import { formatAppointmentTime } from "../../config/appointmentTime";
 import { APPOINTMENT_STATUS_LABELS } from "../../config/appointmentStatus";
 import {
-  APPOINTMENT_STATUS_STRIPE_CLASS,
   getServiceCalendarStyle,
   isTerminalAppointmentStatus,
 } from "../../config/appointmentServiceColor";
@@ -94,7 +93,7 @@ export default function CalendarTimeGridEvent({
 
   return (
     <div
-      className={`calendar-week-event calendar-week-event--${display.tier} calendar-status-stripe ${APPOINTMENT_STATUS_STRIPE_CLASS[appointment.status]} h-100 overflow-hidden rounded${muted ? " calendar-event--muted" : ""}`}
+      className={`calendar-week-event calendar-week-event--${display.tier} h-100 overflow-hidden rounded border-0${muted ? " calendar-event--muted" : ""}`}
       style={{
         backgroundColor: serviceStyle.backgroundColor,
         color: serviceStyle.color,
