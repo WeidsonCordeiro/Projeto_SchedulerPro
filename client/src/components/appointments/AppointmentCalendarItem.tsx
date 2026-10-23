@@ -7,6 +7,9 @@ import {
   isTerminalAppointmentStatus,
 } from "../../config/appointmentServiceColor";
 import type { Appointment } from "../../types/appointment";
+import AppointmentCalendarEventBody, {
+  APPOINTMENT_CALENDAR_EVENT_SURFACE_CLASS,
+} from "./AppointmentCalendarEventBody";
 
 interface AppointmentCalendarItemProps {
   appointment: Appointment;
@@ -36,7 +39,7 @@ export default function AppointmentCalendarItem({
   return (
     <button
       type="button"
-      className={`calendar-item calendar-week-event calendar-week-event--comfortable btn btn-sm w-100 text-start mb-1 border-0${muted ? " calendar-event--muted" : ""}`}
+      className={`calendar-item ${APPOINTMENT_CALENDAR_EVENT_SURFACE_CLASS} btn btn-sm w-100 text-start mb-1 border-0${muted ? " calendar-event--muted" : ""}`}
       style={{
         backgroundColor: serviceStyle.backgroundColor,
         color: serviceStyle.color,
@@ -48,14 +51,13 @@ export default function AppointmentCalendarItem({
       title={`${clientLabel} — ${serviceLabel}`}
       aria-label={ariaLabel}
     >
-      <span className="calendar-event-time text-truncate d-block">{timeLabel}</span>
-      <span className="calendar-event-client text-truncate d-block">{clientLabel}</span>
-      <span className="calendar-event-service text-truncate d-block">{serviceLabel}</span>
-      {showStatusText ? (
-        <span className="calendar-event-status text-truncate d-block">{statusLabel}</span>
-      ) : (
-        <span className="visually-hidden">{statusLabel}</span>
-      )}
+      <AppointmentCalendarEventBody
+        timeLabel={timeLabel}
+        clientLabel={clientLabel}
+        serviceLabel={serviceLabel}
+        statusLabel={statusLabel}
+        showStatusText={showStatusText}
+      />
     </button>
   );
 }

@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import CalendarTimeGridEvent, {
-  resolveTimeGridEventDisplay,
+  shouldShowTimeGridStatusText,
+  TIME_GRID_STATUS_TEXT_MIN_PX,
 } from "./CalendarTimeGridEvent";
 import type { Appointment } from "../../types/appointment";
 
@@ -29,71 +30,47 @@ const baseProps = {
   timezone: "Europe/Lisbon",
 };
 
-describe("resolveTimeGridEventDisplay", () => {
-  it("uses minimal tier below 36px", () => {
-    expect(resolveTimeGridEventDisplay(24)).toEqual({
-      tier: "minimal",
-      timeMode: "startOnly",
-      showClient: true,
-      showService: false,
-      showStatusText: false,
-    });
+describe("shouldShowTimeGridStatusText", () => {
+  it("is false below expanded threshold", () => {
+    expect(shouldShowTimeGridStatusText(TIME_GRID_STATUS_TEXT_MIN_PX - 1)).toBe(
+      false,
+    );
   });
 
-  it("uses compact tier from 36px to 51px", () => {
-    expect(resolveTimeGridEventDisplay(40).tier).toBe("compact");
-    expect(resolveTimeGridEventDisplay(40).timeMode).toBe("range");
-  });
-
-  it("uses comfortable tier from 52px to 71px", () => {
-    const d = resolveTimeGridEventDisplay(60);
-    expect(d.tier).toBe("comfortable");
-    expect(d.showService).toBe(true);
-    expect(d.showStatusText).toBe(false);
-  });
-
-  it("uses expanded tier from 72px", () => {
-    const d = resolveTimeGridEventDisplay(80);
-    expect(d.tier).toBe("expanded");
-    expect(d.showStatusText).toBe(true);
+  it("is true at or above expanded threshold", () => {
+    expect(shouldShowTimeGridStatusText(TIME_GRID_STATUS_TEXT_MIN_PX)).toBe(
+      true,
+    );
   });
 });
 
 describe("CalendarTimeGridEvent", () => {
-  it("shows start time only in minimal tier", () => {
+  it("uses start time only and month-aligned comfortable surface", () => {
     const { container } = render(
       <CalendarTimeGridEvent {...baseProps} heightPx={24} />,
     );
     const time = container.querySelector(".calendar-event-time");
     expect(time?.textContent).toMatch(/10:00/);
     expect(time?.textContent).not.toMatch(/–/);
-    expect(container.querySelector(".calendar-event-service")).toBeNull();
-    expect(container.querySelector(".calendar-event-status")).toBeNull();
+    const block = container.querySelector(".calendar-week-event");
+    expect(block).toHaveClass("calendar-week-event--comfortable");
+    expect(block).toHaveClass("calendar-item");
+    expect(block).not.toHaveClass("calendar-week-event--minimal");
+  });
+
+  it("always shows client and service like month pills", () => {
+    render(<CalendarTimeGridEvent {...baseProps} heightPx={24} />);
+    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.getByText("Corte de cabelo")).toBeInTheDocument();
     expect(screen.getByText("Agendado", { selector: ".visually-hidden" })).toBeInTheDocument();
   });
 
-  it("shows range and client in compact tier without service or status text", () => {
+  it("shows status text in tall blocks only", () => {
     const { container } = render(
-      <CalendarTimeGridEvent {...baseProps} heightPx={40} />,
+      <CalendarTimeGridEvent {...baseProps} heightPx={80} />,
     );
-    expect(container.querySelector(".calendar-event-time")?.textContent).toContain("–");
-    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
-    expect(container.querySelector(".calendar-event-service")).toBeNull();
-    expect(container.querySelector(".calendar-event-status")).toBeNull();
-    expect(container.querySelector(".calendar-week-event--compact")).not.toBeNull();
-  });
-
-  it("shows service in comfortable tier", () => {
-    const { container } = render(
-      <CalendarTimeGridEvent {...baseProps} heightPx={60} />,
-    );
-    expect(screen.getByText("Corte de cabelo")).toBeInTheDocument();
-    expect(container.querySelector(".calendar-event-status")).toBeNull();
-  });
-
-  it("shows status text in expanded tier", () => {
-    render(<CalendarTimeGridEvent {...baseProps} heightPx={80} />);
     expect(screen.getByText("Agendado", { selector: ".calendar-event-status" })).toBeInTheDocument();
+    expect(container.querySelector(".calendar-week-event--comfortable")).not.toBeNull();
   });
 
   it("applies service background without status stripe classes", () => {
