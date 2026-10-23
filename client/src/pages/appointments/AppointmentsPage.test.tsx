@@ -399,7 +399,7 @@ describe("AppointmentsPage", () => {
     expect(within(table).getByText("Corte de cabelo")).toBeInTheDocument();
     expect(within(table).getByText("Ana Lima")).toBeInTheDocument();
     expect(within(table).getByText("Primeira visita")).toBeInTheDocument();
-    expect(screen.getByText("Agendado")).toBeInTheDocument();
+    expect(within(table).getByText("Agendado")).toBeInTheDocument();
   });
 
   it("renders appointment times in the company timezone from the session", async () => {
@@ -632,10 +632,14 @@ describe("AppointmentsPage", () => {
     ).toBeInTheDocument();
     expect(appointmentsApi.completeAppointment).toHaveBeenCalledWith("confirmed");
 
-    fireEvent.click(screen.getAllByRole("button", { name: /cancelar/i })[0]);
+    fireEvent.click(
+      within(table).getAllByRole("button", { name: /^cancelar$/i })[0],
+    );
     expect(appointmentsApi.cancelAppointment).toHaveBeenCalledWith("scheduled");
 
-    fireEvent.click(screen.getByRole("button", { name: "Não compareceu" }));
+    fireEvent.click(
+      within(table).getByRole("button", { name: "Não compareceu" }),
+    );
     expect(appointmentsApi.markAppointmentAsNoShow).toHaveBeenCalledWith(
       "confirmed",
     );
@@ -653,12 +657,20 @@ describe("AppointmentsPage", () => {
     });
 
     await renderPageList();
-    await screen.findByRole("table");
+    const table = await screen.findByRole("table");
 
-    expect(screen.queryByRole("button", { name: /confirmar/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /concluir/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /cancelar/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /não compareceu/i })).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /confirmar/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /concluir/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /^cancelar$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /não compareceu/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a friendly error when the backend rejects a status transition", async () => {
@@ -948,5 +960,116 @@ describe("AppointmentsPage", () => {
     expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Anterior" })).toBeInTheDocument();
     expect(screen.getByText("Lista de agendamentos")).toBeInTheDocument();
+  });
+
+  describe("appointment filters", () => {
+    it("filters list rows by status without extra API calls", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({ id: "a1", status: "scheduled" }),
+          makeAppointment({
+            id: "a2",
+            status: "cancelled",
+            startAt: "2026-09-16T10:00:00.000Z",
+            endAt: "2026-09-16T10:30:00.000Z",
+          }),
+        ],
+      });
+
+      await renderPageList();
+      const table = await screen.findByRole("table");
+      expect(within(table).getAllByText("Maria Silva")).toHaveLength(2);
+      const callsAfterLoad = vi.mocked(appointmentsApi.getAppointments).mock.calls
+        .length;
+      expect(within(table).getAllByRole("row")).toHaveLength(3);
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancelado" }));
+      expect(within(table).getAllByRole("row")).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+      expect(within(table).getAllByRole("row")).toHaveLength(3);
+      expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(
+        callsAfterLoad,
+      );
+    });
+
+    it("shows filter empty state when no appointments match", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeAppointment({ status: "scheduled" })],
+      });
+
+      await renderPageList();
+      const table = await screen.findByRole("table");
+      await within(table).findByText("Maria Silva");
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancelado" }));
+      expect(
+        screen.getByText(/corresponde aos filtros/i),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps filters when switching views", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({
+            status: "scheduled",
+            startAt: "2026-09-10T09:00:00.000Z",
+            endAt: "2026-09-10T09:30:00.000Z",
+          }),
+        ],
+      });
+
+      renderPage();
+      await screen.findByTitle(/Maria Silva/);
+      fireEvent.click(screen.getByRole("button", { name: "Cancelado" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+      expect(
+        screen.getByRole("button", { name: "Cancelado", pressed: true }),
+      ).toBeInTheDocument();
+    });
+
+    it("still opens quick details on week after filtering other statuses", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({
+            status: "scheduled",
+            startAt: "2026-09-10T09:00:00.000Z",
+            endAt: "2026-09-10T09:30:00.000Z",
+          }),
+          makeAppointment({
+            id: "appt2",
+            status: "cancelled",
+            startAt: "2026-09-10T10:00:00.000Z",
+            endAt: "2026-09-10T10:30:00.000Z",
+          }),
+        ],
+      });
+
+      renderPage();
+      await waitFor(() =>
+        expect(screen.getAllByTitle(/Maria Silva/)).not.toHaveLength(0),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Agendado" }));
+      fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+      await screen.findByRole("heading", { name: /07\/09/ });
+
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: /Agendamento Maria Silva/i,
+        }),
+      );
+      expect(
+        await screen.findByRole("heading", { name: "Detalhes do agendamento" }),
+      ).toBeInTheDocument();
+    });
   });
 });

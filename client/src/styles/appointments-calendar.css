@@ -49,6 +49,69 @@
   text-align: center;
 }
 
+.appointments-schedule-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1rem;
+}
+
+.appointments-schedule-toolbar .calendar-toolbar {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.calendar-toolbar-filters {
+  align-items: flex-end;
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-top: none;
+  border-radius: 0 0 var(--sp-radius) var(--sp-radius);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  padding: 0.75rem;
+}
+
+.calendar-toolbar-filters-status {
+  border: none;
+  flex: 1 1 280px;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.calendar-toolbar-filters-legend {
+  float: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.calendar-toolbar-filters-status-group {
+  width: 100%;
+}
+
+.calendar-toolbar-filters-employee {
+  flex: 0 1 200px;
+  min-width: 10rem;
+}
+
+.calendar-toolbar-filters-employee .form-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.calendar-toolbar-filters-clear {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 /* --- Itens e estados partilhados (mês, semana, dia) --- */
 .calendar-item {
   border-radius: 0.35rem !important;
