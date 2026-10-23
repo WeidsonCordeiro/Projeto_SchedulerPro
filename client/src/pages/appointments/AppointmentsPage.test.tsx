@@ -864,6 +864,35 @@ describe("AppointmentsPage", () => {
     expect(screen.getByRole("heading", { name: "Novo agendamento" })).toBeInTheDocument();
   });
 
+  it("opens quick details when clicking a week appointment block", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        makeAppointment({
+          startAt: "2026-09-10T09:00:00.000Z",
+          endAt: "2026-09-10T09:30:00.000Z",
+        }),
+      ],
+    });
+
+    renderPage();
+    await screen.findByTitle(/Maria Silva/);
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    await screen.findByRole("heading", { name: /07\/09/ });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Agendamento Maria Silva/i }),
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Detalhes do agendamento" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Editar agendamento" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("opens the create form prefilled when clicking a week time slot", async () => {
     vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
       success: true,

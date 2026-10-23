@@ -533,3 +533,44 @@
 .day-calendar .position-absolute:hover > div {
   filter: brightness(1.1);
 }
+
+/* --- Popover de detalhes rápidos (Semana/Dia — Stage 51.2) --- */
+.appointment-quick-details-backdrop {
+  background: transparent;
+  inset: 0;
+  position: fixed;
+  z-index: 1035;
+}
+.appointment-quick-details-popover {
+  border: 1px solid var(--sp-border);
+  max-width: min(20rem, calc(100vw - 1rem));
+  min-width: 14rem;
+  position: fixed;
+  z-index: 1040;
+}
+.appointment-quick-details-close {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.5rem;
+}
+.appointment-quick-details-fields {
+  display: grid;
+  gap: 0.5rem;
+}
+.appointment-quick-details-row dt {
+  color: var(--bs-secondary-color);
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-bottom: 0.1rem;
+  text-transform: uppercase;
+}
+.appointment-quick-details-row dd {
+  font-size: 0.88rem;
+  margin-bottom: 0;
+}
+.appointment-quick-details-modal {
+  z-index: 1050;
+}
+.appointment-quick-details-modal .modal-backdrop {
+  z-index: 1040;
+}

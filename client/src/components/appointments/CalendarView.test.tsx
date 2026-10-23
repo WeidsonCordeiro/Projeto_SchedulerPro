@@ -135,6 +135,31 @@ describe("CalendarView", () => {
 
     expect(screen.getByText("Seg")).toBeInTheDocument();
   });
+
+  it("routes week block clicks to onTimeGridAppointmentClick with anchor", () => {
+    const onTimeGridAppointmentClick = vi.fn();
+    const onAppointmentClick = vi.fn();
+    renderWithStore(
+      <CalendarView
+        appointments={[makeAppointment()]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="week"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={onAppointmentClick}
+        onTimeGridAppointmentClick={onTimeGridAppointmentClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Maria Silva"));
+    expect(onTimeGridAppointmentClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "appt1" }),
+      expect.any(HTMLElement),
+    );
+    expect(onAppointmentClick).not.toHaveBeenCalled();
+  });
 });
 
 describe("MonthCalendar", () => {
@@ -269,6 +294,27 @@ describe("WeekCalendar", () => {
     expect(screen.getByText("Agendado")).toBeInTheDocument();
   });
 
+  it("passes anchor element to onAppointmentClick", () => {
+    const onAppointmentClick = vi.fn();
+    renderWithStore(
+      <WeekCalendar
+        currentDateKey="2026-09-10"
+        appointments={[makeAppointment()]}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onAppointmentClick={onAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Maria Silva"));
+    expect(onAppointmentClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "appt1" }),
+      expect.any(HTMLElement),
+    );
+  });
+
   it("calls onSlotClick with the date and hour", () => {
     const onSlotClick = vi.fn();
     renderWithStore(
@@ -321,7 +367,10 @@ describe("DayCalendar", () => {
     );
 
     fireEvent.click(screen.getByText(/Maria Silva/));
-    expect(onAppointmentClick).toHaveBeenCalledWith(expect.objectContaining({ id: "appt1" }));
+    expect(onAppointmentClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "appt1" }),
+      expect.any(HTMLElement),
+    );
   });
 
   it("calls onSlotClick for empty time slots", () => {

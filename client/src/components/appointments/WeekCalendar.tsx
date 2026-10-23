@@ -24,7 +24,7 @@ interface WeekCalendarProps {
   clientNames: Map<string, string>;
   serviceNames: Map<string, string>;
   onDayClick: (dateKey: string) => void;
-  onAppointmentClick: (appointment: Appointment) => void;
+  onAppointmentClick: (appointment: Appointment, anchor: HTMLElement) => void;
   onSlotClick: (dateKey: string, hour: number) => void;
   /** Data de hoje no calendário local da empresa ("AAAA-MM-DD"). */
   todayKey?: string;
@@ -193,7 +193,20 @@ export default function WeekCalendar({
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAppointmentClick(item.appointment);
+                      onAppointmentClick(
+                        item.appointment,
+                        e.currentTarget as HTMLElement,
+                      );
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onAppointmentClick(
+                          item.appointment,
+                          e.currentTarget as HTMLElement,
+                        );
+                      }
                     }}
                     role="button"
                     tabIndex={0}

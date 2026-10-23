@@ -5,6 +5,7 @@ import AppointmentForm from "../../components/appointments/AppointmentForm";
 import DeleteAppointmentModal from "../../components/appointments/DeleteAppointmentModal";
 import AppointmentsListView from "../../components/appointments/AppointmentsListView";
 import AppointmentsViewSwitcher from "../../components/appointments/AppointmentsViewSwitcher";
+import AppointmentQuickDetails from "../../components/appointments/AppointmentQuickDetails";
 import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import { isInstantInPast } from "../../config/appointmentCalendar";
@@ -50,6 +51,11 @@ export default function AppointmentsPage() {
   const [prefillEmployeeId, setPrefillEmployeeId] = useState<
     string | undefined
   >(undefined);
+
+  const [quickDetails, setQuickDetails] = useState<{
+    appointment: Appointment;
+    anchorRect: DOMRect;
+  } | null>(null);
 
   const openCreate = useCallback(
     (date?: string, time?: string, employeeId?: string) => {
@@ -193,6 +199,20 @@ export default function AppointmentsPage() {
     }
   }
 
+  const openQuickDetails = useCallback(
+    (appointment: Appointment, anchor: HTMLElement) => {
+      setQuickDetails({
+        appointment,
+        anchorRect: anchor.getBoundingClientRect(),
+      });
+    },
+    [],
+  );
+
+  const closeQuickDetails = useCallback(() => {
+    setQuickDetails(null);
+  }, []);
+
   if (!canList) {
     return (
       <section>
@@ -248,6 +268,7 @@ export default function AppointmentsPage() {
             onDayClick={handleCalendarDayClick}
             onSlotClick={handleCalendarSlotClick}
             onAppointmentClick={handleCalendarAppointmentClick}
+            onTimeGridAppointmentClick={openQuickDetails}
             todayKey={todayKey}
             month={{
               monthFocusedDateKey,
@@ -333,6 +354,28 @@ export default function AppointmentsPage() {
           clientName={nameFor(clientNames, deletingAppointment.clientId)}
           onClose={() => setDeletingAppointment(null)}
           onDeleted={handleDeleted}
+        />
+      )}
+
+      {quickDetails && (
+        <AppointmentQuickDetails
+          appointment={quickDetails.appointment}
+          clientName={nameFor(
+            clientNames,
+            quickDetails.appointment.clientId,
+          )}
+          serviceName={nameFor(
+            serviceNames,
+            quickDetails.appointment.serviceId,
+          )}
+          employeeName={employeeNames.get(quickDetails.appointment.employeeId)}
+          servicePrice={services.find(
+            (service) => service.id === quickDetails.appointment.serviceId,
+          )?.price}
+          timezone={timezone}
+          anchorRect={quickDetails.anchorRect}
+          isMobilePanel={isMobileCalendar}
+          onClose={closeQuickDetails}
         />
       )}
     </section>
