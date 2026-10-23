@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 
 export const TIME_GRID_DESKTOP_MEDIA_QUERY = "(min-width: 992px)";
-export const TIME_GRID_HOUR_HEIGHT_MOBILE_PX = 48;
-export const TIME_GRID_HOUR_HEIGHT_DESKTOP_PX = 60;
+/** Proporção 5:4 vs desktop (120 → 96). */
+export const TIME_GRID_HOUR_HEIGHT_MOBILE_PX = 96;
+/** 110px/hora (51.8.3) ainda curto; 30 min ≈ 60px @ 120px/hora. */
+export const TIME_GRID_HOUR_HEIGHT_DESKTOP_PX = 120;
 
 export function resolveTimeGridHourHeightPx(matchesDesktop: boolean): number {
   return matchesDesktop
@@ -17,7 +19,7 @@ function readDesktopMediaMatch(): boolean {
   return window.matchMedia(TIME_GRID_DESKTOP_MEDIA_QUERY).matches;
 }
 
-/** Altura de cada linha horária na grelha Semana/Dia (48 mobile, 60 desktop). */
+/** Altura de cada linha horária na grelha Semana/Dia (96 mobile, 120 desktop; 51.8.4). */
 export function useTimeGridHourHeightPx(): number {
   const [hourHeight, setHourHeight] = useState(() =>
     resolveTimeGridHourHeightPx(readDesktopMediaMatch()),

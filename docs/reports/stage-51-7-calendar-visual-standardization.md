@@ -3,6 +3,8 @@
 Data: 23/10/2026  
 Âmbito: identidade visual coerente nas três vistas do calendário — fundo por serviço, sem faixa lateral de estado; preservar posicionamento temporal e interações.
 
+> **Nota:** Unificação completa (corpo de cartão partilhado, tokens, inset/grelha) — ver [stage-51-8-calendar-visual-unification.md](./stage-51-8-calendar-visual-unification.md).
+
 ## 1. Objetivo e âmbito
 
 - Utilizar a vista **Mês** como referência: pills com `getServiceCalendarStyle`, tier `calendar-week-event--comfortable`, tipografia `calendar-event-*`.
