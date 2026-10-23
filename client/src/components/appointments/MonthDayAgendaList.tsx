@@ -74,6 +74,7 @@ export default function MonthDayAgendaList({
               appointment={appt}
               clientName={clientNames.get(appt.clientId)}
               serviceName={serviceNames.get(appt.serviceId)}
+              showStatusText
               onClick={() => onAppointmentClick(appt)}
             />
           ))}

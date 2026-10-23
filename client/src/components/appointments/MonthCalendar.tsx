@@ -155,7 +155,7 @@ export default function MonthCalendar({
                   />
                 ))}
 
-              {overflow > 0 && (
+              {overflow > 0 && !isCompact && (
                 <button
                   type="button"
                   className="calendar-overflow"

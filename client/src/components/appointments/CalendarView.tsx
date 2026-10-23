@@ -65,9 +65,16 @@ export default function CalendarView({
   }
 
   const monthViewport = month?.isMobileViewport ?? false;
+  const isTimeGridView = viewType === "week" || viewType === "day";
+  const surfaceClassName = [
+    "calendar-surface",
+    isTimeGridView ? "calendar-surface--time-grid" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div className="calendar-surface">
+    <div className={surfaceClassName}>
       {isLoading && (
         <LoadingState compact label="A carregar agendamentos…" />
       )}

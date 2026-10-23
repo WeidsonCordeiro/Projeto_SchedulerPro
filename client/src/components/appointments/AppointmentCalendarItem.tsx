@@ -13,10 +13,18 @@ interface AppointmentCalendarItemProps {
   appointment: Appointment;
   clientName?: string;
   serviceName?: string;
+  /** Lista diária mobile: mostrar rótulo de estado (grelha mês usa só faixa). */
+  showStatusText?: boolean;
   onClick: () => void;
 }
 
-export default function AppointmentCalendarItem({ appointment, clientName, serviceName, onClick }: AppointmentCalendarItemProps) {
+export default function AppointmentCalendarItem({
+  appointment,
+  clientName,
+  serviceName,
+  showStatusText = false,
+  onClick,
+}: AppointmentCalendarItemProps) {
   const timezone = useAppSelector(selectCompanyTimezone);
   const timeLabel = formatAppointmentTime(appointment.startAt, timezone);
   const clientLabel = clientName ?? "—";
@@ -29,7 +37,7 @@ export default function AppointmentCalendarItem({ appointment, clientName, servi
   return (
     <button
       type="button"
-      className={`calendar-item btn btn-sm w-100 text-start p-1 mb-1 border-0 calendar-status-stripe ${APPOINTMENT_STATUS_STRIPE_CLASS[appointment.status]}${muted ? " calendar-event--muted" : ""}`}
+      className={`calendar-item calendar-week-event calendar-week-event--comfortable btn btn-sm w-100 text-start mb-1 border-0 calendar-status-stripe ${APPOINTMENT_STATUS_STRIPE_CLASS[appointment.status]}${muted ? " calendar-event--muted" : ""}`}
       style={{
         backgroundColor: serviceStyle.backgroundColor,
         color: serviceStyle.color,
@@ -41,10 +49,14 @@ export default function AppointmentCalendarItem({ appointment, clientName, servi
       title={`${clientLabel} — ${serviceLabel}`}
       aria-label={ariaLabel}
     >
-      <span className="calendar-item-time d-block">{timeLabel}</span>
-      <span className="calendar-item-client text-truncate d-block">{clientLabel}</span>
-      <span className="calendar-item-service text-truncate d-block">{serviceLabel}</span>
-      <span className="calendar-item-status text-truncate d-block">{statusLabel}</span>
+      <span className="calendar-event-time text-truncate d-block">{timeLabel}</span>
+      <span className="calendar-event-client text-truncate d-block">{clientLabel}</span>
+      <span className="calendar-event-service text-truncate d-block">{serviceLabel}</span>
+      {showStatusText ? (
+        <span className="calendar-event-status text-truncate d-block">{statusLabel}</span>
+      ) : (
+        <span className="visually-hidden">{statusLabel}</span>
+      )}
     </button>
   );
 }

@@ -114,6 +114,16 @@ describe("MonthCalendar - compact layout", () => {
 });
 
 describe("MonthCalendar - overflow", () => {
+  it("does not show +N mais in compact layout", () => {
+    const appointments = Array.from({ length: 5 }, (_, i) =>
+      makeAppointment("2026-09-15", `busy${i}`),
+    );
+    renderCalendar({ appointments, layoutMode: "compact" });
+
+    expect(screen.queryByRole("button", { name: /mais/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("5 marcações")).toBeInTheDocument();
+  });
+
   it("shows +N mais when more than four appointments on a day", () => {
     const appointments = Array.from({ length: 5 }, (_, i) =>
       makeAppointment("2026-09-15", `busy${i}`),
