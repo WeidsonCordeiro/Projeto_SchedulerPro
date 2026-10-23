@@ -293,16 +293,25 @@
 }
 
 /* --- Vista mensal (MonthCalendar, MonthView, MonthDayAgendaList) --- */
+.month-calendar__weekdays,
+.month-calendar__weeks {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.month-calendar__weekday {
+  border-inline-end: 1px solid #edf0f5;
+  min-width: 0;
+}
+.month-calendar__weekday:last-child {
+  border-inline-end: 0;
+}
+
 .month-calendar .calendar-day-cell {
   background: #fff;
   border-color: #edf0f5 !important;
-  padding: 0.35rem !important;
-}
-/* As 7 colunas da grelha mensal podem encolher abaixo do conteúdo, para que
-   a grade do mês nunca ultrapasse a largura disponível. */
-.month-calendar .col,
-.month-calendar .calendar-day-cell {
   min-width: 0;
+  padding: 0.35rem !important;
 }
 
 .month-calendar .calendar-day-cell.bg-light {
@@ -595,17 +604,6 @@
     min-width: 1.35rem;
   }
 
-  /* A grelha mensal mantém as 7 colunas (é a leitura do mês que o utilizador
-     espera), mas com largura mínima por coluna e scroll horizontal dentro da
-     própria grelha: comprimir 7 dias em 390px tornaria cada célula ilegível e
-     empurraria a página para fora da viewport. */
-  .month-calendar {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-  .month-calendar > .row {
-    min-width: 40rem;
-  }
 }
 
 @media (max-width: 575.98px) {
