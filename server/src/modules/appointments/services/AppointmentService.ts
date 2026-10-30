@@ -11,9 +11,10 @@
 * ==========================================================
   */
 
-import { Types } from "mongoose";
+import { Types, ClientSession } from "mongoose";
 
 import AppointmentRepository from "../repositories/AppointmentRepository";
+import { withBookingTransaction } from "./appointment-booking-transaction";
 import AppointmentMapper from "../mappers/AppointmentMapper";
 import PublicAppointmentMapper from "../mappers/PublicAppointmentMapper";
 
@@ -75,7 +76,9 @@ export interface AppointmentListFilter {
  */
 interface ScheduleAppointmentInput {
   companyId: string;
-  resolveClientId: () => Types.ObjectId | Promise<Types.ObjectId>;
+  resolveClientId: (
+    session: ClientSession,
+  ) => Types.ObjectId | Promise<Types.ObjectId>;
   serviceId: Types.ObjectId;
   employeeId: Types.ObjectId;
   durationMinutes: number;
@@ -155,18 +158,14 @@ class AppointmentService {
    */
 
   /**
-   * Verifica se o slot do funcionário é agendável.
-   *
-   * Cobre a disponibilidade semanal e as exceções (férias,
-   * bloqueios) através de `AvailabilityService`, e o conflito com
-   * outro agendamento ativo.
+   * Disponibilidade semanal e exceções — fora de transacções de
+   * reserva (fail-fast antes do protocolo transacional).
    */
-  private async ensureSlotIsAvailable(input: {
+  private async ensureEmployeeAvailabilityOnly(input: {
     companyId: string;
     employeeId: Types.ObjectId;
     startAt: Date;
     endAt: Date;
-    excludeAppointmentId?: Types.ObjectId;
   }): Promise<void> {
     await AvailabilityService.ensureEmployeeAvailable(
       input.companyId,
@@ -174,46 +173,101 @@ class AppointmentService {
       input.startAt,
       input.endAt,
     );
-
-    const hasEmployeeConflict =
-      await this.appointmentRepository.hasEmployeeConflict(
-        input.companyId,
-        input.employeeId,
-        input.startAt,
-        input.endAt,
-        input.excludeAppointmentId,
-      );
-
-    if (hasEmployeeConflict) {
-      throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
-    }
   }
 
-  /**
-   * Verifica se o cliente já tem um agendamento sobreposto.
-   *
-   * `excludeAppointmentId` faz o próprio agendamento ser
-   * ignorado — é o que permite a um cliente remarcar.
-   */
-  private async ensureClientHasNoConflict(input: {
+  private async persistReschedule(input: {
     companyId: string;
+    appointmentId: string | Types.ObjectId;
     clientId: Types.ObjectId;
+    employeeId: Types.ObjectId;
     startAt: Date;
     endAt: Date;
-    excludeAppointmentId?: Types.ObjectId;
-  }): Promise<void> {
-    const hasClientConflict =
-      await this.appointmentRepository.hasClientConflict(
+    updateData: {
+      clientId?: Types.ObjectId;
+      serviceId: Types.ObjectId;
+      employeeId: Types.ObjectId;
+      startAt: Date;
+      endAt: Date;
+      notes: string | null;
+      priceAtTime: number | null;
+    };
+    notFoundError?: () => AppError;
+  }): Promise<AppointmentDocument> {
+    return withBookingTransaction(async (session) => {
+      await this.userRepository.touchBookingSerialization(
+        input.employeeId,
         input.companyId,
-        input.clientId,
-        input.startAt,
-        input.endAt,
-        input.excludeAppointmentId,
+        session,
       );
 
-    if (hasClientConflict) {
-      throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
-    }
+      const hasEmployeeConflict = session
+        ? await this.appointmentRepository.hasEmployeeConflict(
+            input.companyId,
+            input.employeeId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+            { session },
+          )
+        : await this.appointmentRepository.hasEmployeeConflict(
+            input.companyId,
+            input.employeeId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+          );
+
+      if (hasEmployeeConflict) {
+        throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      await this.clientRepository.touchBookingSerialization(
+        input.clientId,
+        input.companyId,
+        session,
+      );
+
+      const hasClientConflict = session
+        ? await this.appointmentRepository.hasClientConflict(
+            input.companyId,
+            input.clientId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+            { session },
+          )
+        : await this.appointmentRepository.hasClientConflict(
+            input.companyId,
+            input.clientId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+          );
+
+      if (hasClientConflict) {
+        throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      const updated = session
+        ? await this.appointmentRepository.update(
+            input.appointmentId,
+            input.updateData,
+            { session },
+          )
+        : await this.appointmentRepository.update(
+            input.appointmentId,
+            input.updateData,
+          );
+
+      if (!updated) {
+        throw (
+          input.notFoundError?.() ??
+          new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND)
+        );
+      }
+
+      return updated;
+    });
   }
 
   /**
@@ -263,63 +317,93 @@ class AppointmentService {
       );
     }
 
-    await this.ensureSlotIsAvailable({
+    await this.ensureEmployeeAvailabilityOnly({
       companyId,
       employeeId,
       startAt,
       endAt,
     });
 
-    /**
-     * ----------------------------------------------------------
-     * Resolve o cliente.
-     *
-     * Só agora, depois de as regras de agenda terem passado: no
-     * fluxo público esta chamada pode criar o cadastro do cliente
-     * e um pedido rejeitado não pode deixar um órfão na base de
-     * dados.
-     * ----------------------------------------------------------
-     */
-    const clientId = await resolveClientId();
+    const appointment = await withBookingTransaction(async (session) => {
+      await this.userRepository.touchBookingSerialization(
+        employeeId,
+        companyId,
+        session,
+      );
 
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do cliente.
-     * ----------------------------------------------------------
-     */
-    await this.ensureClientHasNoConflict({
-      companyId,
-      clientId,
-      startAt,
-      endAt,
-    });
+      const hasEmployeeConflict = session
+        ? await this.appointmentRepository.hasEmployeeConflict(
+            companyId,
+            employeeId,
+            startAt,
+            endAt,
+            undefined,
+            { session },
+          )
+        : await this.appointmentRepository.hasEmployeeConflict(
+            companyId,
+            employeeId,
+            startAt,
+            endAt,
+            undefined,
+          );
 
-    /**
-     * ----------------------------------------------------------
-     * Cria o agendamento.
-     *
-     * O hash do token público entra na MESMA escrita (só na
-     * criação pública). É o que garante que um agendamento
-     * acessível por link e o respetivo hash existem sempre em
-     * conjunto, sem uma segunda escrita que possa falhar.
-     * ----------------------------------------------------------
-     */
-    const appointment = await this.appointmentRepository.create({
-      companyId: new Types.ObjectId(companyId),
-      clientId,
-      serviceId,
-      employeeId,
-      startAt,
-      endAt,
-      status: AppointmentStatus.SCHEDULED,
-      notes: notes ?? null,
-      priceAtTime,
-      ...(publicAccessTokenHash
-        ? { publicAccessTokenHash }
-        : { publicAccessTokenHash: null }),
-      ...(publicAccessTokenCiphertext
-        ? { publicAccessTokenCiphertext }
-        : { publicAccessTokenCiphertext: null }),
+      if (hasEmployeeConflict) {
+        throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      const clientId = await resolveClientId(session);
+
+      await this.clientRepository.touchBookingSerialization(
+        clientId,
+        companyId,
+        session,
+      );
+
+      const hasClientConflict = session
+        ? await this.appointmentRepository.hasClientConflict(
+            companyId,
+            clientId,
+            startAt,
+            endAt,
+            undefined,
+            { session },
+          )
+        : await this.appointmentRepository.hasClientConflict(
+            companyId,
+            clientId,
+            startAt,
+            endAt,
+            undefined,
+          );
+
+      if (hasClientConflict) {
+        throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      const createPayload = {
+        companyId: new Types.ObjectId(companyId),
+        clientId,
+        serviceId,
+        employeeId,
+        startAt,
+        endAt,
+        status: AppointmentStatus.SCHEDULED,
+        notes: notes ?? null,
+        priceAtTime,
+        ...(publicAccessTokenHash
+          ? { publicAccessTokenHash }
+          : { publicAccessTokenHash: null }),
+        ...(publicAccessTokenCiphertext
+          ? { publicAccessTokenCiphertext }
+          : { publicAccessTokenCiphertext: null }),
+      };
+
+      if (session) {
+        return this.appointmentRepository.create(createPayload, { session });
+      }
+
+      return this.appointmentRepository.create(createPayload);
     });
 
     await this.dispatchAppointmentNotification(
@@ -407,7 +491,7 @@ class AppointmentService {
 
     const appointment = await this.schedule({
       companyId,
-      resolveClientId: () => new Types.ObjectId(dto.clientId),
+      resolveClientId: (_session) => new Types.ObjectId(dto.clientId),
       serviceId: new Types.ObjectId(dto.serviceId),
       employeeId: new Types.ObjectId(dto.employeeId),
       durationMinutes: service.duration,
@@ -443,11 +527,13 @@ class AppointmentService {
     email: string,
     name: string,
     phone: string | null,
+    session: ClientSession,
   ): Promise<ClientDocument> {
-    const existing = await this.clientRepository.findByEmailAndCompany(
-      email,
-      companyId,
-    );
+    const existing = session
+      ? await this.clientRepository.findByEmailAndCompany(email, companyId, {
+          session,
+        })
+      : await this.clientRepository.findByEmailAndCompany(email, companyId);
 
     if (existing) {
       if (!existing.isActive) {
@@ -460,12 +546,18 @@ class AppointmentService {
       return existing;
     }
 
-    return this.clientRepository.create({
+    const createPayload = {
       companyId: new Types.ObjectId(companyId),
       name,
       email,
       phone,
-    });
+    };
+
+    if (session) {
+      return this.clientRepository.create(createPayload, { session });
+    }
+
+    return this.clientRepository.create(createPayload);
   }
 
   /**
@@ -554,13 +646,14 @@ class AppointmentService {
      */
     const appointment = await this.schedule({
       companyId,
-      resolveClientId: async () =>
+      resolveClientId: async (session) =>
         (
           await this.resolvePublicClient(
             companyId,
             clientEmail,
             clientName,
             clientPhone,
+            session,
           )
         )._id,
       serviceId: service._id,
@@ -838,42 +931,29 @@ class AppointmentService {
      */
     const endAt = new Date(startAt.getTime() + service!.duration * 60 * 1000);
 
-    await this.ensureSlotIsAvailable({
+    await this.ensureEmployeeAvailabilityOnly({
       companyId,
       employeeId,
       startAt,
       endAt,
-      excludeAppointmentId: appointment._id,
     });
 
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do cliente.
-     *
-     * O próprio agendamento é ignorado na verificação.
-     * ----------------------------------------------------------
-     */
-    await this.ensureClientHasNoConflict({
+    const updatedAppointment = await this.persistReschedule({
       companyId,
+      appointmentId: id,
       clientId,
-      startAt,
-      endAt,
-      excludeAppointmentId: appointment._id,
-    });
-
-    /**
-     * ----------------------------------------------------------
-     * Atualiza o agendamento.
-     * ----------------------------------------------------------
-     */
-    const updatedAppointment = await this.appointmentRepository.update(id, {
-      clientId,
-      serviceId,
       employeeId,
       startAt,
       endAt,
-      notes,
-      priceAtTime,
+      updateData: {
+        clientId,
+        serviceId,
+        employeeId,
+        startAt,
+        endAt,
+        notes: notes ?? null,
+        priceAtTime,
+      },
     });
 
     await this.dispatchAppointmentNotification(
@@ -1179,41 +1259,30 @@ class AppointmentService {
      * verificação de conflitos.
      * ----------------------------------------------------------
      */
-    await this.ensureSlotIsAvailable({
+    await this.ensureEmployeeAvailabilityOnly({
       companyId,
       employeeId,
       startAt,
       endAt,
-      excludeAppointmentId: appointment._id,
     });
 
-    await this.ensureClientHasNoConflict({
+    const updated = await this.persistReschedule({
       companyId,
+      appointmentId: appointment._id,
       clientId: appointment.clientId,
+      employeeId,
       startAt,
       endAt,
-      excludeAppointmentId: appointment._id,
-    });
-
-    /**
-     * `publicAccessTokenHash` não entra no update: o link já
-     * entregue tem de continuar a funcionar.
-     */
-    const updated = await this.appointmentRepository.update(
-      appointment._id,
-      {
+      updateData: {
         serviceId,
         employeeId,
         startAt,
         endAt,
-        notes,
+        notes: notes ?? null,
         priceAtTime,
       },
-    );
-
-    if (!updated) {
-      throw this.publicAppointmentNotFound();
-    }
+      notFoundError: () => this.publicAppointmentNotFound(),
+    });
 
     await this.dispatchAppointmentNotification(
       updated,

@@ -299,6 +299,25 @@ class UserRepository {
       emailVerified: true,
     });
   }
+
+  /**
+   * Serializa reservas concorrentes que partilham o mesmo funcionário.
+   */
+  public async touchBookingSerialization(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    session: ClientSession,
+  ): Promise<void> {
+    const updated = await User.findOneAndUpdate(
+      { _id: id, companyId, deletedAt: null },
+      { $set: { updatedAt: new Date() } },
+      { session, new: false },
+    );
+
+    if (!updated) {
+      return;
+    }
+  }
 }
 
 export default new UserRepository();

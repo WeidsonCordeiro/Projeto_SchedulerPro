@@ -220,6 +220,25 @@ appointmentSchema.index({
 });
 
 /**
+ * Consultas de conflito por funcionário (CANON-016). Não impede
+ * sobreposição; otimiza `hasEmployeeConflict`.
+ */
+appointmentSchema.index(
+  {
+    companyId: 1,
+    employeeId: 1,
+    status: 1,
+    startAt: 1,
+  },
+  {
+    partialFilterExpression: {
+      deletedAt: null,
+      status: { $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED] },
+    },
+  },
+);
+
+/**
 
 * ==========================================================
 * Lookup do agendamento pelo token público.

@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { appointmentRepository, clientRepository, serviceRepository, userRepository, availabilityService, notificationDispatcher } = vi.hoisted(() => ({ appointmentRepository: { findById: vi.fn(), create: vi.fn(), update: vi.fn(), updateStatus: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(), softDelete: vi.fn(), cancelOverdueScheduled: vi.fn(), findByCompanyId: vi.fn() }, clientRepository: { findById: vi.fn() }, serviceRepository: { findById: vi.fn() }, userRepository: { findById: vi.fn() }, availabilityService: { ensureEmployeeAvailable: vi.fn() }, notificationDispatcher: { dispatchAppointmentEvent: vi.fn() } }));
+const { appointmentRepository, clientRepository, serviceRepository, userRepository, availabilityService, notificationDispatcher } = vi.hoisted(() => ({ appointmentRepository: { findById: vi.fn(), create: vi.fn(), update: vi.fn(), updateStatus: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(), softDelete: vi.fn(), cancelOverdueScheduled: vi.fn(), findByCompanyId: vi.fn() }, clientRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) }, serviceRepository: { findById: vi.fn() }, userRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) }, availabilityService: { ensureEmployeeAvailable: vi.fn() }, notificationDispatcher: { dispatchAppointmentEvent: vi.fn() } }));
 vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({ default: appointmentRepository }));
 vi.mock("../../../src/modules/Clients/repositories/ClientRepository", () => ({ default: clientRepository }));
 vi.mock("../../../src/modules/services/repositories/ServiceRepository", () => ({ default: serviceRepository }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
 vi.mock("../../../src/modules/availability/services/AvailabilityService", () => ({ default: availabilityService }));
 vi.mock("../../../src/modules/notifications/services/NotificationDispatcher", () => ({ default: notificationDispatcher }));
+vi.mock("../../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
 import { AppointmentStatus } from "../../../src/constants/appointment-status";
 import { AppError } from "../../../src/errors/AppError";

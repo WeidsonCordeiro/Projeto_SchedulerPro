@@ -59,12 +59,14 @@ const {
     deactivate: vi.fn(),
     updateAvatar: vi.fn(),
     findByCompanyId: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
   serviceRepository: { findById: vi.fn(), findByCompanyId: vi.fn() },
   userRepository: {
     findById: vi.fn(),
     findByIdForAccessControl: vi.fn(),
     findByCompanyId: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
   companyRepository: { findById: vi.fn(), findAll: vi.fn(), findByName: vi.fn() },
   availabilityRepository: {
@@ -154,6 +156,10 @@ vi.mock("../../src/modules/availability/repositories/AvailabilityRepository", ()
 vi.mock("../../src/modules/availability/repositories/AvailabilityExceptionRepository", () => ({ default: availabilityExceptionRepository }));
 vi.mock("../../src/modules/notifications/repositories/NotificationRepository", () => ({ default: notificationRepository }));
 vi.mock("../../src/modules/notifications/services/NotificationDispatcher", () => ({ default: notificationDispatcher }));
+vi.mock("../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 vi.mock("../../src/providers/mail/ResendProvider", () => ({ default: { send: resendSend } }));
 
 import app from "../../src/app";
