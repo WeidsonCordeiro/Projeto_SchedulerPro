@@ -21,10 +21,13 @@ const {
     findByCompanyId: vi.fn(),
     findByPublicAccessTokenHash: vi.fn(),
   },
-  clientRepository: { findById: vi.fn(), findByEmailAndCompany: vi.fn() },
+  clientRepository: { findById: vi.fn(), findByEmailAndCompany: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
   companyRepository: { findById: vi.fn() },
   serviceRepository: { findById: vi.fn() },
-  userRepository: { findById: vi.fn() },
+  userRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
+  },
   availabilityService: { ensureEmployeeAvailable: vi.fn() },
   notificationDispatcher: { dispatchAppointmentEvent: vi.fn() },
 }));
@@ -36,6 +39,10 @@ vi.mock("../../../src/modules/services/repositories/ServiceRepository", () => ({
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
 vi.mock("../../../src/modules/availability/services/AvailabilityService", () => ({ default: availabilityService }));
 vi.mock("../../../src/modules/notifications/services/NotificationDispatcher", () => ({ default: notificationDispatcher }));
+vi.mock("../../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 
 import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
 import { AppointmentStatus } from "../../../src/constants/appointment-status";

@@ -16,6 +16,7 @@ import { Types } from "mongoose";
 import Appointment, { AppointmentDocument } from "../models/Appointment.model";
 import { CreateAppointmentData, UpdateAppointmentData } from "../index";
 import { AppointmentStatus } from "../../../constants/appointment-status";
+import { RepositorySessionOptions } from "./appointment-repository.types";
 
 /**
  * Janela opcional de consulta por período. Quando informada, apenas os
@@ -126,7 +127,15 @@ class AppointmentRepository {
   */
   public async create(
     data: CreateAppointmentData,
+    options?: RepositorySessionOptions,
   ): Promise<AppointmentDocument> {
+    if (options?.session) {
+      const [created] = await Appointment.create([data], {
+        session: options.session,
+      });
+      return created;
+    }
+
     return Appointment.create(data);
   }
 
@@ -139,10 +148,12 @@ class AppointmentRepository {
   public async update(
     id: string | Types.ObjectId,
     data: UpdateAppointmentData,
+    options?: RepositorySessionOptions,
   ): Promise<AppointmentDocument | null> {
     return Appointment.findOneAndUpdate({ _id: id, deletedAt: null }, data, {
       new: true,
       runValidators: true,
+      session: options?.session,
     });
   }
 
@@ -181,6 +192,7 @@ class AppointmentRepository {
     startAt: Date,
     endAt: Date,
     excludeAppointmentId?: string | Types.ObjectId,
+    options?: RepositorySessionOptions,
   ): Promise<boolean> {
     const query: Record<string, unknown> = {
       companyId,
@@ -203,7 +215,13 @@ class AppointmentRepository {
       };
     }
 
-    const appointment = await Appointment.findOne(query);
+    let queryBuilder = Appointment.findOne(query);
+
+    if (options?.session) {
+      queryBuilder = queryBuilder.session(options.session);
+    }
+
+    const appointment = await queryBuilder;
 
     return Boolean(appointment);
   }
@@ -261,6 +279,7 @@ class AppointmentRepository {
     startAt: Date,
     endAt: Date,
     excludeAppointmentId?: string | Types.ObjectId,
+    options?: RepositorySessionOptions,
   ): Promise<boolean> {
     const query: Record<string, unknown> = {
       companyId,
@@ -283,7 +302,13 @@ class AppointmentRepository {
       };
     }
 
-    const appointment = await Appointment.findOne(query);
+    let queryBuilder = Appointment.findOne(query);
+
+    if (options?.session) {
+      queryBuilder = queryBuilder.session(options.session);
+    }
+
+    const appointment = await queryBuilder;
 
     return Boolean(appointment);
   }

@@ -25,9 +25,13 @@ const {
     findById: vi.fn(),
     findByEmailAndCompany: vi.fn(),
     create: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
   serviceRepository: { findById: vi.fn() },
-  userRepository: { findById: vi.fn() },
+  userRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
+  },
   companyRepository: { findById: vi.fn() },
   availabilityService: { ensureEmployeeAvailable: vi.fn() },
   notificationDispatcher: { dispatchAppointmentEvent: vi.fn() },
@@ -56,6 +60,10 @@ vi.mock(
   "../../../src/modules/notifications/services/NotificationDispatcher",
   () => ({ default: notificationDispatcher }),
 );
+vi.mock("../../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 
 import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
 import PublicAppointmentTokenProvider from "../../../src/providers/security/PublicAppointmentTokenProvider";

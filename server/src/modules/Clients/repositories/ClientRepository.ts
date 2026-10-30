@@ -15,6 +15,8 @@ import { Types } from "mongoose";
 import Client, { ClientDocument } from "../models/Client.model";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
 import { StoredImage } from "../../../providers/images/types";
+import { ClientSession } from "mongoose";
+import { RepositorySessionOptions } from "../../appointments/repositories/appointment-repository.types";
 
 class ClientRepository {
   /**
@@ -77,16 +79,23 @@ class ClientRepository {
   public async findByEmailAndCompany(
     email: string,
     companyId: string | Types.ObjectId,
+    options?: RepositorySessionOptions,
   ): Promise<ClientDocument | null> {
     if (!email) {
       return null;
     }
 
-    return Client.findOne({
+    let query = Client.findOne({
       companyId,
       email: email.trim().toLowerCase(),
       deletedAt: null,
     });
+
+    if (options?.session) {
+      query = query.session(options.session);
+    }
+
+    return query;
   }
 
   /**
@@ -98,14 +107,39 @@ class ClientRepository {
    * telefone antes de chegar aqui (`create-client.validator.ts`).
    * ==========================================================
    */
-  public async create(data: {
-    companyId: Types.ObjectId;
-    name: string;
-    email?: string | null;
-    phone?: string | null;
-    notes?: string | null;
-  }): Promise<ClientDocument> {
+  public async create(
+    data: {
+      companyId: Types.ObjectId;
+      name: string;
+      email?: string | null;
+      phone?: string | null;
+      notes?: string | null;
+    },
+    options?: RepositorySessionOptions,
+  ): Promise<ClientDocument> {
+    if (options?.session) {
+      const [created] = await Client.create([data], {
+        session: options.session,
+      });
+      return created;
+    }
+
     return Client.create(data);
+  }
+
+  /**
+   * Serializa reservas concorrentes que partilham o mesmo cliente.
+   */
+  public async touchBookingSerialization(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    session: ClientSession,
+  ): Promise<void> {
+    await Client.findOneAndUpdate(
+      { _id: id, companyId, deletedAt: null },
+      { $set: { updatedAt: new Date() } },
+      { session, new: false },
+    );
   }
 
   /**

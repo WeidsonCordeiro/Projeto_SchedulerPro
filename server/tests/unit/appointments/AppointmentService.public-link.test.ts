@@ -29,9 +29,13 @@ const {
     findByEmailAndCompany: vi.fn(),
     create: vi.fn(),
     findByCompanyId: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
   serviceRepository: { findById: vi.fn() },
-  userRepository: { findById: vi.fn() },
+  userRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
+  },
   companyRepository: { findById: vi.fn() },
   availabilityService: { ensureEmployeeAvailable: vi.fn() },
   notificationDispatcher: { dispatchAppointmentEvent: vi.fn() },
@@ -46,6 +50,10 @@ vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ defau
 vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
 vi.mock("../../../src/modules/availability/services/AvailabilityService", () => ({ default: availabilityService }));
 vi.mock("../../../src/modules/notifications/services/NotificationDispatcher", () => ({ default: notificationDispatcher }));
+vi.mock("../../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 vi.mock("../../../src/providers/logger/Logger", () => ({
   default: {
     info: loggerInfo,

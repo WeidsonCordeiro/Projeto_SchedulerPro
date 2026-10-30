@@ -27,8 +27,8 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
     updateStatus: vi.fn(), softDelete: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(),
     cancelOverdueScheduled: vi.fn(),
   },
-  userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn() },
-  clientRepository: { findById: vi.fn() },
+  userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
+  clientRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
   serviceRepository: { findById: vi.fn() },
   companyRepository: { findById: vi.fn() },
   availabilityExceptionRepository: { findByEmployeeAndDate: vi.fn() },
@@ -49,6 +49,10 @@ vi.mock("../../src/modules/Clients/repositories/ClientRepository", () => ({ defa
 vi.mock("../../src/modules/services/repositories/ServiceRepository", () => ({ default: serviceRepository }));
 vi.mock("../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
 vi.mock("../../src/modules/availability/repositories/AvailabilityExceptionRepository", () => ({ default: availabilityExceptionRepository }));
+vi.mock("../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 
 import app from "../../src/app";
 import { Role } from "../../src/constants/roles";
