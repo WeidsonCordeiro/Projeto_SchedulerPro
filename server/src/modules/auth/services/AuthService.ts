@@ -73,6 +73,7 @@ import {
 import SessionService from "./SessionService";
 import { ErrorCode } from "../../../constants/error-codes";
 import { assertUserMayAuthenticateAgainstCompany } from "../utils/assert-company-active-for-auth";
+import { assertUserIsActiveForAccess } from "../utils/assert-user-access-active";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -343,9 +344,7 @@ class AuthService {
    */
 
   private validateUserStatus(user: UserDocument): void {
-    if (!user.isActive) {
-      throw new AppError(HttpMessages.USER_DISABLED, HttpStatus.FORBIDDEN);
-    }
+    assertUserIsActiveForAccess(user);
 
     const locked =
       user.lockUntil != null && user.lockUntil.getTime() > Date.now();

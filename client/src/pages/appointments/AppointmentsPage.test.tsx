@@ -128,7 +128,11 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
   };
 }
 
-function makeStore(role: Role | null = "OWNER", timezone?: string) {
+function makeStore(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
   return configureStore({
     reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
@@ -145,7 +149,7 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
               id: "company1",
               name: "salao do centro",
               timezone,
-              isActive: true,
+              isActive: companyIsActive,
               createdAt: "2026-01-01T00:00:00.000Z",
               updatedAt: "2026-01-01T00:00:00.000Z",
             },
@@ -155,9 +159,13 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
   });
 }
 
-function renderPage(role: Role | null = "OWNER", timezone?: string) {
+function renderPage(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
   return render(
-    <Provider store={makeStore(role, timezone)}>
+    <Provider store={makeStore(role, timezone, companyIsActive)}>
       <MemoryRouter>
         <AppointmentsPage />
       </MemoryRouter>
@@ -177,8 +185,12 @@ async function switchToListView() {
  * Renderiza a página e alterna para a visualização de Lista (tabela).
  * Útil para manter compatibilidade com testes existentes que esperam a tabela.
  */
-async function renderPageList(role: Role | null = "OWNER", timezone?: string) {
-  renderPage(role, timezone);
+async function renderPageList(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
+  renderPage(role, timezone, companyIsActive);
   await switchToListView();
 }
 
@@ -303,6 +315,31 @@ describe("AppointmentsPage", () => {
     expect(
       within(screen.getByRole("table")).getAllByText("—").length,
     ).toBeGreaterThan(0);
+  });
+
+  it("suppresses generic inactive-company related alerts when company is inactive", async () => {
+    const inactiveError = httpError(403, {
+      code: "COMPANY_INACTIVE_OPERATION",
+      message: "A empresa está desactivada. Esta operação não está disponível.",
+    });
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+    vi.mocked(clientsApi.getClients).mockRejectedValue(inactiveError);
+    vi.mocked(servicesApi.getServices).mockRejectedValue(inactiveError);
+    vi.mocked(employeesApi.getEmployees).mockRejectedValue(inactiveError);
+
+    await renderPageList("OWNER", "Europe/Lisbon", false);
+
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Reative a empresa/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Não foi possível carregar alguns nomes/i),
+    ).not.toBeInTheDocument();
   });
 
   it("uses the shared table surface, status column and action row", async () => {

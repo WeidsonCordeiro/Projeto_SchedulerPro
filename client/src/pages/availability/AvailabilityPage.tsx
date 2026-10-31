@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import availabilityApi from "../../api/endpoints/availability.api";
 import employeesApi from "../../api/endpoints/employees.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import {
+  getApiError,
+  getFriendlyErrorMessage,
+  getPageLoadErrorPresentation,
+  resolveAvailabilityEmployeesLoadNotice,
+} from "../../api/errors";
 import AvailabilityDayEditor from "../../components/availability/AvailabilityDayEditor";
 import DeleteAvailabilityDayModal from "../../components/availability/DeleteAvailabilityDayModal";
 import AvailabilityExceptionsSection from "../../components/availability/AvailabilityExceptionsSection";
@@ -13,6 +18,7 @@ import {
 } from "../../config/availabilityRules";
 import { DAY_DISPLAY_ORDER, DAY_LABELS, DAY_ORDER } from "../../config/dayOfWeek";
 import { useAppSelector } from "../../store";
+import { selectCompany } from "../../store/slices/companySlice";
 import type {
   Availability,
   DayOfWeek,
@@ -65,6 +71,8 @@ function docToDraft(availability: Availability): DayDraft {
 
 export default function AvailabilityPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const actorRole = currentUser?.role ?? null;
   const { canList, canCreate, canUpdate, canDelete } =
     getAvailabilityAbilities(actorRole);
@@ -92,6 +100,7 @@ export default function AvailabilityPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [savingDay, setSavingDay] = useState<DayOfWeek | null>(null);
   const [removingDay, setRemovingDay] = useState<DayOfWeek | null>(null);
@@ -112,12 +121,14 @@ export default function AvailabilityPage() {
       setEmployees(list);
     } catch (error) {
       const failure = getApiError(error);
-      setEmployeesLoadError(getFriendlyErrorMessage(failure));
+      setEmployeesLoadError(
+        resolveAvailabilityEmployeesLoadNotice(failure, companyIsActive),
+      );
       setEmployees([]);
     } finally {
       setIsLoadingEmployees(false);
     }
-  }, [canListUsers]);
+  }, [canListUsers, companyIsActive]);
 
   const loadAvailability = useCallback(async (employeeId: string) => {
     if (!employeeId) {
@@ -145,11 +156,13 @@ export default function AvailabilityPage() {
       setDayErrors(createEmptyDayErrors);
     } catch (error) {
       const failure = getApiError(error);
-      setLoadError(getFriendlyErrorMessage(failure));
+      const presentation = getPageLoadErrorPresentation(failure, companyIsActive);
+      setLoadError(presentation.message);
+      setLoadErrorRetryable(presentation.retryable);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     if (!canList) {
@@ -322,8 +335,7 @@ export default function AvailabilityPage() {
 
       {canListUsers && employeesLoadError && (
         <div className="alert alert-warning" role="alert">
-          {employeesLoadError} Lista de funcionários indisponível; será exibida
-          a sua própria disponibilidade.
+          {employeesLoadError}
         </div>
       )}
 
@@ -332,7 +344,11 @@ export default function AvailabilityPage() {
       {!isLoading && loadError && (
         <ErrorState
           message={loadError}
-          onRetry={() => void loadAvailability(selectedEmployeeId)}
+          onRetry={
+            loadErrorRetryable
+              ? () => void loadAvailability(selectedEmployeeId)
+              : undefined
+          }
         />
       )}
 

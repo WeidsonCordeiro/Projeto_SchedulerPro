@@ -8,7 +8,9 @@ import authApi from "../../api/endpoints/auth.api";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
 import type { Role } from "../../types/auth";
+import type { Company } from "../../types/company";
 
 vi.mock("../../api/endpoints/auth.api", () => ({
   default: {
@@ -112,10 +114,22 @@ vi.mock("../../api/endpoints/availabilityExceptions.api", () => ({
   },
 }));
 
-function makeStore(options: { authenticated?: boolean; role?: Role } = {}) {
-  const { authenticated = false, role } = options;
+function makeStore(
+  options: {
+    authenticated?: boolean;
+    role?: Role;
+    company?: Company | null;
+    staffCompanyAccessSuspended?: boolean;
+  } = {},
+) {
+  const {
+    authenticated = false,
+    role,
+    company = null,
+    staffCompanyAccessSuspended = false,
+  } = options;
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
         user: authenticated
@@ -125,7 +139,9 @@ function makeStore(options: { authenticated?: boolean; role?: Role } = {}) {
         isAuthenticated: authenticated,
         isInitializing: false,
         isLoading: false,
+        staffCompanyAccessSuspended,
       },
+      company: { company },
     },
   });
 }
@@ -285,5 +301,100 @@ describe("AppLayout", () => {
     expect(screen.getByText("Perfil")).toBeInTheDocument();
     expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
     expect(screen.queryByText("Clientes")).not.toBeInTheDocument();
+  });
+
+  it("shows a global inactive-company notice for OWNER", () => {
+    renderLayout(
+      makeStore({
+        authenticated: true,
+        role: "OWNER",
+        company: {
+          id: "507f1f77bcf86cd799439012",
+          name: "salao",
+          timezone: "Europe/Lisbon",
+          isActive: false,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+
+    expect(screen.getByTestId("company-inactive-notice")).toHaveAttribute(
+      "data-notice-role",
+      "OWNER",
+    );
+    expect(screen.getByText("Home content")).toBeInTheDocument();
+  });
+
+  it("shows a global inactive-company notice for ADMIN", () => {
+    renderLayout(
+      makeStore({
+        authenticated: true,
+        role: "ADMIN",
+        company: {
+          id: "507f1f77bcf86cd799439012",
+          name: "salao",
+          timezone: "Europe/Lisbon",
+          isActive: false,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+
+    expect(screen.getByTestId("company-inactive-notice")).toHaveAttribute(
+      "data-notice-role",
+      "ADMIN",
+    );
+  });
+
+  it("does not show the global inactive notice when the company is active", () => {
+    renderLayout(
+      makeStore({
+        authenticated: true,
+        role: "OWNER",
+        company: {
+          id: "507f1f77bcf86cd799439012",
+          name: "salao",
+          timezone: "Europe/Lisbon",
+          isActive: true,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      }),
+    );
+
+    expect(screen.queryByTestId("company-inactive-notice")).not.toBeInTheDocument();
+  });
+
+  it("shows staff suspended view instead of outlet for MANAGER", () => {
+    renderLayout(
+      makeStore({
+        authenticated: true,
+        role: "MANAGER",
+        staffCompanyAccessSuspended: true,
+      }),
+    );
+
+    expect(screen.getByTestId("staff-company-suspended-view")).toBeInTheDocument();
+    expect(screen.queryByText("Home content")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /terminar sessão/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("terminates session from staff suspended view", async () => {
+    vi.mocked(authApi.logout).mockResolvedValue({ success: true, message: "ok" });
+    const store = makeStore({
+      authenticated: true,
+      role: "EMPLOYEE",
+      staffCompanyAccessSuspended: true,
+    });
+    renderLayout(store);
+
+    fireEvent.click(screen.getByRole("button", { name: /terminar sessão/i }));
+
+    expect(await screen.findByText("Login page")).toBeInTheDocument();
+    expect(store.getState().auth.staffCompanyAccessSuspended).toBe(false);
   });
 });

@@ -4,7 +4,14 @@ import appointmentsApi from "../api/endpoints/appointments.api";
 import clientsApi from "../api/endpoints/clients.api";
 import servicesApi from "../api/endpoints/services.api";
 import employeesApi from "../api/endpoints/employees.api";
-import { getApiError, getFriendlyErrorMessage } from "../api/errors";
+import {
+  collectRelatedFailureMessages,
+  formatRelatedFailuresMessage,
+  getApiError,
+  getPageLoadErrorPresentation,
+} from "../api/errors";
+import { useAppSelector } from "../store";
+import { selectCompany } from "../store/slices/companySlice";
 import type { CalendarViewType } from "../config/appointmentCalendar";
 import {
   getDayRange,
@@ -58,6 +65,11 @@ export function useAppointmentsSchedule({
   actorRole,
   canListEmployees,
 }: UseAppointmentsScheduleOptions) {
+  const staffCompanyAccessSuspended = useAppSelector(
+    (state) => state.auth.staffCompanyAccessSuspended,
+  );
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -90,14 +102,18 @@ export function useAppointmentsSchedule({
     } catch (error) {
       if (requestId === requestIdRef.current) {
         const failure = getApiError(error);
-        setLoadError(getFriendlyErrorMessage(failure));
+        const presentation = getPageLoadErrorPresentation(
+          failure,
+          companyIsActive,
+        );
+        setLoadError(presentation.message);
       }
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoading(false);
       }
     }
-  }, [range.startAt, range.endAt]);
+  }, [range.startAt, range.endAt, companyIsActive]);
 
   const loadRelated = useCallback(async () => {
     const failures: string[] = [];
@@ -106,7 +122,7 @@ export function useAppointmentsSchedule({
         const response = await clientsApi.getClients();
         setClients(response.data ?? []);
       } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
+        collectRelatedFailureMessages(failures, error, companyIsActive);
       }
     }
     if (canLoadNames(actorRole)) {
@@ -114,7 +130,7 @@ export function useAppointmentsSchedule({
         const response = await servicesApi.getServices();
         setServices(response.data ?? []);
       } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
+        collectRelatedFailureMessages(failures, error, companyIsActive);
       }
     }
     if (canListEmployees) {
@@ -126,21 +142,22 @@ export function useAppointmentsSchedule({
           ),
         );
       } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
+        collectRelatedFailureMessages(failures, error, companyIsActive);
       }
     }
     setRelatedError(
-      failures.length > 0
-        ? `Não foi possível carregar alguns nomes. ${failures.join(" ")}`
-        : null,
+      formatRelatedFailuresMessage(
+        failures,
+        "Não foi possível carregar alguns nomes.",
+      ),
     );
-  }, [actorRole, canListEmployees]);
+  }, [actorRole, canListEmployees, companyIsActive]);
 
   useEffect(() => {
-    if (!canList) return;
+    if (!canList || staffCompanyAccessSuspended) return;
     void loadAppointments();
     void loadRelated();
-  }, [canList, loadAppointments, loadRelated]);
+  }, [canList, loadAppointments, loadRelated, staffCompanyAccessSuspended]);
 
   const clientNames = useMemo(
     () => new Map(clients.map((client) => [client.id, client.name])),

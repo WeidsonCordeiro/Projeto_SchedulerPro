@@ -6,6 +6,7 @@ import {
   DEFAULT_SESSION_EXPIRY_MESSAGE,
   getApiError,
   getSessionExpiryMessage,
+  STAFF_COMPANY_SUSPENSION_ERROR_CODES,
 } from "./errors";
 import { store } from "../store";
 import { clearCompany, setCompany } from "../store/slices/companySlice";
@@ -276,6 +277,40 @@ describe("apiClient session interceptor", () => {
 
     expect(refreshCalls).toBe(0);
     expect(store.getState().auth.isAuthenticated).toBe(true);
+  });
+
+  it("Caso 6b - sets staffCompanyAccessSuspended on company deactivation code without logout", async () => {
+    seedAuthenticated();
+    let refreshCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls += 1;
+        return ok(config, { success: true, message: "ok", data: session });
+      }
+      if (config.url === "/dashboard/summary") {
+        return ko(
+          config,
+          403,
+          "suspended",
+          STAFF_COMPANY_SUSPENSION_ERROR_CODES.USER_SUSPENDED_BY_COMPANY_DEACTIVATION,
+        );
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/dashboard/summary")).rejects.toMatchObject({
+      response: { status: 403 },
+    });
+
+    expect(refreshCalls).toBe(0);
+    expect(store.getState().auth.isAuthenticated).toBe(true);
+    expect(store.getState().auth.staffCompanyAccessSuspended).toBe(true);
+
+    await expect(apiClient.get("/dashboard/summary")).rejects.toMatchObject({
+      response: { status: 403 },
+    });
+    expect(store.getState().auth.staffCompanyAccessSuspended).toBe(true);
   });
 
   it("Caso 7 - does not refresh or log out on expected errors from public endpoints", async () => {

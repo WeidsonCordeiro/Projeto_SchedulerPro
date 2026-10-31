@@ -430,4 +430,53 @@ describe("CompanyPage", () => {
       ).toBeInTheDocument();
     });
   });
+
+  describe("inactive UX", () => {
+    it("OWNER keeps page-specific inactive guidance without duplicating the global notice", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+
+      renderPage("OWNER");
+
+      await screen.findByText(/este link não aceita novos agendamentos/i);
+      expect(
+        screen.queryByTestId("company-inactive-notice"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /Reativar a empresa/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("ADMIN stays read-only without page-level inactive notice or reactivation", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+
+      renderPage("ADMIN");
+
+      await screen.findByText(/este link não aceita novos agendamentos/i);
+      expect(
+        screen.queryByTestId("company-inactive-notice"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /reativar empresa/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    });
+
+    it("ADMIN keeps the edit form when the company is active", async () => {
+      renderPage("ADMIN");
+
+      expect(await screen.findByLabelText("Nome")).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("company-inactive-notice"),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

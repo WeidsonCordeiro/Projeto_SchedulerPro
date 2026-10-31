@@ -1,9 +1,24 @@
 import { AxiosError, AxiosHeaders } from "axios";
 import { describe, expect, it } from "vitest";
 import {
+  BACKEND_COMPANY_INACTIVE_ACCESS_MESSAGE,
+  BACKEND_COMPANY_INACTIVE_OPERATION_MESSAGE,
+  AVAILABILITY_EMPLOYEES_LIST_SUSPENDED_MESSAGE,
+  COMPANY_INACTIVE_ERROR_CODES,
+  COMPANY_INACTIVE_FRIENDLY_MESSAGES,
   DEFAULT_SESSION_EXPIRY_MESSAGE,
+  STAFF_COMPANY_SUSPENSION_ERROR_CODES,
+  STAFF_COMPANY_SUSPENSION_FRIENDLY_MESSAGE,
+  USER_INACTIVE_FRIENDLY_MESSAGE,
+  collectRelatedFailureMessages,
+  collapseDuplicateMessages,
+  formatRelatedFailuresMessage,
   getApiError,
   getFriendlyErrorMessage,
+  getPageLoadErrorPresentation,
+  isCompanyInactiveOperationFailure,
+  isDuplicateCompanyInactivePageError,
+  resolveAvailabilityEmployeesLoadNotice,
 } from "./errors";
 
 function httpError(status: number, body?: unknown) {
@@ -90,6 +105,161 @@ describe("getFriendlyErrorMessage", () => {
     expect(getFriendlyErrorMessage(failure)).toBe(
       "Erro interno do servidor. Tente novamente mais tarde.",
     );
+  });
+
+  it("maps COMPANY_INACTIVE_OPERATION by code", () => {
+    const failure = getApiError(
+      httpError(403, {
+        code: "COMPANY_INACTIVE_OPERATION",
+        message: "raw",
+      }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      COMPANY_INACTIVE_FRIENDLY_MESSAGES.COMPANY_INACTIVE_OPERATION,
+    );
+  });
+
+  it("maps COMPANY_INACTIVE_ACCESS by code", () => {
+    const failure = getApiError(
+      httpError(403, {
+        code: "COMPANY_INACTIVE_ACCESS",
+        message: "raw",
+      }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      COMPANY_INACTIVE_FRIENDLY_MESSAGES.COMPANY_INACTIVE_ACCESS,
+    );
+  });
+
+  it("maps inactive operation by backend message when code is absent", () => {
+    const failure = getApiError(
+      httpError(403, { message: BACKEND_COMPANY_INACTIVE_OPERATION_MESSAGE }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      COMPANY_INACTIVE_FRIENDLY_MESSAGES.COMPANY_INACTIVE_OPERATION,
+    );
+  });
+
+  it("maps inactive access by backend message when code is absent", () => {
+    const failure = getApiError(
+      httpError(403, { message: BACKEND_COMPANY_INACTIVE_ACCESS_MESSAGE }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      COMPANY_INACTIVE_FRIENDLY_MESSAGES.COMPANY_INACTIVE_ACCESS,
+    );
+  });
+
+  it("keeps custom validation messages", () => {
+    const failure = getApiError(httpError(400, { message: "Campo inválido." }));
+    expect(getFriendlyErrorMessage(failure)).toBe("Campo inválido.");
+  });
+
+  it("maps USER_SUSPENDED_BY_COMPANY_DEACTIVATION by code", () => {
+    const failure = getApiError(
+      httpError(403, {
+        code: STAFF_COMPANY_SUSPENSION_ERROR_CODES.USER_SUSPENDED_BY_COMPANY_DEACTIVATION,
+        message: "raw",
+      }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      STAFF_COMPANY_SUSPENSION_FRIENDLY_MESSAGE,
+    );
+  });
+
+  it("maps USER_INACTIVE by code", () => {
+    const failure = getApiError(
+      httpError(403, {
+        code: STAFF_COMPANY_SUSPENSION_ERROR_CODES.USER_INACTIVE,
+        message: "Usuário desativado.",
+      }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(USER_INACTIVE_FRIENDLY_MESSAGE);
+  });
+});
+
+describe("collapseDuplicateMessages", () => {
+  it("removes repeated messages", () => {
+    expect(
+      collapseDuplicateMessages(["A", "A", "B", "A", ""]),
+    ).toEqual(["A", "B"]);
+  });
+});
+
+describe("company inactive page error helpers (B.2)", () => {
+  const inactiveOpFailure = getApiError(
+    httpError(403, {
+      code: COMPANY_INACTIVE_ERROR_CODES.COMPANY_INACTIVE_OPERATION,
+      message: "raw",
+    }),
+  );
+
+  it("detects COMPANY_INACTIVE_OPERATION by code and backend message", () => {
+    expect(isCompanyInactiveOperationFailure(inactiveOpFailure)).toBe(true);
+    expect(
+      isCompanyInactiveOperationFailure(
+        getApiError(
+          httpError(403, { message: BACKEND_COMPANY_INACTIVE_OPERATION_MESSAGE }),
+        ),
+      ),
+    ).toBe(true);
+    expect(isCompanyInactiveOperationFailure(getApiError(httpError(500)))).toBe(
+      false,
+    );
+  });
+
+  it("marks duplicate page errors only when company is inactive in Redux", () => {
+    expect(isDuplicateCompanyInactivePageError(inactiveOpFailure, false)).toBe(
+      true,
+    );
+    expect(isDuplicateCompanyInactivePageError(inactiveOpFailure, true)).toBe(
+      false,
+    );
+    expect(
+      isDuplicateCompanyInactivePageError(inactiveOpFailure, undefined),
+    ).toBe(false);
+  });
+
+  it("resolves availability employees notice without generic suspension copy", () => {
+    const notice = resolveAvailabilityEmployeesLoadNotice(
+      inactiveOpFailure,
+      false,
+    );
+    expect(notice).toBe(AVAILABILITY_EMPLOYEES_LIST_SUSPENDED_MESSAGE);
+    expect(notice).not.toContain("Reative a empresa");
+  });
+
+  it("collectRelatedFailureMessages skips duplicate operational errors", () => {
+    const failures: string[] = [];
+    collectRelatedFailureMessages(failures, httpError(403, {
+      code: COMPANY_INACTIVE_ERROR_CODES.COMPANY_INACTIVE_OPERATION,
+    }), false);
+    expect(failures).toEqual([]);
+    collectRelatedFailureMessages(
+      failures,
+      httpError(500, { message: "Erro interno do servidor." }),
+      false,
+    );
+    expect(failures.length).toBe(1);
+  });
+
+  it("getPageLoadErrorPresentation suppresses duplicate load errors", () => {
+    expect(getPageLoadErrorPresentation(inactiveOpFailure, false)).toEqual({
+      message: null,
+      retryable: false,
+    });
+    const serverFailure = getApiError(
+      httpError(500, { message: "Erro interno do servidor." }),
+    );
+    expect(getPageLoadErrorPresentation(serverFailure, false)).toEqual({
+      message: "Erro interno do servidor.",
+      retryable: true,
+    });
+  });
+
+  it("formatRelatedFailuresMessage returns null when all failures were filtered", () => {
+    expect(
+      formatRelatedFailuresMessage([], "Prefixo."),
+    ).toBeNull();
   });
 });
 

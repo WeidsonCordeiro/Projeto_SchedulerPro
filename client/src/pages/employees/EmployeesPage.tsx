@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import employeesApi from "../../api/endpoints/employees.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import { getApiError, getFriendlyErrorMessage, getPageLoadErrorPresentation } from "../../api/errors";
 import DeleteEmployeeModal from "../../components/employees/DeleteEmployeeModal";
 import EmployeeForm from "../../components/employees/EmployeeForm";
 import { getEmployeeAbilities } from "../../config/employeePermissions";
 import { useAppSelector } from "../../store";
+import { selectCompany } from "../../store/slices/companySlice";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
 import PageHeader from "../../components/common/PageHeader";
@@ -28,6 +29,8 @@ const ROLE_BADGE_CLASS: Record<Role, string> = {
 
 export default function EmployeesPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const actorRole = currentUser?.role ?? null;
   const { canList, canCreate, canEdit, canActivate, canDeactivate, canDelete } =
     getEmployeeAbilities(actorRole);
@@ -35,6 +38,7 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -57,12 +61,16 @@ export default function EmployeesPage() {
        */
       setEmployees((response.data ?? []).filter((e) => e.role !== "CLIENT"));
     } catch (error) {
-      const failure = getApiError(error);
-      setLoadError(getFriendlyErrorMessage(failure));
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      setLoadError(presentation.message);
+      setLoadErrorRetryable(presentation.retryable);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     if (!canList) {
@@ -211,7 +219,9 @@ export default function EmployeesPage() {
       {!isLoading && loadError && (
         <ErrorState
           message={loadError}
-          onRetry={() => void loadEmployees()}
+          onRetry={
+            loadErrorRetryable ? () => void loadEmployees() : undefined
+          }
         />
       )}
 

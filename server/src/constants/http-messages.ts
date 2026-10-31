@@ -22,6 +22,8 @@ export const HttpMessages = {
 
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
+  USER_SUSPENDED_BY_COMPANY_DEACTIVATION:
+    "A empresa está suspensa. O seu acesso operacional está temporariamente indisponível.",
   USER_NOT_UNAUTHORIZED: "Usuário não autorizado.",
   USER_NOT_PERMISSION: "Usuário não possui permissão para executar esta ação.",
   USER_NOT_PREVILEGES:

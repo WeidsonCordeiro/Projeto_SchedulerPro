@@ -7,6 +7,11 @@ import availabilityApi from "../../api/endpoints/availability.api";
 import availabilityExceptionsApi from "../../api/endpoints/availabilityExceptions.api";
 import employeesApi from "../../api/endpoints/employees.api";
 import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
+import {
+  AVAILABILITY_EMPLOYEES_LIST_SUSPENDED_MESSAGE,
+  COMPANY_INACTIVE_FRIENDLY_MESSAGES,
+} from "../../api/errors";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import type { Availability } from "../../types/availability";
@@ -73,9 +78,13 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
   };
 }
 
-function makeStore(role: Role = "OWNER") {
+function makeStore(
+  role: Role = "OWNER",
+  options: { companyIsActive?: boolean } = {},
+) {
+  const { companyIsActive = true } = options;
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
         user: { ...user, role },
@@ -83,6 +92,16 @@ function makeStore(role: Role = "OWNER") {
         isAuthenticated: true,
         isInitializing: false,
         isLoading: false,
+      },
+      company: {
+        company: {
+          id: user.companyId,
+          name: "salao",
+          timezone: "Europe/Lisbon",
+          isActive: companyIsActive,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
       },
     },
   });
@@ -542,6 +561,30 @@ expect(
     expect(
       await screen.findByRole("heading", { name: "Domingo" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows a specific employees notice when company is inactive without generic suspension copy", async () => {
+    vi.mocked(employeesApi.getEmployees).mockRejectedValue(
+      httpError(403, {
+        code: "COMPANY_INACTIVE_OPERATION",
+        message: "A empresa está desactivada. Esta operação não está disponível.",
+      }),
+    );
+    mockAvailability([]);
+
+    renderPage(makeStore("OWNER", { companyIsActive: false }));
+
+    expect(
+      await screen.findByText(AVAILABILITY_EMPLOYEES_LIST_SUSPENDED_MESSAGE),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        COMPANY_INACTIVE_FRIENDLY_MESSAGES.COMPANY_INACTIVE_OPERATION,
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      availabilityApi.getEmployeeAvailabilities,
+    ).toHaveBeenCalledWith(user.id);
   });
 
   it("shows a permission warning and never fetches for CLIENT", () => {

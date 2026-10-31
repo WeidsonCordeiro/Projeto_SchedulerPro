@@ -216,6 +216,34 @@ describe("AuthService.login e refresh", () => {
       statusCode: HttpStatus.FORBIDDEN,
     });
   });
+
+  it("rejeita login de staff suspenso pela desactivação da empresa com código específico", async () => {
+    userRepository.findByEmail.mockResolvedValue(
+      makeUser({
+        role: Role.MANAGER,
+        isActive: false,
+        companyDeactivationSuspended: true,
+      }),
+    );
+    await expect(AuthService.login({ email: "user@example.com", password: "password123" })).rejects.toMatchObject({
+      statusCode: HttpStatus.FORBIDDEN,
+      code: ErrorCode.USER_SUSPENDED_BY_COMPANY_DEACTIVATION,
+    });
+  });
+
+  it("rejeita login de utilizador individualmente inactivo com USER_INACTIVE", async () => {
+    userRepository.findByEmail.mockResolvedValue(
+      makeUser({
+        role: Role.MANAGER,
+        isActive: false,
+        companyDeactivationSuspended: false,
+      }),
+    );
+    await expect(AuthService.login({ email: "user@example.com", password: "password123" })).rejects.toMatchObject({
+      statusCode: HttpStatus.FORBIDDEN,
+      code: ErrorCode.USER_INACTIVE,
+    });
+  });
 });
 
 describe("AuthService.me", () => {

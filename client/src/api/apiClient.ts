@@ -10,7 +10,12 @@ import {
 import { clearCompany } from "../store/slices/companySlice";
 import type { ApiResponse } from "../types/api";
 import type { AuthSession } from "../types/auth";
-import { DEFAULT_SESSION_EXPIRY_MESSAGE, getSessionExpiryMessage } from "./errors";
+import {
+  DEFAULT_SESSION_EXPIRY_MESSAGE,
+  getSessionExpiryMessage,
+  isStaffCompanySuspensionCode,
+} from "./errors";
+import { setStaffCompanyAccessSuspended } from "../store/slices/authSlice";
 
 export const apiClient = axios.create({
   baseURL: env.apiUrl,
@@ -107,11 +112,24 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
+    const status = error.response?.status;
+
+    if (
+      status === 403 &&
+      axios.isAxiosError<ApiResponse>(error) &&
+      isStaffCompanySuspensionCode(error.response?.data?.code)
+    ) {
+      const auth = store.getState().auth;
+      if (!auth.staffCompanyAccessSuspended) {
+        store.dispatch(setStaffCompanyAccessSuspended(true));
+      }
+      return Promise.reject(error);
+    }
 
     // Apenas 401 relacionados à sessão disparam refresh/logout.
     // 403 (EMAIL_NOT_VERIFIED, CLIENT_LINK_REQUIRED, RBAC etc.) mantém o
     // comportamento atual conforme a regra desta stage.
-    if (!original || error.response?.status !== 401) {
+    if (!original || status !== 401) {
       return Promise.reject(error);
     }
 

@@ -3,10 +3,15 @@ import dashboardApi from "../../api/endpoints/dashboard.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import {
+  collectRelatedFailureMessages,
+  formatRelatedFailuresMessage,
+  getApiError,
+  getPageLoadErrorPresentation,
+} from "../../api/errors";
 import { buildReportRange } from "../../config/reportPeriod";
 import { useAppSelector } from "../../store";
-import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import { selectCompany, selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
@@ -30,6 +35,11 @@ const UPCOMING_LIMIT = 5;
 
 export default function DashboardPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
+  const staffCompanyAccessSuspended = useAppSelector(
+    (state) => state.auth.staffCompanyAccessSuspended,
+  );
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const timezone = useAppSelector(selectCompanyTimezone);
 
   const canListEmployees =
@@ -43,6 +53,7 @@ export default function DashboardPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [relatedError, setRelatedError] = useState<string | null>(null);
 
   const todayRange = useMemo(
@@ -88,31 +99,35 @@ export default function DashboardPage() {
     try {
       await loadClients();
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       await loadServices();
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     if (canListEmployees) {
       try {
         await loadEmployees();
       } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
+        collectRelatedFailureMessages(failures, error, companyIsActive);
       }
     }
 
     setRelatedError(
-      failures.length > 0
-        ? `Não foi possível carregar alguns nomes. ${failures.join(" ")}`
-        : null,
+      formatRelatedFailuresMessage(
+        failures,
+        "Não foi possível carregar alguns nomes.",
+      ),
     );
-  }, [loadClients, loadServices, loadEmployees, canListEmployees]);
+  }, [loadClients, loadServices, loadEmployees, canListEmployees, companyIsActive]);
 
   const loadAll = useCallback(async () => {
+    if (staffCompanyAccessSuspended) {
+      return;
+    }
     setIsLoading(true);
     setLoadError(null);
     setRelatedError(null);
@@ -120,14 +135,21 @@ export default function DashboardPage() {
     try {
       await loadSummary();
     } catch (error) {
-      setLoadError(getFriendlyErrorMessage(getApiError(error)));
-      setIsLoading(false);
-      return;
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      if (presentation.message) {
+        setLoadError(presentation.message);
+        setLoadErrorRetryable(presentation.retryable);
+        setIsLoading(false);
+        return;
+      }
     }
 
     await loadRelated();
     setIsLoading(false);
-  }, [loadSummary, loadRelated]);
+  }, [loadSummary, loadRelated, staffCompanyAccessSuspended, companyIsActive]);
 
   useEffect(() => {
     void loadAll();
@@ -181,7 +203,10 @@ export default function DashboardPage() {
     return (
       <section>
         {pageHeader}
-        <ErrorState message={loadError} onRetry={() => void loadAll()} />
+        <ErrorState
+          message={loadError}
+          onRetry={loadErrorRetryable ? () => void loadAll() : undefined}
+        />
       </section>
     );
   }

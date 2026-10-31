@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import reportsApi from "../../api/endpoints/reports.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import {
+  collectRelatedFailureMessages,
+  formatRelatedFailuresMessage,
+  getApiError,
+  getPageLoadErrorPresentation,
+} from "../../api/errors";
 import { getReportAbilities } from "../../config/reportPermissions";
 import {
   buildReportRange,
@@ -10,7 +15,7 @@ import {
   type ReportRangeISO,
 } from "../../config/reportPeriod";
 import { useAppSelector } from "../../store";
-import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import { selectCompany, selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { AppointmentStatus } from "../../types/appointment";
 import type {
   ReportCancellations,
@@ -107,6 +112,8 @@ function customMonthBounds(timezone: string) {
 
 export default function ReportsPage() {
   const user = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const timezone = useAppSelector(selectCompanyTimezone);
   const { canView } = getReportAbilities(user?.role ?? null);
 
@@ -139,6 +146,7 @@ export default function ReportsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [relatedError, setRelatedError] = useState<string | null>(null);
 
   const range = useMemo<ReportRangeISO | null>(() => {
@@ -170,9 +178,16 @@ export default function ReportsPage() {
       const response = await reportsApi.getOverview(params);
       setOverview(response.data ?? EMPTY_OVERVIEW);
     } catch (error) {
-      setLoadError(getFriendlyErrorMessage(getApiError(error)));
-      setIsLoading(false);
-      return;
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      if (presentation.message) {
+        setLoadError(presentation.message);
+        setLoadErrorRetryable(presentation.retryable);
+        setIsLoading(false);
+        return;
+      }
     }
 
     const failures: string[] = [];
@@ -181,46 +196,45 @@ export default function ReportsPage() {
       const response = await reportsApi.getRevenue(params);
       setRevenue(response.data ?? EMPTY_REVENUE);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getTopServices({ ...params, limit: 5 });
       setTopServices(response.data ?? []);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getEmployees(params);
       setEmployees(response.data ?? []);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getClients({ ...params, limit: 5 });
       setClients(response.data ?? EMPTY_CLIENTS);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getCancellations(params);
       setCancellations(response.data ?? EMPTY_CANCELLATIONS);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     setRelatedError(
-      failures.length > 0
-        ? `Não foi possível carregar parte dos relatórios. ${failures.join(
-            " "
-          )}`
-        : null
+      formatRelatedFailuresMessage(
+        failures,
+        "Não foi possível carregar parte dos relatórios.",
+      ),
     );
     setIsLoading(false);
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     if (!canView) {
@@ -375,7 +389,9 @@ export default function ReportsPage() {
       {!isLoading && loadError && (
         <ErrorState
           message={loadError}
-          onRetry={() => void loadReports(range)}
+          onRetry={
+            loadErrorRetryable ? () => void loadReports(range) : undefined
+          }
         />
       )}
 

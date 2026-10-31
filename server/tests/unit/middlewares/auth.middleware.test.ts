@@ -20,6 +20,7 @@ const activeUser = {
   companyId: { toString: () => "db-company" },
   role: "MANAGER",
   isActive: true,
+  companyDeactivationSuspended: false,
   lockUntil: null,
   emailVerified: true,
 };
@@ -73,7 +74,7 @@ describe("AuthMiddleware", () => {
 
   it.each([
     ["inexistente/soft-deleted", null, 401],
-    ["inativo", { ...activeUser, isActive: false }, 403],
+    ["inativo", { ...activeUser, isActive: false, companyDeactivationSuspended: false }, 403],
     ["bloqueado", { ...activeUser, lockUntil: new Date(Date.now() + 60_000) }, 403],
     ["não verificado", { ...activeUser, emailVerified: false }, 403],
     ["CLIENT sem clientId (fail closed)", { ...activeUser, role: "CLIENT", emailVerified: true }, 403],
@@ -144,5 +145,38 @@ describe("AuthMiddleware", () => {
     const req = { cookies: { accessToken: "token" } } as never;
     await AuthMiddleware.authenticate(req, {} as never, next);
     expect(next).toHaveBeenCalledOnce();
+  });
+
+  it("rejeita staff suspenso pela desactivação da empresa com código específico", async () => {
+    userRepository.findByIdForAccessControl.mockResolvedValue({
+      ...activeUser,
+      isActive: false,
+      companyDeactivationSuspended: true,
+    });
+    jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "MANAGER", type: "access", sessionId: "sid" });
+    const next = vi.fn();
+    await expect(
+      AuthMiddleware.authenticate({ cookies: { accessToken: "token" } } as never, {} as never, next),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: "USER_SUSPENDED_BY_COMPANY_DEACTIVATION",
+    });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("rejeita utilizador individualmente inactivo com USER_INACTIVE", async () => {
+    userRepository.findByIdForAccessControl.mockResolvedValue({
+      ...activeUser,
+      isActive: false,
+      companyDeactivationSuspended: false,
+    });
+    jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "MANAGER", type: "access", sessionId: "sid" });
+    const next = vi.fn();
+    await expect(
+      AuthMiddleware.authenticate({ cookies: { accessToken: "token" } } as never, {} as never, next),
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: "USER_INACTIVE",
+    });
   });
 });

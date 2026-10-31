@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import clientsApi from "../../api/endpoints/clients.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import { getApiError, getPageLoadErrorPresentation } from "../../api/errors";
 import ClientForm from "../../components/clients/ClientForm";
 import DeleteClientModal from "../../components/clients/DeleteClientModal";
 import SendClientInviteModal from "../../components/clients/SendClientInviteModal";
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
+import { selectCompany } from "../../store/slices/companySlice";
 import type { Client } from "../../types/client";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -16,6 +17,8 @@ import DashboardCard from "../../components/common/DashboardCard";
 
 export default function ClientsPage() {
   const user = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const { canCreate, canUpdate, canDelete, canInvite } = getClientAbilities(
     user?.role ?? null
   );
@@ -23,6 +26,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -37,12 +41,16 @@ export default function ClientsPage() {
       const response = await clientsApi.getClients();
       setClients(response.data ?? []);
     } catch (error) {
-      const failure = getApiError(error);
-      setLoadError(getFriendlyErrorMessage(failure));
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      setLoadError(presentation.message);
+      setLoadErrorRetryable(presentation.retryable);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     void loadClients();
@@ -141,7 +149,7 @@ export default function ClientsPage() {
       {!isLoading && loadError && (
         <ErrorState
           message={loadError}
-          onRetry={() => void loadClients()}
+          onRetry={loadErrorRetryable ? () => void loadClients() : undefined}
         />
       )}
 

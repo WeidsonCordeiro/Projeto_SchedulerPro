@@ -20,6 +20,11 @@ export interface AuthState {
    * o que mantém a compatibilidade com testes e estados pré-existentes.
    */
   sessionExpirationMessage?: string | null;
+  /**
+   * Staff (MANAGER/EMPLOYEE) com sessão válida mas empresa desactivada.
+   * Ausente/undefined equivale a false (compatível com testes e estados parciais).
+   */
+  staffCompanyAccessSuspended?: boolean;
 }
 
 export const initialState: AuthState = {
@@ -29,6 +34,7 @@ export const initialState: AuthState = {
   isInitializing: true,
   isLoading: false,
   sessionExpirationMessage: null,
+  staffCompanyAccessSuspended: false,
 };
 
 const authSlice = createSlice({
@@ -45,6 +51,7 @@ const authSlice = createSlice({
       // Login/refresh bem-sucedidos descartam qualquer mensagem de expiração
       // anterior para não reaparecer em uma próxima visita ao /login.
       state.sessionExpirationMessage = null;
+      state.staffCompanyAccessSuspended = false;
     },
     setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
@@ -63,6 +70,14 @@ const authSlice = createSlice({
       // O interceptor define a mensagem antes de limpar as credenciais; se
       // este reducer apagasse o campo, o feedback se perderia ao redirecionar
       // para /login. A mensagem é consumida e limpa pela LoginPage.
+      state.staffCompanyAccessSuspended = false;
+    },
+    setStaffCompanyAccessSuspended(state, action: PayloadAction<boolean>) {
+      if (action.payload) {
+        state.staffCompanyAccessSuspended = true;
+      } else {
+        state.staffCompanyAccessSuspended = false;
+      }
     },
     setSessionExpirationMessage(state, action: PayloadAction<string>) {
       state.sessionExpirationMessage = action.payload;
@@ -80,6 +95,7 @@ export const {
   clearCredentials,
   setSessionExpirationMessage,
   clearSessionExpirationMessage,
+  setStaffCompanyAccessSuspended,
 } = authSlice.actions;
 
 export default authSlice.reducer;

@@ -260,17 +260,13 @@ export default function CompanyPage() {
                     {copyMessage}
                   </div>
                 )}
+                {!company.isActive && (
+                  <p className="form-text mb-0" role="note">
+                    Enquanto a empresa estiver suspensa, este link não aceita
+                    novos agendamentos.
+                  </p>
+                )}
               </div>
-
-              {!company.isActive && (
-                <div className="alert alert-warning" role="alert">
-                  A empresa está inativa. A edição, a logo e as operações
-                  operacionais estão bloqueadas. Utilizadores que não sejam
-                  OWNER ficam suspensos e o agendamento público deixa de estar
-                  disponível. O OWNER pode consultar estes dados e reativar a
-                  empresa abaixo.
-                </div>
-              )}
 
               {canEditProfile ? (
                 <CompanyForm
@@ -284,7 +280,9 @@ export default function CompanyPage() {
             </div>
           </div>
 
-          <div className="card">
+          <div
+            className={`card${!company.isActive && canActivate ? " border border-primary" : ""}`}
+          >
             <div className="card-header">
               <h2 className="h5 mb-0">Estado operacional</h2>
             </div>
@@ -319,6 +317,7 @@ export default function CompanyPage() {
 
               {!company.isActive && canActivate && (
                 <>
+                  <h3 className="h6 mb-2">Reativar a empresa</h3>
                   <p className="text-muted">
                     Reativar restaura o acesso dos utilizadores suspendidos pela
                     desativação e volta a permitir o agendamento público.

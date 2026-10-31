@@ -134,7 +134,11 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
   };
 }
 
-function makeStore(role: Role | null = "OWNER", timezone?: string) {
+function makeStore(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
   return configureStore({
     reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
@@ -151,7 +155,7 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
               id: "company1",
               name: "salao do centro",
               timezone,
-              isActive: true,
+              isActive: companyIsActive,
               createdAt: "2026-01-01T00:00:00.000Z",
               updatedAt: "2026-01-01T00:00:00.000Z",
             },
@@ -161,9 +165,13 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
   });
 }
 
-function renderDashboard(role: Role | null = "OWNER", timezone?: string) {
+function renderDashboard(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
   return render(
-    <Provider store={makeStore(role, timezone ?? "Europe/Lisbon")}>
+    <Provider store={makeStore(role, timezone ?? "Europe/Lisbon", companyIsActive)}>
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
@@ -450,5 +458,54 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByText("02:30", { selector: ".text-nowrap" }),
     ).toBeInTheDocument();
+  });
+
+  it("does not fetch data when staff company access is suspended", () => {
+    const store = configureStore({
+      reducer: { auth: authReducer, company: companyReducer },
+      preloadedState: {
+        auth: {
+          user: { ...user, role: "MANAGER" as const },
+          mustChangePassword: false,
+          isAuthenticated: true,
+          isInitializing: false,
+          isLoading: false,
+          staffCompanyAccessSuspended: true,
+        },
+        company: { company: null },
+      },
+    });
+
+    render(
+      <Provider store={store}>
+        <MemoryRouter>
+          <DashboardPage />
+        </MemoryRouter>
+      </Provider>,
+    );
+
+    expect(dashboardApi.getSummary).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button", { name: /tentar novamente/i })).not.toBeInTheDocument();
+  });
+
+  it("does not show duplicate inactive-company related alerts when company is inactive", async () => {
+    const inactiveError = httpError(403, {
+      code: "COMPANY_INACTIVE_OPERATION",
+      message: "A empresa está desactivada. Esta operação não está disponível.",
+    });
+    mockSummaryResponse(makeSummary());
+    vi.mocked(clientsApi.getClients).mockRejectedValue(inactiveError);
+    vi.mocked(servicesApi.getServices).mockRejectedValue(inactiveError);
+    vi.mocked(employeesApi.getEmployees).mockRejectedValue(inactiveError);
+
+    renderDashboard("OWNER", "Europe/Lisbon", false);
+
+    expect(
+      await screen.findByRole("heading", { name: "Resumo do dia" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Não foi possível carregar alguns nomes/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Reative a empresa/i)).not.toBeInTheDocument();
   });
 });

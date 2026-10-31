@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import servicesApi from "../../api/endpoints/services.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import { getApiError, getFriendlyErrorMessage, getPageLoadErrorPresentation } from "../../api/errors";
 import ServiceForm from "../../components/services/ServiceForm";
 import DeleteServiceModal from "../../components/services/DeleteServiceModal";
 import { getServiceAbilities } from "../../config/servicePermissions";
 import { useAppSelector } from "../../store";
+import { selectCompany } from "../../store/slices/companySlice";
 import type { Service } from "../../types/service";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -21,6 +22,8 @@ function formatPrice(price: number): string {
 
 export default function ServicesPage() {
   const user = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const { canCreate, canUpdate, canDelete } = getServiceAbilities(
     user?.role ?? null
   );
@@ -28,6 +31,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -43,12 +47,16 @@ export default function ServicesPage() {
       const response = await servicesApi.getServices();
       setServices(response.data ?? []);
     } catch (error) {
-      const failure = getApiError(error);
-      setLoadError(getFriendlyErrorMessage(failure));
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      setLoadError(presentation.message);
+      setLoadErrorRetryable(presentation.retryable);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     void loadServices();
@@ -171,7 +179,9 @@ export default function ServicesPage() {
       {!isLoading && loadError && (
         <ErrorState
           message={loadError}
-          onRetry={() => void loadServices()}
+          onRetry={
+            loadErrorRetryable ? () => void loadServices() : undefined
+          }
         />
       )}
 
