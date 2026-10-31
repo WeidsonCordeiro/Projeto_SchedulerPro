@@ -213,6 +213,8 @@ export const HttpMessages = {
   REPORT_CLIENTS_FOUND: "Clientes recorrentes gerados com sucesso.",
   REPORT_CANCELLATIONS_FOUND: "Relatório de cancelamentos gerado com sucesso.",
 
+  DASHBOARD_SUMMARY_FOUND: "Resumo do dashboard gerado com sucesso.",
+
   /*Notificações*/
   NOTIFICATIONS_FOUND: "Notificações encontradas.",
   NOTIFICATION_NOT_FOUND: "Notificação não encontrada.",

@@ -27,6 +27,7 @@ import publicBookingRoutes from "../modules/public-booking/routes/PublicBookingR
 import availabilityRoutes from "../modules/availability/routes/AvailabilityRoutes";
 import availabilityExceptionRoutes from "../modules/availability/routes/AvailabilityExceptionRoutes";
 import reportRoutes from "../modules/reports/routes/ReportRoutes";
+import dashboardRoutes from "../modules/dashboard/routes/DashboardRoutes";
 import notificationRoutes from "../modules/notifications/routes/NotificationRoutes";
 import publicClientInviteRoutes from "../modules/client-invites/routes/PublicClientInviteRoutes";
 
@@ -65,6 +66,7 @@ router.use("/public", publicClientInviteRoutes);
 router.use("/availability", availabilityRoutes);
 router.use("/availability-exceptions", availabilityExceptionRoutes);
 router.use("/reports", reportRoutes);
+router.use("/dashboard", dashboardRoutes);
 router.use("/notifications", notificationRoutes);
 
 /**
