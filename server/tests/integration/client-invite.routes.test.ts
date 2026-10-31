@@ -142,6 +142,7 @@ beforeEach(() => {
   companyRepository.findById.mockResolvedValue({
     _id: ref(ids.companyA),
     name: "Studio Aurora",
+    isActive: true,
   });
   inviteRepository.create.mockResolvedValue({});
   inviteRepository.revokePendingForClient.mockResolvedValue(undefined);

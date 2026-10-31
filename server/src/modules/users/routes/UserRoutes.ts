@@ -18,6 +18,7 @@ import { updateUserValidator } from "../validators/update-user.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { changePasswordValidator } from "../validators/change-password.validator";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import { createUserValidator } from "../validators/create-user.validator";
 import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
@@ -28,6 +29,7 @@ router.get(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_READ),
   UserController.findAll,
 );
@@ -36,6 +38,7 @@ router.post(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_CREATE),
   createUserValidator,
   validateRequest,
@@ -47,6 +50,7 @@ router.get(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_READ),
   UserController.findById,
 );
@@ -56,6 +60,7 @@ router.put(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_UPDATE),
   updateUserValidator,
   validateRequest,
@@ -67,6 +72,7 @@ router.delete(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_DELETE),
   UserController.delete,
 );
@@ -76,6 +82,7 @@ router.patch(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_UPDATE),
   UserController.activate,
 );
@@ -85,6 +92,7 @@ router.patch(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_UPDATE),
   UserController.deactivate,
 );
@@ -112,6 +120,7 @@ router.post(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_UPDATE),
   uploadSingleImage("photo"),
   UserController.uploadPhoto,
@@ -122,6 +131,7 @@ router.delete(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.USER_UPDATE),
   UserController.removePhoto,
 );

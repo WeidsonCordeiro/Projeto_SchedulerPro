@@ -31,6 +31,13 @@ vi.mock("../../../src/middlewares/require-password-change.middleware", () => ({
   default: passwordChangeMock,
 }));
 
+vi.mock("../../../src/middlewares/require-operational-company.middleware", () => ({
+  default: {
+    requireOperationalCompany: (_req: Request, _res: Response, next: NextFunction) =>
+      next(),
+  },
+}));
+
 import userRoutes from "../../../src/modules/users/routes/UserRoutes";
 import { Role } from "../../../src/constants/roles";
 import { HttpStatus } from "../../../src/constants/http-status";

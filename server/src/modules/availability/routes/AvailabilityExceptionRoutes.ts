@@ -9,6 +9,7 @@ import { createAvailabilityExceptionValidator } from "../validators/create-avail
 import { updateAvailabilityExceptionValidator } from "../validators/update-availability-exception.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 
 const routes = Router();
 
@@ -16,6 +17,7 @@ routes.post(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.AVAILABILITY_CREATE),
   createAvailabilityExceptionValidator,
   validateRequest,
@@ -26,6 +28,7 @@ routes.get(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.AVAILABILITY_READ),
   query("employeeId").optional().isMongoId().withMessage("ID do funcionário inválido."),
   validateRequest,
@@ -36,6 +39,7 @@ routes.get(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.AVAILABILITY_READ),
   AvailabilityExceptionController.findById,
@@ -45,6 +49,7 @@ routes.patch(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.AVAILABILITY_UPDATE),
   updateAvailabilityExceptionValidator,
@@ -56,6 +61,7 @@ routes.delete(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.AVAILABILITY_DELETE),
   AvailabilityExceptionController.delete,

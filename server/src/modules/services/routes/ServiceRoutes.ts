@@ -22,6 +22,7 @@ import { createServiceValidator } from "../validators/create-service.validator";
 import { updateServiceValidator } from "../validators/update-service.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 
 const router = Router();
 
@@ -35,6 +36,7 @@ router.get(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.SERVICE_READ),
   ServiceController.findAll,
 );
@@ -43,6 +45,7 @@ router.get(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.SERVICE_READ),
   ServiceController.findById,
@@ -58,6 +61,7 @@ router.post(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.SERVICE_CREATE),
   createServiceValidator,
   validateRequest,
@@ -74,6 +78,7 @@ router.patch(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.SERVICE_UPDATE),
   updateServiceValidator,
@@ -91,6 +96,7 @@ router.delete(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.SERVICE_DELETE),
   ServiceController.delete,
@@ -106,6 +112,7 @@ router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.SERVICE_UPDATE),
   ServiceController.activate,
@@ -121,6 +128,7 @@ router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.SERVICE_UPDATE),
   ServiceController.deactivate,

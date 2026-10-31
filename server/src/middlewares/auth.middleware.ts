@@ -23,6 +23,7 @@ import { NextFunction, Request, Response } from "express";
 
 import JwtProvider from "../providers/security/JwtProvider";
 import UserRepository from "../modules/users/repositories/UserRepository";
+import CompanyRepository from "../modules/companies/repositories/CompanyRepository";
 import { AppError } from "../errors/AppError";
 import { HttpMessages } from "../constants/http-messages";
 import { HttpStatus } from "../constants/http-status";
@@ -30,6 +31,7 @@ import { TokenType } from "../constants/token-type";
 import { Role } from "../constants/roles";
 import SessionService from "../modules/auth/services/SessionService";
 import { ErrorCode } from "../constants/error-codes";
+import { assertUserMayAuthenticateAgainstCompany } from "../modules/auth/utils/assert-company-active-for-auth";
 
 class AuthMiddleware {
   private readonly jwtProvider = JwtProvider;
@@ -98,6 +100,9 @@ class AuthMiddleware {
         HttpStatus.FORBIDDEN,
       );
     }
+
+    const company = await CompanyRepository.findById(user.companyId);
+    assertUserMayAuthenticateAgainstCompany(user, company);
 
     await this.sessionService.touch(payload.sessionId);
 

@@ -23,6 +23,7 @@ import { authorize } from "../../../middlewares/role.middleware";
 import { Role } from "../../../constants/roles";
 import { listReportsValidator } from "../validators/list-reports.validator";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 
 const reportRoutes = Router();
 
@@ -32,6 +33,7 @@ const reportRoutes = Router();
 const reportGuards = [
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   authorize(Role.OWNER, Role.ADMIN, Role.MANAGER),
   listReportsValidator,
   validateRequest,

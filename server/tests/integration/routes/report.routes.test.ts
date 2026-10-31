@@ -9,7 +9,7 @@ const ids = {
   client: "507f1f77bcf86cd799439015",
 };
 
-const { authUser, reportRepository, userRepository } = vi.hoisted(() => ({
+const { authUser, reportRepository, userRepository, companyRepository } = vi.hoisted(() => ({
   authUser: {
     value: {
       userId: "actor",
@@ -28,6 +28,7 @@ const { authUser, reportRepository, userRepository } = vi.hoisted(() => ({
     findById: vi.fn(),
     findByIdForAccessControl: vi.fn(),
   },
+  companyRepository: { findById: vi.fn() },
 }));
 
 vi.mock("../../../src/middlewares/auth.middleware", () => ({
@@ -43,6 +44,9 @@ vi.mock("../../../src/modules/reports/repositories/ReportRepository", () => ({
 }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
+}));
+vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({
+  default: companyRepository,
 }));
 
 import app from "../../../src/app";
@@ -84,6 +88,8 @@ const client = {
 beforeEach(() => {
   vi.clearAllMocks();
   authUser.value = { userId: "actor", companyId: ids.companyA, role: Role.OWNER };
+
+  companyRepository.findById.mockResolvedValue({ isActive: true });
 
   userRepository.findById.mockResolvedValue({ mustChangePassword: false, isActive: true, lockUntil: null });
   userRepository.findByIdForAccessControl.mockResolvedValue({ mustChangePassword: false, isActive: true, lockUntil: null });

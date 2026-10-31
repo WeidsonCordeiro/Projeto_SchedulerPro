@@ -21,6 +21,8 @@ import { Types } from "mongoose";
 import { CompanyDocument } from "../models/Company.model";
 import imageProvider from "../../../providers/images/CloudinaryImageProvider";
 import Logger from "../../../providers/logger";
+import UserRepository from "../../users/repositories/UserRepository";
+import { withCompanyLifecycleTransaction } from "./company-lifecycle-transaction";
 import {
   ImageEntity,
   type StoredImage,
@@ -263,9 +265,30 @@ class CompanyService {
       throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const updatedCompany = await CompanyRepository.activate(id);
+    const updatedCompany = await withCompanyLifecycleTransaction(
+      async (session) => {
+        const activated =
+          company.isActive === true
+            ? company
+            : await CompanyRepository.activate(id, session);
 
-    return CompanyMapper.toResponse(updatedCompany!);
+        if (!activated) {
+          throw new AppError(
+            HttpMessages.COMPANY_NOT_FOUND,
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        await UserRepository.restoreUsersSuspendedByCompanyDeactivation(
+          id,
+          session,
+        );
+
+        return activated;
+      },
+    );
+
+    return CompanyMapper.toResponse(updatedCompany);
   }
 
   /**
@@ -281,9 +304,40 @@ class CompanyService {
       throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const updatedCompany = await CompanyRepository.deactivate(id);
+    if (company.isActive === false) {
+      await withCompanyLifecycleTransaction(async (session) => {
+        await UserRepository.suspendActiveNonOwnerStaffForCompanyDeactivation(
+          id,
+          session,
+        );
 
-    return CompanyMapper.toResponse(updatedCompany!);
+        return company;
+      });
+
+      return CompanyMapper.toResponse(company);
+    }
+
+    const updatedCompany = await withCompanyLifecycleTransaction(
+      async (session) => {
+        const deactivated = await CompanyRepository.deactivate(id, session);
+
+        if (!deactivated) {
+          throw new AppError(
+            HttpMessages.COMPANY_NOT_FOUND,
+            HttpStatus.NOT_FOUND,
+          );
+        }
+
+        await UserRepository.suspendActiveNonOwnerStaffForCompanyDeactivation(
+          id,
+          session,
+        );
+
+        return deactivated;
+      },
+    );
+
+    return CompanyMapper.toResponse(updatedCompany);
   }
 }
 

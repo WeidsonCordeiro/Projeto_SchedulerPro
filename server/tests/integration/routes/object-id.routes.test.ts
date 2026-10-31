@@ -29,6 +29,16 @@ vi.mock("../../../src/middlewares/require-password-change.middleware", () => ({
   },
 }));
 
+vi.mock("../../../src/middlewares/require-operational-company.middleware", () => ({
+  default: {
+    requireOperationalCompany: (
+      _req: express.Request,
+      _res: express.Response,
+      next: express.NextFunction,
+    ) => next(),
+  },
+}));
+
 vi.mock("../../../src/modules/services/controllers/ServiceController", () => ({
   default: {
     findAll: (_req: express.Request, res: express.Response) => res.json([]),

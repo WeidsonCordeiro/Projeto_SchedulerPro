@@ -68,7 +68,7 @@ describe("soft delete nos repositories", () => {
     mocks.user.findOne.mockReturnValue({ select });
     await expect(UserRepository.findByIdForAccessControl(id)).resolves.toBeNull();
     expect(mocks.user.findOne).toHaveBeenCalledWith(activeFilter);
-    expect(select).toHaveBeenCalledWith("_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified");
+    expect(select).toHaveBeenCalledWith("_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified companyDeactivationSuspended");
   });
 
   it("UserRepository.findByClientIdIncludingDeleted não filtra por deletedAt", async () => {

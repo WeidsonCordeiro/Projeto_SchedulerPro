@@ -67,6 +67,10 @@ export const HttpMessages = {
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
   COMPANY_INACTIVE: "A empresa não está ativa para receber agendamentos.",
+  COMPANY_INACTIVE_OPERATION:
+    "A empresa está desactivada. Esta operação não está disponível.",
+  COMPANY_INACTIVE_ACCESS:
+    "A empresa está desactivada. O acesso ao sistema não está disponível.",
   COMPANY_LOGO_UPDATED: "Logo da empresa atualizada com sucesso.",
   COMPANY_LOGO_REMOVED: "Logo da empresa removida com sucesso.",
 

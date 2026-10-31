@@ -53,7 +53,7 @@ import app from "../../src/app";
 import { Role } from "../../src/constants/roles";
 
 const ref = (id: string) => ({ toString: () => id });
-const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon" };
+const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon", isActive: true };
 const employeeA = { _id: ref(ids.employee), companyId: ref(ids.companyA), role: Role.EMPLOYEE, isActive: true, deletedAt: null };
 
 const exceptionA = (extra: Record<string, unknown> = {}) => ({

@@ -69,6 +69,10 @@ export interface IUser {
    * Status
    */
   isActive: boolean;
+  /**
+   * Suspensão reversível provocada pela desactivação da empresa.
+   */
+  companyDeactivationSuspended: boolean;
   emailVerified: boolean;
   phoneVerified: boolean;
 
@@ -195,6 +199,11 @@ const UserSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+
+    companyDeactivationSuspended: {
+      type: Boolean,
+      default: false,
     },
 
     emailVerified: {
