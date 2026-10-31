@@ -191,6 +191,58 @@ class UserRepository {
   }
 
   /**
+   * Suspende utilizadores activos (excepto OWNER) quando a empresa
+   * é desactivada. Não altera soft-deletes nem contas já inactivas.
+   */
+  public async suspendActiveNonOwnerStaffForCompanyDeactivation(
+    companyId: string | Types.ObjectId,
+    session?: ClientSession,
+  ): Promise<number> {
+    const result = await User.updateMany(
+      {
+        companyId,
+        role: { $ne: Role.OWNER },
+        isActive: true,
+        deletedAt: null,
+      },
+      {
+        $set: {
+          isActive: false,
+          companyDeactivationSuspended: true,
+        },
+      },
+      { session },
+    );
+
+    return result.modifiedCount;
+  }
+
+  /**
+   * Restaura apenas utilizadores suspensos pela desactivação da empresa.
+   */
+  public async restoreUsersSuspendedByCompanyDeactivation(
+    companyId: string | Types.ObjectId,
+    session?: ClientSession,
+  ): Promise<number> {
+    const result = await User.updateMany(
+      {
+        companyId,
+        companyDeactivationSuspended: true,
+        deletedAt: null,
+      },
+      {
+        $set: {
+          isActive: true,
+          companyDeactivationSuspended: false,
+        },
+      },
+      { session },
+    );
+
+    return result.modifiedCount;
+  }
+
+  /**
    * ==========================================================
    * Atualiza a senha de um utilizador.
    * ==========================================================
@@ -222,7 +274,7 @@ class UserRepository {
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
     return User.findOne({ _id: id, deletedAt: null }).select(
-      "_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified",
+      "_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified companyDeactivationSuspended",
     );
   }
 

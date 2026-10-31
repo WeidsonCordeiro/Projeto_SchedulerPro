@@ -25,6 +25,7 @@ import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import { Role } from "../../../constants/roles";
 import { listNotificationsValidator } from "../validators/list-notifications.validator";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 
 const notificationRoutes = Router();
 
@@ -34,6 +35,7 @@ const notificationRoutes = Router();
 const notificationGuards = [
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   authorize(Role.OWNER, Role.ADMIN, Role.MANAGER, Role.EMPLOYEE),
 ];
 

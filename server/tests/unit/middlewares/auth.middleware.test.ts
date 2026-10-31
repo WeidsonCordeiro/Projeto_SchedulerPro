@@ -1,13 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { jwtProvider, userRepository, sessionService } = vi.hoisted(() => ({
+const { jwtProvider, userRepository, companyRepository, sessionService } = vi.hoisted(() => ({
   jwtProvider: { verifyAccessToken: vi.fn() },
   userRepository: { findByIdForAccessControl: vi.fn() },
+  companyRepository: { findById: vi.fn() },
   sessionService: { start: vi.fn(), validate: vi.fn(), touch: vi.fn(), revoke: vi.fn() },
 }));
 
 vi.mock("../../../src/providers/security/JwtProvider", () => ({ default: jwtProvider }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
+vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
 vi.mock("../../../src/modules/auth/services/SessionService", () => ({ default: sessionService }));
 
 import AuthMiddleware from "../../../src/middlewares/auth.middleware";
@@ -26,6 +28,7 @@ describe("AuthMiddleware", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     userRepository.findByIdForAccessControl.mockResolvedValue(activeUser);
+    companyRepository.findById.mockResolvedValue({ isActive: true });
     sessionService.validate.mockResolvedValue({});
     sessionService.touch.mockResolvedValue(undefined);
   });
@@ -123,5 +126,23 @@ describe("AuthMiddleware", () => {
     expect(sessionService.touch).not.toHaveBeenCalled();
     expect(userRepository.findByIdForAccessControl).not.toHaveBeenCalled();
     expect(next).not.toHaveBeenCalled();
+  });
+
+  it("rejeita staff com JWT válido quando a empresa está desactivada", async () => {
+    companyRepository.findById.mockResolvedValue({ isActive: false });
+    jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "ADMIN", type: "access", sessionId: "sid" });
+    const next = vi.fn();
+    await expect(AuthMiddleware.authenticate({ cookies: { accessToken: "token" } } as never, {} as never, next)).rejects.toMatchObject({ statusCode: 403 });
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it("permite OWNER com empresa desactivada", async () => {
+    companyRepository.findById.mockResolvedValue({ isActive: false });
+    userRepository.findByIdForAccessControl.mockResolvedValue({ ...activeUser, role: "OWNER" });
+    jwtProvider.verifyAccessToken.mockReturnValue({ userId: "u1", companyId: "c1", role: "OWNER", type: "access", sessionId: "sid" });
+    const next = vi.fn();
+    const req = { cookies: { accessToken: "token" } } as never;
+    await AuthMiddleware.authenticate(req, {} as never, next);
+    expect(next).toHaveBeenCalledOnce();
   });
 });

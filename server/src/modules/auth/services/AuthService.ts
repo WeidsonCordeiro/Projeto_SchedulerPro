@@ -72,6 +72,7 @@ import {
 } from "../../../utils/timezone";
 import SessionService from "./SessionService";
 import { ErrorCode } from "../../../constants/error-codes";
+import { assertUserMayAuthenticateAgainstCompany } from "../utils/assert-company-active-for-auth";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -139,6 +140,8 @@ class AuthService {
     await this.validatePassword(dto.password, user.passwordHash, dto.email);
 
     this.validateUserStatus(user);
+
+    await this.assertCompanyAllowsAuthentication(user);
 
     return this.authenticateWithSession(user);
   }
@@ -249,6 +252,8 @@ class AuthService {
 
     this.validateUserStatus(user);
 
+    await this.assertCompanyAllowsAuthentication(user);
+
     return this.authenticateWithSession(user, payload.sessionId);
   }
 
@@ -352,6 +357,13 @@ class AuthService {
     if (!user.emailVerified) {
       throw new AppError(HttpMessages.EMAIL_NOT_VERIFIED, HttpStatus.FORBIDDEN);
     }
+  }
+
+  private async assertCompanyAllowsAuthentication(
+    user: UserDocument,
+  ): Promise<void> {
+    const company = await this.companyRepository.findById(user.companyId);
+    assertUserMayAuthenticateAgainstCompany(user, company);
   }
 
   /**

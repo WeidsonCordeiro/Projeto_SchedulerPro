@@ -32,6 +32,7 @@ import { createClientValidator } from "../validators/create-client.validator";
 import { updateClientValidator } from "../validators/update-client.validator";
 import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import PasswordChangeMiddleware from "../../../middlewares/require-password-change.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
 
 const router = Router();
@@ -45,6 +46,7 @@ router.post(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.CLIENT_CREATE),
   createClientValidator,
   validateRequest,
@@ -60,6 +62,7 @@ router.get(
   "/",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.CLIENT_READ),
   ClientController.findAll,
 );
@@ -75,6 +78,7 @@ router.get(
   "/me",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   authorize(Role.CLIENT),
   ClientController.findMe,
 );
@@ -93,6 +97,7 @@ router.post(
   "/:id/invite",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   authorize(Role.OWNER, Role.ADMIN),
   ClientInviteController.create,
@@ -112,6 +117,7 @@ router.post(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.CLIENT_UPDATE),
   uploadSingleImage("photo"),
   ClientController.uploadPhoto,
@@ -130,6 +136,7 @@ router.delete(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.removePhoto,
 );
@@ -143,6 +150,7 @@ router.get(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_READ),
   ClientController.findById,
@@ -157,6 +165,7 @@ router.patch(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   updateClientValidator,
@@ -173,6 +182,7 @@ router.patch(
   "/:id/deactivate",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.deactivate,
@@ -187,6 +197,7 @@ router.patch(
   "/:id/activate",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_UPDATE),
   ClientController.activate,
@@ -203,6 +214,7 @@ router.delete(
   "/:id",
   AuthMiddleware.authenticate,
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   validateObjectId("id"),
   hasPermission(Permission.CLIENT_DELETE),
   ClientController.delete,

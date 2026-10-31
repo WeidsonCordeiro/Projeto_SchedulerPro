@@ -49,7 +49,7 @@ import { DEFAULT_TIMEZONE } from "../../../src/utils/timezone";
 const companyId = "507f1f77bcf86cd799439011";
 const userId = "507f1f77bcf86cd799439012";
 const sessionId = "507f1f77bcf86cd799439099";
-const company = { _id: { toString: () => companyId }, name: "Empresa", timezone: "Europe/Lisbon" };
+const company = { _id: { toString: () => companyId }, name: "Empresa", timezone: "Europe/Lisbon", isActive: true };
 const makeUser = (extra = {}) => ({
   _id: { toString: () => userId }, id: userId, name: "User", email: "user@example.com",
   passwordHash: "stored-hash", companyId: { toString: () => companyId }, role: Role.OWNER,
@@ -191,6 +191,30 @@ describe("AuthService.login e refresh", () => {
     await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({ statusCode: HttpStatus.NOT_FOUND });
     jwtProvider.verifyRefreshToken.mockImplementation(() => { throw new Error("invalid token"); });
     await expect(AuthService.refresh("bad-token")).rejects.toThrow("invalid token");
+  });
+
+  it("permite login do OWNER com empresa desactivada", async () => {
+    companyRepository.findById.mockResolvedValue({ ...company, isActive: false });
+    userRepository.findByEmail.mockResolvedValue(makeUser({ role: Role.OWNER }));
+    await expect(AuthService.login({ email: "user@example.com", password: "password123" })).resolves.toMatchObject({
+      tokens: { accessToken: "access-token" },
+    });
+  });
+
+  it("rejeita login de ADMIN com empresa desactivada mesmo activo", async () => {
+    companyRepository.findById.mockResolvedValue({ ...company, isActive: false });
+    userRepository.findByEmail.mockResolvedValue(makeUser({ role: Role.ADMIN }));
+    await expect(AuthService.login({ email: "user@example.com", password: "password123" })).rejects.toMatchObject({
+      statusCode: HttpStatus.FORBIDDEN,
+    });
+  });
+
+  it("rejeita refresh de staff com empresa desactivada", async () => {
+    companyRepository.findById.mockResolvedValue({ ...company, isActive: false });
+    userRepository.findById.mockResolvedValue(makeUser({ role: Role.MANAGER }));
+    await expect(AuthService.refresh("refresh-token")).rejects.toMatchObject({
+      statusCode: HttpStatus.FORBIDDEN,
+    });
   });
 });
 

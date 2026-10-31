@@ -59,7 +59,7 @@ import { Role } from "../../src/constants/roles";
 import { AppointmentStatus } from "../../src/constants/appointment-status";
 
 const ref = (id: string) => ({ toString: () => id });
-const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon" };
+const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon", isActive: true };
 const employeeA = { _id: ref(ids.employee), companyId: ref(ids.companyA), role: Role.EMPLOYEE, isActive: true, deletedAt: null };
 const clientA = { _id: ref(ids.client), companyId: ref(ids.companyA), isActive: true };
 const serviceA = { _id: ref(ids.service), companyId: ref(ids.companyA), isActive: true, duration: 30 };
