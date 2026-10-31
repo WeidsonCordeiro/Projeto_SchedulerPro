@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import appointmentsApi from "../../api/endpoints/appointments.api";
+import dashboardApi from "../../api/endpoints/dashboard.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
-import { formatAppointmentDate } from "../../config/appointmentTime";
+import { buildReportRange } from "../../config/reportPeriod";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
-import type { Appointment, AppointmentStatus } from "../../types/appointment";
+import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import type { Employee, EmployeeRole } from "../../types/employee";
+import type { DashboardSummary } from "../../types/dashboard";
 import DashboardCard from "../../components/common/DashboardCard";
 import DashboardAppointments from "./DashboardAppointments";
-import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
 import ErrorState from "../../components/common/ErrorState";
 import LoadingState from "../../components/common/LoadingState";
@@ -26,17 +26,7 @@ import { Link } from "react-router-dom";
  */
 const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN"];
 
-const UPCOMING_STATUSES: AppointmentStatus[] = ["scheduled", "confirmed"];
-const MAX_UPCOMING = 5;
-
-/**
- * Ordem cronológica de leitura da agenda. Sem isto, "Próximos agendamentos"
- * devolvia os 5 primeiros conforme a ordem do backend, podendo omitir o
- * agendamento mais próximo e mostrar um muito mais distante.
- */
-function byStartAt(a: Appointment, b: Appointment): number {
-  return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
-}
+const UPCOMING_LIMIT = 5;
 
 export default function DashboardPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -46,7 +36,7 @@ export default function DashboardPage() {
     currentUser?.role != null &&
     CAN_LIST_EMPLOYEES_ROLES.includes(currentUser.role);
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -55,10 +45,25 @@ export default function DashboardPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [relatedError, setRelatedError] = useState<string | null>(null);
 
-  const loadAppointments = useCallback(async () => {
-    const response = await appointmentsApi.getAppointments();
-    setAppointments(response.data ?? []);
-  }, []);
+  const todayRange = useMemo(
+    () => buildReportRange("today", timezone),
+    [timezone],
+  );
+
+  const loadSummary = useCallback(async () => {
+    if (!todayRange) {
+      throw new Error(
+        "Não foi possível calcular o período do dia no timezone da empresa.",
+      );
+    }
+
+    const response = await dashboardApi.getSummary({
+      startAt: todayRange.startAt,
+      endAt: todayRange.endAt,
+      upcomingLimit: UPCOMING_LIMIT,
+    });
+    setSummary(response.data ?? null);
+  }, [todayRange]);
 
   const loadClients = useCallback(async () => {
     const response = await clientsApi.getClients();
@@ -73,7 +78,7 @@ export default function DashboardPage() {
   const loadEmployees = useCallback(async () => {
     const response = await employeesApi.getEmployees();
     setEmployees(
-      (response.data ?? []).filter((employee) => employee.role !== "CLIENT")
+      (response.data ?? []).filter((employee) => employee.role !== "CLIENT"),
     );
   }, []);
 
@@ -103,7 +108,7 @@ export default function DashboardPage() {
     setRelatedError(
       failures.length > 0
         ? `Não foi possível carregar alguns nomes. ${failures.join(" ")}`
-        : null
+        : null,
     );
   }, [loadClients, loadServices, loadEmployees, canListEmployees]);
 
@@ -113,7 +118,7 @@ export default function DashboardPage() {
     setRelatedError(null);
 
     try {
-      await loadAppointments();
+      await loadSummary();
     } catch (error) {
       setLoadError(getFriendlyErrorMessage(getApiError(error)));
       setIsLoading(false);
@@ -122,7 +127,7 @@ export default function DashboardPage() {
 
     await loadRelated();
     setIsLoading(false);
-  }, [loadAppointments, loadRelated]);
+  }, [loadSummary, loadRelated]);
 
   useEffect(() => {
     void loadAll();
@@ -130,46 +135,23 @@ export default function DashboardPage() {
 
   const clientNames = useMemo(
     () => new Map(clients.map((c) => [c.id, c.name])),
-    [clients]
+    [clients],
   );
   const serviceNames = useMemo(
     () => new Map(services.map((s) => [s.id, s.name])),
-    [services]
+    [services],
   );
   const employeeNames = useMemo(
     () => new Map(employees.map((e) => [e.id, e.name])),
-    [employees]
+    [employees],
   );
 
-  const todayKey = useMemo(
-    () => formatAppointmentDate(DateTime.now().toISO(), timezone),
-    [timezone]
-  );
+  const todayAppointments: Appointment[] = summary?.todayAppointments ?? [];
+  const upcomingAppointments: Appointment[] =
+    summary?.upcomingAppointments ?? [];
 
-  const todayAppointments = useMemo(
-    () =>
-      appointments
-        .filter(
-          (apt) =>
-            apt.status !== ("cancelled" as AppointmentStatus) &&
-            formatAppointmentDate(apt.startAt, timezone) === todayKey
-        )
-        .sort(byStartAt),
-    [appointments, timezone, todayKey]
-  );
-
-  const upcomingAppointments = useMemo(
-    () =>
-      appointments
-        .filter(
-          (apt) =>
-            UPCOMING_STATUSES.includes(apt.status) &&
-            new Date(apt.startAt).getTime() > Date.now()
-        )
-        .sort(byStartAt)
-        .slice(0, MAX_UPCOMING),
-    [appointments]
-  );
+  const scheduledCount = summary?.period.byStatus.scheduled ?? 0;
+  const confirmedCount = summary?.period.byStatus.confirmed ?? 0;
 
   const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
 
@@ -233,14 +215,14 @@ export default function DashboardPage() {
         <div className="col-12 col-md-4">
           <DashboardCard
             title="Pendentes"
-            value={appointments.filter((a) => a.status === "scheduled").length}
+            value={scheduledCount}
             icon="bi-clock"
           />
         </div>
         <div className="col-12 col-md-4">
           <DashboardCard
             title="Confirmados"
-            value={appointments.filter((a) => a.status === "confirmed").length}
+            value={confirmedCount}
             icon="bi-check-circle"
           />
         </div>

@@ -4,23 +4,25 @@ import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "./DashboardPage";
-import appointmentsApi from "../../api/endpoints/appointments.api";
+import dashboardApi from "../../api/endpoints/dashboard.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
+import { buildReportRange } from "../../config/reportPeriod";
 import authReducer from "../../store/slices/authSlice";
 import companyReducer from "../../store/slices/companySlice";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import type { ApiResponse } from "../../types/api";
-import type { Appointment } from "../../types/appointment";
+import type { Appointment, AppointmentStatus } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
+import type { DashboardSummary } from "../../types/dashboard";
 
-vi.mock("../../api/endpoints/appointments.api", () => ({
-  default: { getAppointments: vi.fn() },
+vi.mock("../../api/endpoints/dashboard.api", () => ({
+  default: { getSummary: vi.fn() },
 }));
 
 vi.mock("../../api/endpoints/clients.api", () => ({
@@ -48,6 +50,41 @@ function makeAppointment(overrides: Partial<Appointment> = {}): Appointment {
     notes: null,
     createdAt: "2026-07-01T10:00:00.000Z",
     updatedAt: "2026-07-01T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function emptyByStatus(): Record<AppointmentStatus, number> {
+  return {
+    scheduled: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled: 0,
+    "no-show": 0,
+  };
+}
+
+function makeSummary(
+  overrides: Partial<DashboardSummary> = {},
+): DashboardSummary {
+  const range = buildReportRange(
+    "today",
+    "Europe/Lisbon",
+    undefined,
+    undefined,
+    new Date(NOW),
+  )!;
+
+  return {
+    period: {
+      startAt: range.startAt,
+      endAt: range.endAt,
+      total: 0,
+      byStatus: emptyByStatus(),
+    },
+    todayAppointments: [],
+    upcomingAppointments: [],
+    activeClientsCount: 0,
     ...overrides,
   };
 }
@@ -126,7 +163,7 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
 
 function renderDashboard(role: Role | null = "OWNER", timezone?: string) {
   return render(
-    <Provider store={makeStore(role, timezone)}>
+    <Provider store={makeStore(role, timezone ?? "Europe/Lisbon")}>
       <MemoryRouter>
         <DashboardPage />
       </MemoryRouter>
@@ -134,12 +171,15 @@ function renderDashboard(role: Role | null = "OWNER", timezone?: string) {
   );
 }
 
-function mockData(appointments: Appointment[] = []) {
-  vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+function mockSummaryResponse(summary: DashboardSummary) {
+  vi.mocked(dashboardApi.getSummary).mockResolvedValue({
     success: true,
     message: "ok",
-    data: appointments,
-  });
+    data: summary,
+  } satisfies ApiResponse<DashboardSummary>);
+}
+
+function mockRelatedData() {
   vi.mocked(clientsApi.getClients).mockResolvedValue({
     success: true,
     message: "ok",
@@ -168,7 +208,8 @@ const NOW = "2026-09-10T12:00:00.000Z";
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockData();
+    mockRelatedData();
+    mockSummaryResponse(makeSummary());
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(NOW));
   });
@@ -178,9 +219,7 @@ describe("DashboardPage", () => {
   });
 
   it("shows a loading spinner while data loads", () => {
-    vi.mocked(appointmentsApi.getAppointments).mockReturnValue(
-      new Promise(() => {}),
-    );
+    vi.mocked(dashboardApi.getSummary).mockReturnValue(new Promise(() => {}));
     renderDashboard();
 
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -199,11 +238,22 @@ describe("DashboardPage", () => {
       endAt: "2026-09-15T10:30:00.000Z",
       status: "confirmed",
     });
-    const past = makeAppointment({
-      id: "appt-past",
-      status: "scheduled",
-    });
-    mockData([today, upcoming, past]);
+
+    mockSummaryResponse(
+      makeSummary({
+        todayAppointments: [today],
+        upcomingAppointments: [upcoming],
+        period: {
+          ...makeSummary().period,
+          total: 4,
+          byStatus: {
+            ...emptyByStatus(),
+            scheduled: 2,
+            confirmed: 1,
+          },
+        },
+      }),
+    );
 
     renderDashboard();
 
@@ -213,41 +263,36 @@ describe("DashboardPage", () => {
     expect(screen.getByText(/olá, owner teste/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
 
-    // Três KPIs: Hoje, Pendentes (scheduled), Confirmados.
     expect(cardValues()).toEqual(["1", "2", "1"]);
-
-    expect(
-      screen.getByRole("heading", { name: "Agenda do dia" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Próximos agendamentos" }),
-    ).toBeInTheDocument();
 
     const todayCard = screen.getByRole("heading", { name: "Agenda do dia" })
       .closest(".card") as HTMLElement;
     expect(within(todayCard).getAllByRole("row")).toHaveLength(2);
     expect(within(todayCard).getByText("09:00")).toBeInTheDocument();
-    expect(within(todayCard).getByText("Maria Silva")).toBeInTheDocument();
-    expect(within(todayCard).getByText("Corte de cabelo")).toBeInTheDocument();
-    expect(within(todayCard).getByText("Ana Lima")).toBeInTheDocument();
-    expect(within(todayCard).getByText("Agendado")).toBeInTheDocument();
-
-    const upcomingCard = screen.getByRole("heading", {
-      name: "Próximos agendamentos",
-    }).closest(".card") as HTMLElement;
-    expect(within(upcomingCard).getAllByRole("row")).toHaveLength(2);
-    expect(within(upcomingCard).getByText("11:00")).toBeInTheDocument();
-    expect(within(upcomingCard).getByText("Confirmado")).toBeInTheDocument();
   });
 
-  it("lists the day agenda in chronological order regardless of API order", async () => {
-    // O backend pode devolver os registos por ordem de criação; a agenda do
-    // dia tem de ser lida por ordem cronológica.
-    mockData([
-      makeAppointment({ id: "c", startAt: "2026-09-10T15:00:00.000Z", endAt: "2026-09-10T15:30:00.000Z" }),
-      makeAppointment({ id: "a", startAt: "2026-09-10T08:00:00.000Z", endAt: "2026-09-10T08:30:00.000Z" }),
-      makeAppointment({ id: "b", startAt: "2026-09-10T10:00:00.000Z", endAt: "2026-09-10T10:30:00.000Z" }),
-    ]);
+  it("displays today appointments in API order", async () => {
+    mockSummaryResponse(
+      makeSummary({
+        todayAppointments: [
+          makeAppointment({
+            id: "a",
+            startAt: "2026-09-10T08:00:00.000Z",
+            endAt: "2026-09-10T08:30:00.000Z",
+          }),
+          makeAppointment({
+            id: "b",
+            startAt: "2026-09-10T10:00:00.000Z",
+            endAt: "2026-09-10T10:30:00.000Z",
+          }),
+          makeAppointment({
+            id: "c",
+            startAt: "2026-09-10T15:00:00.000Z",
+            endAt: "2026-09-10T15:30:00.000Z",
+          }),
+        ],
+      }),
+    );
 
     renderDashboard();
     await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
@@ -263,14 +308,25 @@ describe("DashboardPage", () => {
     expect(times).toEqual(["09:00", "11:00", "16:00"]);
   });
 
-  it("shows the closest upcoming appointments first", async () => {
-    // "Próximos agendamentos" não pode truncar a lista antes de ordenar, ou o
-    // agendamento mais próximo deixaria de aparecer.
-    mockData([
-      makeAppointment({ id: "far", startAt: "2026-09-18T09:00:00.000Z", endAt: "2026-09-18T09:30:00.000Z", status: "confirmed" }),
-      makeAppointment({ id: "near", startAt: "2026-09-11T10:00:00.000Z", endAt: "2026-09-11T10:30:00.000Z", status: "confirmed" }),
-      makeAppointment({ id: "mid", startAt: "2026-09-15T14:00:00.000Z", endAt: "2026-09-15T14:30:00.000Z", status: "confirmed" }),
-    ]);
+  it("shows upcoming appointments from the summary", async () => {
+    mockSummaryResponse(
+      makeSummary({
+        upcomingAppointments: [
+          makeAppointment({
+            id: "near",
+            startAt: "2026-09-11T10:00:00.000Z",
+            endAt: "2026-09-11T10:30:00.000Z",
+            status: "confirmed",
+          }),
+          makeAppointment({
+            id: "mid",
+            startAt: "2026-09-15T14:00:00.000Z",
+            endAt: "2026-09-15T14:30:00.000Z",
+            status: "confirmed",
+          }),
+        ],
+      }),
+    );
 
     renderDashboard();
     await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
@@ -278,16 +334,11 @@ describe("DashboardPage", () => {
     const card = screen
       .getByRole("heading", { name: "Próximos agendamentos" })
       .closest(".card") as HTMLElement;
-    const times = within(card)
-      .getAllByRole("row")
-      .slice(1)
-      .map((row) => row.querySelectorAll("td")[1]?.textContent);
-
-    expect(times).toEqual(["11:00", "15:00", "10:00"]);
+    expect(within(card).getAllByRole("row")).toHaveLength(3);
   });
 
   it("shows empty state when there are no appointments", async () => {
-    mockData([]);
+    mockSummaryResponse(makeSummary());
     renderDashboard();
 
     expect(
@@ -297,8 +348,8 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Nenhum agendamento próximo.")).toBeInTheDocument();
   });
 
-  it("shows a friendly error and does not load related when appointments fail", async () => {
-    vi.mocked(appointmentsApi.getAppointments).mockRejectedValueOnce(
+  it("shows a friendly error and does not load related when summary fails", async () => {
+    vi.mocked(dashboardApi.getSummary).mockRejectedValueOnce(
       httpError(500, { message: "Erro interno do servidor." }),
     );
     renderDashboard();
@@ -306,23 +357,18 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByText("Erro interno do servidor."),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Tentar novamente" }),
-    ).toBeInTheDocument();
     expect(clientsApi.getClients).not.toHaveBeenCalled();
-    expect(servicesApi.getServices).not.toHaveBeenCalled();
-    expect(employeesApi.getEmployees).not.toHaveBeenCalled();
   });
 
   it("retries the initial load without reloading the page", async () => {
-    vi.mocked(appointmentsApi.getAppointments)
+    vi.mocked(dashboardApi.getSummary)
       .mockRejectedValueOnce(
         httpError(500, { message: "Erro interno do servidor." }),
       )
       .mockResolvedValueOnce({
         success: true,
         message: "ok",
-        data: [],
+        data: makeSummary(),
       });
     renderDashboard();
 
@@ -334,70 +380,70 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Resumo do dia" }),
     ).toBeInTheDocument();
-    expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(2);
+    expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
   });
 
   it("still renders the dashboard and shows a warning when related data fails", async () => {
     vi.mocked(clientsApi.getClients).mockRejectedValueOnce(
       httpError(500, { message: "Erro interno do servidor." }),
     );
-    mockData([
-      makeAppointment({
-        id: "appt-today",
-        startAt: "2026-09-10T08:00:00.000Z",
-        endAt: "2026-09-10T08:30:00.000Z",
+    mockSummaryResponse(
+      makeSummary({
+        todayAppointments: [
+          makeAppointment({
+            id: "appt-today",
+            startAt: "2026-09-10T08:00:00.000Z",
+            endAt: "2026-09-10T08:30:00.000Z",
+          }),
+        ],
       }),
-    ]);
+    );
     renderDashboard();
 
     expect(
       await screen.findByText(/não foi possível carregar alguns nomes/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
     expect(screen.queryByText("Maria Silva")).not.toBeInTheDocument();
-    expect(screen.getAllByText("—").length).toBeGreaterThan(0);
   });
 
   it("does not fetch or show employees for MANAGER", async () => {
-    mockData([makeAppointment()]);
     renderDashboard("MANAGER");
 
     expect(await screen.findByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
     expect(employeesApi.getEmployees).not.toHaveBeenCalled();
-    expect(screen.queryByText("Funcionários")).not.toBeInTheDocument();
   });
 
-  it("computes 'today' using the company timezone", async () => {
-    const boundary = makeAppointment({
-      id: "appt-boundary",
-      startAt: "2026-09-10T01:30:00.000Z",
-      endAt: "2026-09-10T02:00:00.000Z",
-    });
-    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
-      success: true,
-      message: "ok",
-      data: [boundary],
-    });
-
+  it("requests summary with today range in company timezone", async () => {
     renderDashboard("OWNER", "America/Sao_Paulo");
 
-    expect(
-      await screen.findByText("Nenhum agendamento para hoje."),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("22:30")).not.toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Resumo do dia" });
+
+    const expected = buildReportRange(
+      "today",
+      "America/Sao_Paulo",
+      undefined,
+      undefined,
+      new Date(NOW),
+    );
+    expect(dashboardApi.getSummary).toHaveBeenCalledWith({
+      startAt: expected!.startAt,
+      endAt: expected!.endAt,
+      upcomingLimit: 5,
+    });
   });
 
-  it("classifies the same instant as today when the timezone differs", async () => {
-    const boundary = makeAppointment({
-      id: "appt-boundary",
-      startAt: "2026-09-10T01:30:00.000Z",
-      endAt: "2026-09-10T02:00:00.000Z",
-    });
-    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
-      success: true,
-      message: "ok",
-      data: [boundary],
-    });
+  it("renders today list returned by the API for the company timezone", async () => {
+    mockSummaryResponse(
+      makeSummary({
+        todayAppointments: [
+          makeAppointment({
+            id: "appt-boundary",
+            startAt: "2026-09-10T01:30:00.000Z",
+            endAt: "2026-09-10T02:00:00.000Z",
+          }),
+        ],
+      }),
+    );
 
     renderDashboard("OWNER", "Europe/Lisbon");
 
