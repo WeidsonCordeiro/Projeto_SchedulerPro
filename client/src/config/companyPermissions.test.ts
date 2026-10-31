@@ -6,20 +6,26 @@ describe("getCompanyAbilities", () => {
     expect(getCompanyAbilities(null)).toEqual({
       canView: false,
       canUpdate: false,
+      canActivate: false,
+      canDeactivate: false,
     });
   });
 
-  it("gives OWNER view and update", () => {
+  it("gives OWNER view, update and lifecycle", () => {
     expect(getCompanyAbilities("OWNER")).toEqual({
       canView: true,
       canUpdate: true,
+      canActivate: true,
+      canDeactivate: true,
     });
   });
 
-  it("gives ADMIN view and update", () => {
+  it("gives ADMIN view and update only", () => {
     expect(getCompanyAbilities("ADMIN")).toEqual({
       canView: true,
       canUpdate: true,
+      canActivate: false,
+      canDeactivate: false,
     });
   });
 
@@ -27,6 +33,8 @@ describe("getCompanyAbilities", () => {
     expect(getCompanyAbilities("MANAGER")).toEqual({
       canView: false,
       canUpdate: false,
+      canActivate: false,
+      canDeactivate: false,
     });
   });
 
@@ -34,6 +42,8 @@ describe("getCompanyAbilities", () => {
     expect(getCompanyAbilities("EMPLOYEE")).toEqual({
       canView: false,
       canUpdate: false,
+      canActivate: false,
+      canDeactivate: false,
     });
   });
 
@@ -41,6 +51,8 @@ describe("getCompanyAbilities", () => {
     expect(getCompanyAbilities("CLIENT")).toEqual({
       canView: false,
       canUpdate: false,
+      canActivate: false,
+      canDeactivate: false,
     });
   });
 });

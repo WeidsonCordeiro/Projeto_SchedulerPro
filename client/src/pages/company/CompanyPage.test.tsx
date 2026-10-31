@@ -16,6 +16,10 @@ vi.mock("../../api/endpoints/company.api", () => ({
   default: {
     getCompany: vi.fn(),
     updateCompany: vi.fn(),
+    activateCompany: vi.fn(),
+    deactivateCompany: vi.fn(),
+    uploadCompanyLogo: vi.fn(),
+    removeCompanyLogo: vi.fn(),
   },
 }));
 
@@ -89,6 +93,12 @@ describe("CompanyPage", () => {
     expect(screen.getByLabelText("Nome")).toHaveValue("salao do centro");
     expect(screen.getByLabelText("Timezone")).toHaveValue("Europe/Lisbon");
     expect(screen.getByText("Ativa")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /desativar empresa/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /reativar empresa/i }),
+    ).not.toBeInTheDocument();
     const publicUrl = screen.getByLabelText("Link público de agendamento");
     expect(publicUrl).toHaveValue(
       `${window.location.origin}/agendar/empresa/${loadedCompany.id}`,
@@ -282,5 +292,142 @@ describe("CompanyPage", () => {
     expect(
       screen.getByRole("button", { name: /salvar alterações/i }),
     ).toBeEnabled();
+  });
+
+  describe("lifecycle", () => {
+    it("shows reactivate for OWNER when the company is inactive", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+
+      renderPage();
+
+      expect(await screen.findByText("Inativa")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /reativar empresa/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /desativar empresa/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+      expect(screen.getByText("Europe/Lisbon")).toBeInTheDocument();
+    });
+
+    it("does not show lifecycle actions for ADMIN", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+
+      renderPage("ADMIN");
+
+      await screen.findByText("Inativa");
+      expect(
+        screen.queryByRole("button", { name: /desativar empresa/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /reativar empresa/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("deactivates after confirmation and updates state", async () => {
+      const deactivated: Company = { ...loadedCompany, isActive: false };
+      vi.mocked(companyApi.deactivateCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: deactivated,
+      });
+
+      const store = renderPage();
+      await screen.findByRole("button", { name: /desativar empresa/i });
+
+      fireEvent.click(screen.getByRole("button", { name: /desativar empresa/i }));
+      fireEvent.click(
+        screen.getByRole("button", { name: /^desativar$/i }),
+      );
+
+      expect(await screen.findByText("Empresa desativada com sucesso.")).toBeInTheDocument();
+      expect(companyApi.deactivateCompany).toHaveBeenCalledWith(loadedCompany.id);
+      await waitFor(() => {
+        expect(store.getState().company.company?.isActive).toBe(false);
+      });
+      expect(screen.getByText("Inativa")).toBeInTheDocument();
+    });
+
+    it("does not deactivate when the user cancels the confirmation", async () => {
+      renderPage();
+      await screen.findByRole("button", { name: /desativar empresa/i });
+
+      fireEvent.click(screen.getByRole("button", { name: /desativar empresa/i }));
+      fireEvent.click(screen.getByRole("button", { name: /cancelar/i }));
+
+      expect(companyApi.deactivateCompany).not.toHaveBeenCalled();
+    });
+
+    it("reactivates and updates state", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+      const reactivated: Company = { ...loadedCompany, isActive: true };
+      vi.mocked(companyApi.activateCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: reactivated,
+      });
+
+      const store = renderPage("OWNER");
+      const reactivateButton = await screen.findByRole("button", {
+        name: /reativar empresa/i,
+      });
+      fireEvent.click(reactivateButton);
+
+      expect(await screen.findByText("Empresa reativada com sucesso.")).toBeInTheDocument();
+      expect(companyApi.activateCompany).toHaveBeenCalledWith(loadedCompany.id);
+      await waitFor(() => {
+        expect(store.getState().company.company?.isActive).toBe(true);
+      });
+      expect(screen.getByText("Ativa")).toBeInTheDocument();
+    });
+
+    it("shows feedback when deactivation fails", async () => {
+      vi.mocked(companyApi.deactivateCompany).mockRejectedValue(
+        httpError(403, { message: "Operação não permitida." }),
+      );
+
+      renderPage();
+      await screen.findByRole("button", { name: /desativar empresa/i });
+
+      fireEvent.click(screen.getByRole("button", { name: /desativar empresa/i }));
+      fireEvent.click(screen.getByRole("button", { name: /^desativar$/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Operação não permitida.",
+      );
+    });
+
+    it("shows feedback when reactivation fails", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+      vi.mocked(companyApi.activateCompany).mockRejectedValue(
+        httpError(500, { message: "Erro interno do servidor." }),
+      );
+
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole("button", { name: /reativar empresa/i }),
+      );
+
+      expect(
+        await screen.findByText("Erro interno do servidor."),
+      ).toBeInTheDocument();
+    });
   });
 });

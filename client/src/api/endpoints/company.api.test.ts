@@ -151,4 +151,34 @@ describe("companyApi", () => {
       response: { status: 400 },
     });
   });
+
+  it("patches /companies/:id/activate", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+
+    await companyApi.activateCompany("abc123");
+
+    expect(apiClient.patch).toHaveBeenCalledWith("/companies/abc123/activate");
+  });
+
+  it("patches /companies/:id/deactivate", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: { success: true, message: "ok", data: null },
+    });
+
+    await companyApi.deactivateCompany("abc123");
+
+    expect(apiClient.patch).toHaveBeenCalledWith("/companies/abc123/deactivate");
+  });
+
+  it("propagates API errors during deactivate", async () => {
+    vi.mocked(apiClient.patch).mockRejectedValue(
+      httpError(403, { message: "Operação não permitida." }),
+    );
+
+    await expect(companyApi.deactivateCompany("abc123")).rejects.toMatchObject({
+      response: { status: 403 },
+    });
+  });
 });
