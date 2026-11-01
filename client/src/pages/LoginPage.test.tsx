@@ -19,11 +19,21 @@ vi.mock("../api/endpoints/auth.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/company.api", () => ({
+  default: {
+    getCompany: vi.fn(),
+  },
+}));
+
+import companyApi from "../api/endpoints/company.api";
+import companyReducer from "../store/slices/companySlice";
+import { company } from "../test/fixtures";
+
 type LoginResponse = { success: boolean; message: string; data: AuthSession };
 
 function makeStore(auth?: Partial<AuthState>) {
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
         user: null,
@@ -63,6 +73,11 @@ function loginAs(email: string, password: string) {
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(companyApi.getCompany).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [company],
+    });
   });
 
   it("renders the login form", () => {
@@ -129,6 +144,45 @@ describe("LoginPage", () => {
     });
     expect(store.getState().auth.isAuthenticated).toBe(true);
     expect(store.getState().auth.user?.email).toBe("owner@example.com");
+    expect(companyApi.getCompany).toHaveBeenCalledTimes(1);
+    expect(store.getState().company.company?.name).toBe("salao do centro");
+  });
+
+  it("loads company in Redux after ADMIN login", async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: { ...session, role: "ADMIN" },
+    });
+
+    const store = makeStore();
+    renderLogin(store);
+    loginAs("admin@example.com", "password123");
+
+    expect(await screen.findByText("Home")).toBeInTheDocument();
+    expect(companyApi.getCompany).toHaveBeenCalledTimes(1);
+    expect(store.getState().company.company?.name).toBe("salao do centro");
+  });
+
+  it("does not call getCompany for MANAGER login but keeps companyName in auth", async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: {
+        ...session,
+        role: "MANAGER",
+        companyName: "Studio Equipa",
+      },
+    });
+
+    const store = makeStore();
+    renderLogin(store);
+    loginAs("manager@example.com", "password123");
+
+    expect(await screen.findByText("Home")).toBeInTheDocument();
+    expect(companyApi.getCompany).not.toHaveBeenCalled();
+    expect(store.getState().company.company).toBeNull();
+    expect(store.getState().auth.user?.companyName).toBe("Studio Equipa");
   });
 
   it("redirects a mustChangePassword user to /change-password", async () => {
@@ -144,6 +198,7 @@ describe("LoginPage", () => {
 
     expect(await screen.findByText("Change password page")).toBeInTheDocument();
     expect(store.getState().auth.mustChangePassword).toBe(true);
+    expect(companyApi.getCompany).not.toHaveBeenCalled();
   });
 
   it("shows loading while the login request is pending", async () => {

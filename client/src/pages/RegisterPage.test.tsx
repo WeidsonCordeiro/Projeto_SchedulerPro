@@ -22,9 +22,19 @@ vi.mock("../api/endpoints/auth.api", () => ({
   },
 }));
 
+vi.mock("../api/endpoints/company.api", () => ({
+  default: {
+    getCompany: vi.fn(),
+  },
+}));
+
+import companyApi from "../api/endpoints/company.api";
+import companyReducer from "../store/slices/companySlice";
+import { company, session } from "../test/fixtures";
+
 function makeStore() {
   return configureStore({
-    reducer: { auth: authReducer },
+    reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
       auth: {
         user: null,
@@ -50,6 +60,11 @@ function renderPage(store = makeStore()) {
 describe("RegisterPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(companyApi.getCompany).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [company],
+    });
   });
 
   it("renders the registration form", () => {
@@ -112,15 +127,7 @@ describe("RegisterPage", () => {
     vi.mocked(authApi.register).mockResolvedValue({
       success: true,
       message: "ok",
-      data: {
-        id: "user1",
-        name: "Owner",
-        email: "owner@example.com",
-        role: "OWNER",
-        companyId: "comp1",
-        isActive: true,
-        mustChangePassword: false,
-      },
+      data: session,
     });
 
     const store = makeStore();
@@ -145,6 +152,8 @@ describe("RegisterPage", () => {
         timezone: expect.any(String),
       },
     });
+    expect(companyApi.getCompany).toHaveBeenCalledTimes(1);
+    expect(store.getState().company.company?.name).toBe("salao do centro");
   });
 
   it("shows server errors", async () => {

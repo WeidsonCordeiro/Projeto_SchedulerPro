@@ -1,4 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+import type { ReactNode } from "react";
+import { createElement } from "react";
+import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import appointmentsApi from "../api/endpoints/appointments.api";
 import clientsApi from "../api/endpoints/clients.api";
@@ -14,6 +18,19 @@ import {
   useAppointmentsSchedule,
   type UseAppointmentsScheduleOptions,
 } from "./useAppointmentsSchedule";
+import authReducer from "../store/slices/authSlice";
+import companyReducer from "../store/slices/companySlice";
+
+function createHookWrapper() {
+  const store = configureStore({
+    reducer: { auth: authReducer, company: companyReducer },
+  });
+  return function HookWrapper({ children }: { children: ReactNode }) {
+    return createElement(Provider, { store, children });
+  };
+}
+
+const hookOptions = { wrapper: createHookWrapper() };
 
 vi.mock("../api/endpoints/appointments.api", () => ({
   default: { getAppointments: vi.fn() },
@@ -148,7 +165,10 @@ describe("useAppointmentsSchedule", () => {
     });
     mockRelatedSuccess();
 
-    renderHook(() => useAppointmentsSchedule(baseOptions({ canList: false })));
+    renderHook(
+      () => useAppointmentsSchedule(baseOptions({ canList: false })),
+      hookOptions,
+    );
 
     await act(async () => {
       await Promise.resolve();
@@ -168,6 +188,7 @@ describe("useAppointmentsSchedule", () => {
 
     const { result } = renderHook(() =>
       useAppointmentsSchedule(baseOptions({ viewType: "list" })),
+      hookOptions,
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -188,6 +209,7 @@ describe("useAppointmentsSchedule", () => {
       useAppointmentsSchedule(
         baseOptions({ viewType: "month", currentDateKey: "2026-09-10" }),
       ),
+      hookOptions,
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -212,7 +234,7 @@ describe("useAppointmentsSchedule", () => {
     const { result, rerender } = renderHook(
       (options: UseAppointmentsScheduleOptions) =>
         useAppointmentsSchedule(options),
-      { initialProps: baseOptions({ viewType: "month" }) },
+      { initialProps: baseOptions({ viewType: "month" }), ...hookOptions },
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -240,7 +262,10 @@ describe("useAppointmentsSchedule", () => {
     });
     mockRelatedSuccess();
 
-    const { result } = renderHook(() => useAppointmentsSchedule(baseOptions()));
+    const { result } = renderHook(
+      () => useAppointmentsSchedule(baseOptions()),
+      hookOptions,
+    );
 
     await waitFor(() =>
       expect(result.current.clientNames.get("client1")).toBe("Maria Silva"),
@@ -271,7 +296,10 @@ describe("useAppointmentsSchedule", () => {
       httpError(500, { message: "Erro interno do servidor." }),
     );
 
-    const { result } = renderHook(() => useAppointmentsSchedule(baseOptions()));
+    const { result } = renderHook(
+      () => useAppointmentsSchedule(baseOptions()),
+      hookOptions,
+    );
 
     await waitFor(() => expect(result.current.relatedError).toContain(
       "Não foi possível carregar alguns nomes.",
@@ -287,7 +315,10 @@ describe("useAppointmentsSchedule", () => {
     );
     mockRelatedSuccess();
 
-    const { result } = renderHook(() => useAppointmentsSchedule(baseOptions()));
+    const { result } = renderHook(
+      () => useAppointmentsSchedule(baseOptions()),
+      hookOptions,
+    );
 
     await waitFor(() =>
       expect(result.current.loadError).toBe("Erro interno do servidor."),
@@ -307,7 +338,10 @@ describe("useAppointmentsSchedule", () => {
       });
     mockRelatedSuccess();
 
-    const { result } = renderHook(() => useAppointmentsSchedule(baseOptions()));
+    const { result } = renderHook(
+      () => useAppointmentsSchedule(baseOptions()),
+      hookOptions,
+    );
 
     await waitFor(() => expect(result.current.loadError).toBeTruthy());
 
@@ -331,6 +365,7 @@ describe("useAppointmentsSchedule", () => {
       useAppointmentsSchedule(
         baseOptions({ actorRole: "CLIENT", canListEmployees: false }),
       ),
+      hookOptions,
     );
 
     await waitFor(() =>
@@ -366,7 +401,10 @@ describe("useAppointmentsSchedule", () => {
       ],
     });
 
-    const { result } = renderHook(() => useAppointmentsSchedule(baseOptions()));
+    const { result } = renderHook(
+      () => useAppointmentsSchedule(baseOptions()),
+      hookOptions,
+    );
 
     await waitFor(() => expect(result.current.employees).toHaveLength(1));
     expect(result.current.employees[0].role).not.toBe("CLIENT");

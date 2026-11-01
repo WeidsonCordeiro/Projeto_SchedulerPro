@@ -7,6 +7,7 @@ import authReducer, {
   setCredentials,
   setLoading,
   setSessionExpirationMessage,
+  setUserCompanyName,
 } from "./authSlice";
 import { session, sessionRequiringChange } from "../../test/fixtures";
 
@@ -19,6 +20,7 @@ describe("authSlice", () => {
       isInitializing: true,
       isLoading: false,
       sessionExpirationMessage: null,
+      staffCompanyAccessSuspended: false,
     });
   });
 
@@ -33,6 +35,7 @@ describe("authSlice", () => {
       role: session.role,
       companyId: session.companyId,
       companyTimezone: session.companyTimezone,
+      companyName: session.companyName,
       isActive: session.isActive,
     });
     expect(state.mustChangePassword).toBe(false);
@@ -127,5 +130,23 @@ describe("authSlice", () => {
 
     expect(state.isAuthenticated).toBe(true);
     expect(state.sessionExpirationMessage).toBeNull();
+  });
+
+  it("setUserCompanyName updates only companyName when user is present", () => {
+    const authenticated = authReducer(initialState, setCredentials(session));
+    const state = authReducer(
+      authenticated,
+      setUserCompanyName("Novo nome comercial"),
+    );
+
+    expect(state.user?.companyName).toBe("Novo nome comercial");
+    expect(state.user?.role).toBe(session.role);
+    expect(state.user?.companyId).toBe(session.companyId);
+  });
+
+  it("setUserCompanyName is a no-op when user is null", () => {
+    const state = authReducer(initialState, setUserCompanyName("ignored"));
+
+    expect(state.user).toBeNull();
   });
 });

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import companyReducer, {
   clearCompany,
   initialState,
+  patchCompanyName,
   resolveEffectiveCompanyTimezone,
   selectCompany,
   selectCompanyTimezone,
+  selectWorkspaceDisplayName,
   setCompany,
 } from "./companySlice";
 import type { AuthUser } from "../../types/auth";
@@ -25,6 +27,7 @@ const authUser = (extra: Partial<AuthUser> = {}): AuthUser => ({
   email: "test@example.com",
   role: "MANAGER",
   companyId: company.id,
+  companyName: "salao do centro",
   isActive: true,
   ...extra,
 });
@@ -47,6 +50,15 @@ describe("companySlice", () => {
     const state = companyReducer(loaded, clearCompany());
 
     expect(state.company).toBeNull();
+  });
+
+  it("patchCompanyName updates only the name when company is loaded", () => {
+    const loaded = companyReducer(initialState, setCompany(company));
+    const state = companyReducer(loaded, patchCompanyName("Studio Renomeado"));
+
+    expect(state.company?.name).toBe("Studio Renomeado");
+    expect(state.company?.timezone).toBe(company.timezone);
+    expect(state.company?.isActive).toBe(company.isActive);
   });
 });
 
@@ -120,5 +132,34 @@ describe("selectCompanyTimezone", () => {
 
   it("tolerates a store without the company or auth slice", () => {
     expect(selectCompanyTimezone({} as never)).toBe("Europe/Lisbon");
+  });
+});
+
+describe("selectWorkspaceDisplayName", () => {
+  it("prefers the loaded company name", () => {
+    expect(
+      selectWorkspaceDisplayName({
+        company: { company },
+        auth: { user: authUser({ companyName: "Outro nome" }) },
+      }),
+    ).toBe("salao do centro");
+  });
+
+  it("uses auth.user.companyName when company slice is empty", () => {
+    expect(
+      selectWorkspaceDisplayName({
+        company: { company: null },
+        auth: { user: authUser({ companyName: "Studio Equipa" }) },
+      }),
+    ).toBe("Studio Equipa");
+  });
+
+  it("falls back to SchedulerPro when no name is available", () => {
+    expect(
+      selectWorkspaceDisplayName({
+        company: { company: null },
+        auth: { user: authUser({ companyName: "" }) },
+      }),
+    ).toBe("SchedulerPro");
   });
 });

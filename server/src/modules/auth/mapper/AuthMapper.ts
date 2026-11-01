@@ -25,6 +25,7 @@ class AuthMapper {
   public static toAuthUser(
     user: UserDocument,
     companyTimezone: string,
+    companyName: string,
   ): AuthUser {
     return {
       id: user.id,
@@ -34,6 +35,7 @@ class AuthMapper {
       role: user.role,
       companyId: user.companyId.toString(),
       companyTimezone,
+      companyName,
       isActive: user.isActive,
       ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };

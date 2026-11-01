@@ -13,6 +13,7 @@ describe("store", () => {
       isInitializing: true,
       isLoading: false,
       sessionExpirationMessage: null,
+      staffCompanyAccessSuspended: false,
     });
     expect(store.getState().company).toEqual({ company: null });
   });

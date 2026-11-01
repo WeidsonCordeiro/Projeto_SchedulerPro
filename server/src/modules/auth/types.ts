@@ -30,6 +30,8 @@ export interface AuthUser {
   role: Role;
   companyId: string;
   companyTimezone: string;
+  /** Nome da empresa do tenant (identificação; não substitui COMPANY_READ). */
+  companyName: string;
   isActive: boolean;
   clientId?: string;
 }

@@ -9,6 +9,7 @@ import {
 } from "../store/slices/authSlice";
 import authApi from "../api/endpoints/auth.api";
 import { getApiError, getFriendlyErrorMessage } from "../api/errors";
+import { loadSessionCompany, reconcileCompanySliceWithSession } from "../app/loadSessionCompany";
 
 interface FieldErrors {
   email?: string;
@@ -65,6 +66,8 @@ export default function LoginPage() {
         throw new Error("Resposta inválida do servidor.");
       }
       dispatch(setCredentials(session));
+      reconcileCompanySliceWithSession(dispatch, session);
+      await loadSessionCompany(dispatch, session);
     } catch (error) {
       const failure = getApiError(error);
       setErrorMessage(getFriendlyErrorMessage(failure));

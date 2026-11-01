@@ -31,10 +31,15 @@ const companySlice = createSlice({
     clearCompany(state) {
       state.company = null;
     },
+    patchCompanyName(state, action: PayloadAction<string>) {
+      if (state.company) {
+        state.company.name = action.payload;
+      }
+    },
   },
 });
 
-export const { setCompany, clearCompany } = companySlice.actions;
+export const { setCompany, clearCompany, patchCompanyName } = companySlice.actions;
 
 /**
  * Empresa carregada da sessão (ou null).
@@ -70,6 +75,27 @@ export function selectCompanyTimezone(state: {
     state.company?.company?.timezone,
     state.auth?.user?.companyTimezone,
   );
+}
+
+const WORKSPACE_NAME_FALLBACK = "SchedulerPro";
+
+/**
+ * Nome da empresa no shell (sidebar): registo admin carregado, depois
+ * `auth.user.companyName`, depois fallback do produto.
+ */
+export function selectWorkspaceDisplayName(state: {
+  company?: CompanyState;
+  auth?: { user: AuthUser | null };
+}): string {
+  const fromCompany = state.company?.company?.name?.trim();
+  if (fromCompany) {
+    return fromCompany;
+  }
+  const fromSession = state.auth?.user?.companyName?.trim();
+  if (fromSession) {
+    return fromSession;
+  }
+  return WORKSPACE_NAME_FALLBACK;
 }
 
 export default companySlice.reducer;

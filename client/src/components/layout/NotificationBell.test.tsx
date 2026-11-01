@@ -25,6 +25,7 @@ const user = {
   avatar: null,
   role: "OWNER" as Role,
   companyId: "507f1f77bcf86cd799439012",
+  companyName: "salao do centro",
   isActive: true,
 };
 

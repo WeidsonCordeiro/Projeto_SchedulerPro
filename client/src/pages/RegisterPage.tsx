@@ -6,6 +6,7 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { setCredentials, setLoading } from "../store/slices/authSlice";
 import authApi from "../api/endpoints/auth.api";
 import { getApiError, getFriendlyErrorMessage } from "../api/errors";
+import { loadSessionCompany, reconcileCompanySliceWithSession } from "../app/loadSessionCompany";
 import { getIanaTimezones, isValidIanaTimezone } from "../config/timezones";
 
 interface FieldErrors {
@@ -128,6 +129,8 @@ export default function RegisterPage() {
         throw new Error("Resposta inválida do servidor.");
       }
       dispatch(setCredentials(session));
+      reconcileCompanySliceWithSession(dispatch, session);
+      await loadSessionCompany(dispatch, session);
       navigate("/", { replace: true });
     } catch (error) {
       const failure = getApiError(error);

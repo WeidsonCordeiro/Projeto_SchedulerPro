@@ -10,6 +10,9 @@ import {
 import { clearCompany } from "../store/slices/companySlice";
 import type { ApiResponse } from "../types/api";
 import type { AuthSession } from "../types/auth";
+import { getCompanyAbilities } from "../config/companyPermissions";
+import { loadSessionCompany, reconcileCompanySliceWithSession } from "../app/loadSessionCompany";
+import { patchCompanyName } from "../store/slices/companySlice";
 import {
   DEFAULT_SESSION_EXPIRY_MESSAGE,
   getSessionExpiryMessage,
@@ -70,6 +73,19 @@ async function performSessionRefresh(): Promise<RefreshResult> {
     );
     if (data?.data) {
       store.dispatch(setCredentials(data.data));
+      const session = data.data;
+      reconcileCompanySliceWithSession(store.dispatch, session);
+      const sessionCompanyName = session.companyName?.trim();
+      if (store.getState().company.company && sessionCompanyName) {
+        store.dispatch(patchCompanyName(sessionCompanyName));
+      }
+      if (
+        !store.getState().company.company &&
+        !session.mustChangePassword &&
+        getCompanyAbilities(session.role).canView
+      ) {
+        await loadSessionCompany(store.dispatch, session);
+      }
     }
     return "ok";
   } catch (error) {

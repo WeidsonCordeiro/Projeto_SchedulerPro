@@ -79,6 +79,11 @@ const authSlice = createSlice({
         state.staffCompanyAccessSuspended = false;
       }
     },
+    setUserCompanyName(state, action: PayloadAction<string>) {
+      if (state.user) {
+        state.user.companyName = action.payload;
+      }
+    },
     setSessionExpirationMessage(state, action: PayloadAction<string>) {
       state.sessionExpirationMessage = action.payload;
     },
@@ -96,6 +101,7 @@ export const {
   setSessionExpirationMessage,
   clearSessionExpirationMessage,
   setStaffCompanyAccessSuspended,
+  setUserCompanyName,
 } = authSlice.actions;
 
 export default authSlice.reducer;

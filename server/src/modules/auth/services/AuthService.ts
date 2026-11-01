@@ -163,22 +163,24 @@ class AuthService {
 
     await this.updateLoginInfo(user);
 
-    const companyTimezone = await this.resolveCompanyTimezoneForUser(
-      user.companyId,
-    );
+    const { companyTimezone, companyName } =
+      await this.resolveCompanyAuthContext(user.companyId);
 
     return {
-      user: AuthMapper.toAuthUser(user, companyTimezone),
+      user: AuthMapper.toAuthUser(user, companyTimezone, companyName),
       tokens,
       mustChangePassword: user.mustChangePassword,
     };
   }
 
-  private async resolveCompanyTimezoneForUser(
+  private async resolveCompanyAuthContext(
     companyId: string | Types.ObjectId,
-  ): Promise<string> {
+  ): Promise<{ companyTimezone: string; companyName: string }> {
     const company = await this.companyRepository.findById(companyId);
-    return resolveCompanyTimezone(company?.timezone);
+    return {
+      companyTimezone: resolveCompanyTimezone(company?.timezone),
+      companyName: company?.name ?? "",
+    };
   }
 
   private generateTokens(user: UserDocument, sessionId: string): AuthTokens {
@@ -380,12 +382,11 @@ class AuthService {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    const companyTimezone = await this.resolveCompanyTimezoneForUser(
-      user.companyId,
-    );
+    const { companyTimezone, companyName } =
+      await this.resolveCompanyAuthContext(user.companyId);
 
     return {
-      ...AuthMapper.toAuthUser(user, companyTimezone),
+      ...AuthMapper.toAuthUser(user, companyTimezone, companyName),
       mustChangePassword: user.mustChangePassword,
     };
   }

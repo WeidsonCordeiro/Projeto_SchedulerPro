@@ -5,7 +5,7 @@ import CompanyForm from "../../components/company/CompanyForm";
 import DestructiveConfirmModal from "../../components/common/DestructiveConfirmModal";
 import { getCompanyAbilities } from "../../config/companyPermissions";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setCompany } from "../../store/slices/companySlice";
+import { commitCompanyToStore } from "../../store/companySessionSync";
 import type { Company } from "../../types/company";
 import PageHeader from "../../components/common/PageHeader";
 import ErrorState from "../../components/common/ErrorState";
@@ -90,7 +90,7 @@ export default function CompanyPage() {
         return;
       }
       setCompanyData(loaded);
-      dispatch(setCompany(loaded));
+      dispatch(commitCompanyToStore(loaded));
     } catch (error) {
       const failure = getApiError(error);
       setLoadError(getFriendlyErrorMessage(failure));
@@ -110,7 +110,7 @@ export default function CompanyPage() {
     setSuccessMessage(successText);
     setLifecycleError(null);
     setCompanyData(updated);
-    dispatch(setCompany(updated));
+    dispatch(commitCompanyToStore(updated));
   }
 
   function handleSaved(saved: Company) {
@@ -119,7 +119,7 @@ export default function CompanyPage() {
 
   function handleLogoChanged(updated: Company) {
     setCompanyData(updated);
-    dispatch(setCompany(updated));
+    dispatch(commitCompanyToStore(updated));
   }
 
   function openDeactivateModal() {
