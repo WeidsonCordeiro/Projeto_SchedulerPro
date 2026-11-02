@@ -88,8 +88,8 @@ export default function AvailabilityExceptionsSection({
   return (
     <div className="card">
       <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start mb-3">
-          <div>
+        <div className="exception-section-header d-flex justify-content-between align-items-start mb-3">
+          <div className="min-w-0">
             <h2 className="h6 mb-1">Exceções de disponibilidade</h2>
             <span className="small text-muted">
               Bloqueios pontuais, férias e feriados sobrepõem a disponibilidade
@@ -98,13 +98,15 @@ export default function AvailabilityExceptionsSection({
           </div>
 
           {canCreate && (
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              onClick={handleCreate}
-            >
-              Nova exceção
-            </button>
+            <div className="section-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleCreate}
+              >
+                Nova exceção
+              </button>
+            </div>
           )}
         </div>
 
@@ -142,28 +144,27 @@ export default function AvailabilityExceptionsSection({
           exceptions.length > 0 && (
             <ul className="exception-timeline list-unstyled mb-0">
               {exceptions.map((exception) => (
-                <li
-                  key={exception.id}
-                  className="exception-item d-flex justify-content-between align-items-center"
-                >
-                  <div>
+                <li key={exception.id} className="exception-item">
+                  <div className="exception-item-main">
                     <div className="exception-date">
                       <span className="exception-date-day">{formatExceptionDate(exception.date).split(" ")[0]}</span>
                       <span className="exception-date-text">{formatExceptionDate(exception.date).split(" ").slice(1).join(" ")}</span>
                     </div>
-                    <div className="fw-semibold exception-title">
-                      {exception.reason || "Bloqueio de agenda"}
-                      <span className="badge text-bg-secondary ms-2">
-                        {EXCEPTION_TYPE_LABELS[exception.type] ?? exception.type}
-                      </span>
-                    </div>
-                    <div className="small text-muted exception-period">
-                      {exception.allDay ? "Dia inteiro" : formatExceptionPeriod(exception)}
-                      {exception.reason ? ` — ${exception.reason}` : ""}
+                    <div className="exception-item-details">
+                      <div className="fw-semibold exception-title">
+                        {exception.reason || "Bloqueio de agenda"}
+                        <span className="badge text-bg-secondary ms-2">
+                          {EXCEPTION_TYPE_LABELS[exception.type] ?? exception.type}
+                        </span>
+                      </div>
+                      <div className="small text-muted exception-period">
+                        {exception.allDay ? "Dia inteiro" : formatExceptionPeriod(exception)}
+                        {exception.reason ? ` — ${exception.reason}` : ""}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="d-flex gap-2">
+                  <div className="exception-item-actions table-actions">
                     {canUpdate && (
                       <button
                         type="button"
