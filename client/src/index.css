@@ -479,9 +479,15 @@ button,
   align-items: center;
   display: flex;
   flex-shrink: 0;
-  gap: 0.5rem;
+  gap: 0.75rem;
   margin-inline-start: auto;
   min-width: 0;
+}
+.app-navbar .navbar-actions > .btn,
+.app-navbar .navbar-actions > .notification-bell-anchor {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
 }
 .app-navbar .navbar-user-cluster {
   align-items: center;
@@ -497,12 +503,19 @@ button,
 .app-navbar .navbar-text {
   color: #fff !important;
   line-height: 1.25;
+  padding-bottom: 0;
+  padding-top: 0;
 }
 .app-navbar .user-role {
   color: #abb8d6 !important;
 }
 .app-navbar .user-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  justify-content: center;
   min-width: 0;
+  text-align: end;
 }
 .app-navbar .user-name {
   display: block;
@@ -749,6 +762,7 @@ button,
   padding: 1rem 1.1rem;
 }
 .availability-day-column .availability-day-card {
+  align-items: start;
   border: 0;
   box-shadow: none;
   display: grid;
@@ -778,8 +792,16 @@ button,
   grid-row: 2;
 }
 .availability-day-column .availability-day-save {
+  align-items: center;
+  align-self: end;
   grid-column: 2;
   grid-row: 3;
+  justify-content: flex-end;
+}
+.availability-day-column .availability-day-save .btn {
+  align-self: center;
+  height: auto;
+  width: auto;
 }
 /* Sem disponibilidade: além da cor, o traço tracejado e o cartão esbatido
    distinguem o dia fechado dos dias com atendimento. */
