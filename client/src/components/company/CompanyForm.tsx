@@ -119,8 +119,9 @@ export default function CompanyForm({
         </div>
       )}
 
-      <ImageUploader
-        id="company-logo"
+      <div className="company-form-logo-uploader">
+        <ImageUploader
+          id="company-logo"
         name={name || company.name}
         image={logo}
         kind="company"
@@ -132,7 +133,8 @@ export default function CompanyForm({
         removeLabel="Remover logo"
         successUploadMessage="Logo atualizado com sucesso."
         successRemoveMessage="Logo removido com sucesso."
-      />
+        />
+      </div>
 
       <div className="mb-3">
         <label htmlFor="company-name" className="form-label">

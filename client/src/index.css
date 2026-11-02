@@ -278,6 +278,29 @@ button,
   white-space: nowrap;
 }
 
+/* CompanyPage — link público: alinhamento, acções simétricas e stack em mobile. */
+.company-public-booking-link {
+  align-items: stretch;
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+.company-public-booking-link > .form-control {
+  flex: 1 1 auto;
+  min-height: var(--sp-btn-min-height);
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.company-public-booking-link > .btn {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-height: var(--sp-btn-min-height);
+  min-width: var(--sp-btn-action-min-width);
+  padding-inline: var(--sp-btn-padding-x);
+  white-space: nowrap;
+}
+
 .loading-state {
   align-items: center;
   color: var(--sp-muted);
@@ -1157,6 +1180,53 @@ button,
   .filter-bar .btn-group > .btn {
     border-radius: 0.6rem;
     margin-left: 0;
+  }
+  .company-public-booking-link {
+    flex-wrap: wrap;
+    gap: var(--sp-btn-action-gap);
+  }
+  .company-public-booking-link > .form-control {
+    border-radius: 0.6rem;
+    flex: 1 1 100%;
+    margin-left: 0;
+    width: 100%;
+  }
+  .input-group.company-public-booking-link > .btn {
+    flex: 1 1 0;
+    margin-left: 0;
+    min-width: var(--sp-btn-action-min-width);
+  }
+  .input-group.company-public-booking-link:not(.has-validation)
+    > .btn.btn-outline-primary:not(:first-child):not(:last-child):not(.dropdown-toggle):not(.dropdown-menu):not(.form-floating) {
+    border-bottom-left-radius: 0.6rem;
+    border-bottom-right-radius: 0.6rem;
+    border-top-left-radius: 0.6rem;
+    border-top-right-radius: 0.6rem;
+  }
+  .input-group.company-public-booking-link:not(.has-validation)
+    > .btn.btn-outline-secondary:not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(.invalid-feedback) {
+    border-bottom-left-radius: 0.6rem;
+    border-bottom-right-radius: 0.6rem;
+    border-top-left-radius: 0.6rem;
+    border-top-right-radius: 0.6rem;
+  }
+  .company-form-logo-uploader .image-uploader {
+    align-items: center;
+    flex-direction: column;
+  }
+  .company-form-logo-uploader .image-uploader-body {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .company-form-logo-uploader .image-uploader-actions {
+    justify-content: center;
+  }
+  .company-form-logo-uploader .image-uploader-hint,
+  .company-form-logo-uploader .image-uploader-success,
+  .company-form-logo-uploader .image-uploader-error {
+    text-align: center;
   }
   .exception-section-header {
     align-items: stretch;
