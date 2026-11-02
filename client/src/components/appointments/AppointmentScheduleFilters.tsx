@@ -1,7 +1,5 @@
 import { useId } from "react";
-import {
-  APPOINTMENT_STATUS_LABELS,
-} from "../../config/appointmentStatus";
+import { APPOINTMENT_STATUS_LABELS } from "../../config/appointmentStatus";
 import { hasActiveFilters } from "../../config/appointmentFilters";
 import type { AppointmentFilterCriteria } from "../../config/appointmentFilters";
 import type { AppointmentStatus } from "../../types/appointment";
@@ -58,7 +56,8 @@ export default function AppointmentScheduleFilters({
             <button
               key={status}
               type="button"
-              className={`btn ${
+              style={{ borderRadius: "5px" }}
+              className={`btn btn-sm ${
                 criteria.statuses.has(status)
                   ? "btn-primary"
                   : "btn-outline-primary"

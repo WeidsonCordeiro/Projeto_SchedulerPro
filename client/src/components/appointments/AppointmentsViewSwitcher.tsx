@@ -68,7 +68,7 @@ export default function AppointmentsViewSwitcher({
           <button
             key={opt.value}
             type="button"
-            className={`btn ${viewType === opt.value ? "btn-primary" : "btn-outline-primary"}`}
+            className={`btn btn-sm ${viewType === opt.value ? "btn-primary" : "btn-outline-primary"}`}
             onClick={() => onViewTypeChange(opt.value)}
             aria-pressed={viewType === opt.value}
           >
