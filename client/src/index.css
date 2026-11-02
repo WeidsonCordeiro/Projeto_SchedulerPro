@@ -239,6 +239,15 @@ button,
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.section-actions > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 /* Barra de filtros segmentados: o deslocamento horizontal fica restrito ao
    próprio contentor, nunca à página. */
 .filter-bar {
@@ -702,10 +711,27 @@ button,
   padding-left: 1rem;
 }
 .exception-item {
+  align-items: center;
   border-bottom: 1px solid #edf0f5;
+  display: flex;
   gap: 1rem;
+  justify-content: space-between;
   padding: 0.9rem 0;
   position: relative;
+}
+.exception-item-main {
+  align-items: flex-start;
+  display: flex;
+  flex: 1;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.exception-item-details {
+  flex: 1;
+  min-width: 0;
+}
+.exception-item-actions {
+  flex-shrink: 0;
 }
 .exception-item::before {
   background: var(--sp-primary);
@@ -1110,6 +1136,55 @@ button,
   .page-actions .btn {
     flex: 1;
   }
+  .exception-section-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .exception-section-header > :first-child {
+    min-width: 0;
+  }
+  .section-actions,
+  .section-actions .btn {
+    width: 100%;
+  }
+  .section-actions .btn {
+    flex: 1;
+  }
+  .exception-timeline {
+    margin-left: 0.35rem !important;
+    padding-left: 0.75rem;
+  }
+  .exception-item {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .exception-item::before {
+    left: -1.05rem;
+    top: 1.1rem;
+  }
+  .exception-item-main {
+    align-items: flex-start;
+    width: 100%;
+  }
+  .exception-title {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .exception-title .badge {
+    margin-inline-start: 0;
+  }
+  .exception-item-actions {
+    justify-content: flex-end;
+    max-width: 100%;
+    width: 100%;
+  }
+  .exception-item-actions.table-actions {
+    flex-wrap: wrap;
+  }
   .app-body > main {
     padding: 1rem !important;
   }
@@ -1193,6 +1268,19 @@ button,
 }
 
 @media (max-width: 575.98px) {
+  .exception-item-main {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .exception-date {
+    align-items: baseline;
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 0.35rem;
+  }
+  .exception-date-text {
+    text-align: start;
+  }
   .app-navbar {
     --sp-navbar-height: 3.75rem;
   }
@@ -1213,14 +1301,6 @@ button,
   }
   .insight-strip > div:nth-child(2n) {
     border-right: 0;
-  }
-  .exception-item {
-    align-items: flex-start !important;
-    flex-wrap: wrap;
-  }
-  .exception-item > .d-flex {
-    margin-left: 4rem;
-    width: 100%;
   }
 }
 
