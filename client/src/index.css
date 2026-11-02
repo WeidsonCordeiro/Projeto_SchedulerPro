@@ -32,6 +32,13 @@ body:has(.app-shell) {
   --sp-surface: #ffffff;
   --sp-radius: 0.85rem;
   --sp-shadow: 0 8px 24px rgba(25, 38, 67, 0.06);
+  --sp-btn-min-height: 2.5rem;
+  --sp-btn-sm-min-height: 2.25rem;
+  --sp-btn-padding-x: 1rem;
+  --sp-btn-sm-padding-x: 0.75rem;
+  --sp-btn-action-min-width: 6.75rem;
+  --sp-btn-action-gap: 0.5rem;
+  --sp-btn-save-min-width: 11.75rem;
 }
 
 button,
@@ -43,16 +50,16 @@ textarea {
 }
 button,
 .btn {
-  min-height: 2.5rem;
+  min-height: var(--sp-btn-min-height);
 }
 .btn {
   border-radius: 0.6rem;
   font-weight: 600;
-  padding-inline: 1rem;
+  padding-inline: var(--sp-btn-padding-x);
 }
 .btn-sm {
-  min-height: 2.25rem;
-  padding-inline: 0.75rem;
+  min-height: var(--sp-btn-sm-min-height);
+  padding-inline: var(--sp-btn-sm-padding-x);
 }
 .btn-primary {
   background: var(--sp-primary);
@@ -137,10 +144,18 @@ button,
 .table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--sp-btn-action-gap);
 }
 .table-actions > * {
   flex: 0 0 auto;
+}
+.table-actions .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-width: var(--sp-btn-action-min-width);
+  text-align: center;
+  white-space: nowrap;
 }
 .badge {
   font-weight: 600;
@@ -799,9 +814,13 @@ button,
   justify-content: flex-end;
 }
 .availability-day-column .availability-day-save .btn {
+  align-items: center;
   align-self: center;
+  display: inline-flex;
   height: auto;
-  width: auto;
+  justify-content: center;
+  min-width: var(--sp-btn-save-min-width);
+  text-align: center;
 }
 /* Sem disponibilidade: além da cor, o traço tracejado e o cartão esbatido
    distinguem o dia fechado dos dias com atendimento. */
