@@ -231,7 +231,7 @@ export default function CompanyPage() {
                 <label className="form-label" htmlFor="public-booking-url">
                   Link público de agendamento
                 </label>
-                <div className="input-group">
+                <div className="input-group company-public-booking-link">
                   <input
                     id="public-booking-url"
                     className="form-control"
