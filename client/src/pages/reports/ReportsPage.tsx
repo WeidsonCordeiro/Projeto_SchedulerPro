@@ -306,7 +306,7 @@ export default function ReportsPage() {
       <div className="mb-4">
         <div className="filter-bar">
           <div
-            className="btn-group"
+            className="btn-group btn-group-sm"
             role="group"
             aria-label="Período do relatório"
           >
