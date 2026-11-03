@@ -317,6 +317,11 @@ export default function AppointmentsPage() {
               canCreate,
               isMobileViewport: isMobileCalendar,
             }}
+            timeGrid={{
+              isMobileViewport: isMobileCalendar,
+              canCreate,
+              onCreateForDay: handleCreateForMonthDay,
+            }}
             isLoading={isLoading}
             loadError={loadError}
             onLoadRetry={() => void loadAppointments()}

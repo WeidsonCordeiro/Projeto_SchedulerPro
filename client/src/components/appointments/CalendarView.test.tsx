@@ -701,6 +701,70 @@ describe("MonthCalendar - layout compacto (mobile)", () => {
   });
 });
 
+describe("CalendarView - mobile week and day", () => {
+  it("renders week mobile agenda without time grid surface", () => {
+    const { container } = renderWithStore(
+      <CalendarView
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="week"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+        timeGrid={{ isMobileViewport: true, canCreate: true, onCreateForDay: vi.fn() }}
+      />,
+    );
+
+    expect(container.querySelector(".week-calendar-time-grid")).toBeNull();
+    expect(container.querySelector(".calendar-surface--time-grid")).toBeNull();
+    expect(container.querySelector('[data-testid="week-mobile-agenda"]')).not.toBeNull();
+  });
+
+  it("renders day mobile agenda without day calendar body", () => {
+    const { container } = renderWithStore(
+      <CalendarView
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="day"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+        timeGrid={{ isMobileViewport: true, canCreate: true }}
+      />,
+    );
+
+    expect(container.querySelector(".day-calendar-time-body")).toBeNull();
+    expect(container.querySelector(".calendar-surface--time-grid")).toBeNull();
+    expect(container.querySelector('[data-testid="day-mobile-agenda"]')).not.toBeNull();
+  });
+
+  it("keeps desktop week grid when timeGrid mobile is false", () => {
+    const { container } = renderWithStore(
+      <CalendarView
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="week"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+        timeGrid={{ isMobileViewport: false }}
+      />,
+    );
+
+    expect(container.querySelector(".week-calendar-time-grid")).not.toBeNull();
+    expect(container.querySelector(".calendar-surface--time-grid")).not.toBeNull();
+  });
+});
+
 describe("AppointmentsViewSwitcher - período sempre visível", () => {
   it("keeps the period label visible at every width", () => {
     render(

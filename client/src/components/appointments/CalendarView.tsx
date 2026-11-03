@@ -1,6 +1,6 @@
 import MonthView from "./MonthView";
-import WeekCalendar from "./WeekCalendar";
-import DayCalendar from "./DayCalendar";
+import WeekView from "./WeekView";
+import DayView from "./DayView";
 import LoadingState from "../common/LoadingState";
 import ErrorState from "../common/ErrorState";
 import type { Appointment } from "../../types/appointment";
@@ -16,6 +16,13 @@ export interface CalendarViewMonthConfig {
   canCreate?: boolean;
   onCreateForDay?: (dateKey: string) => void;
   isMobileViewport: boolean;
+}
+
+/** Configuração mobile/desktop das vistas Semana e Dia. */
+export interface CalendarViewTimeGridConfig {
+  isMobileViewport: boolean;
+  canCreate?: boolean;
+  onCreateForDay?: (dateKey: string) => void;
 }
 
 /**
@@ -39,6 +46,7 @@ interface CalendarViewProps {
   /** Data de hoje no calendário local da empresa ("AAAA-MM-DD"). */
   todayKey?: string;
   month?: CalendarViewMonthConfig;
+  timeGrid?: CalendarViewTimeGridConfig;
   isLoading?: boolean;
   loadError?: string | null;
   onLoadRetry?: () => void;
@@ -56,6 +64,7 @@ export default function CalendarView({
   onTimeGridAppointmentClick,
   todayKey,
   month,
+  timeGrid,
   isLoading = false,
   loadError = null,
   onLoadRetry,
@@ -65,10 +74,13 @@ export default function CalendarView({
   }
 
   const monthViewport = month?.isMobileViewport ?? false;
+  const timeGridMobile = timeGrid?.isMobileViewport ?? false;
   const isTimeGridView = viewType === "week" || viewType === "day";
+  const useTimeGridSurface =
+    isTimeGridView && !(timeGrid?.isMobileViewport ?? false);
   const surfaceClassName = [
     "calendar-surface",
-    isTimeGridView ? "calendar-surface--time-grid" : "",
+    useTimeGridSurface ? "calendar-surface--time-grid" : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -102,39 +114,34 @@ export default function CalendarView({
       )}
 
       {!isLoading && !loadError && viewType === "week" && (
-        <WeekCalendar
+        <WeekView
           currentDateKey={currentDateKey}
           appointments={appointments}
           clientNames={clientNames}
           serviceNames={serviceNames}
-          onDayClick={(dk) => onDayClick(dk)}
-          onAppointmentClick={(appointment, anchor) => {
-            if (onTimeGridAppointmentClick) {
-              onTimeGridAppointmentClick(appointment, anchor);
-            } else {
-              onAppointmentClick(appointment);
-            }
-          }}
-          onSlotClick={onSlotClick}
           todayKey={todayKey}
+          isMobileViewport={timeGridMobile}
+          canCreate={timeGrid?.canCreate}
+          onCreateForDay={timeGrid?.onCreateForDay}
+          onDayClick={onDayClick}
+          onSlotClick={onSlotClick}
+          onAppointmentClick={onAppointmentClick}
+          onTimeGridAppointmentClick={onTimeGridAppointmentClick}
         />
       )}
 
       {!isLoading && !loadError && viewType === "day" && (
-        <DayCalendar
+        <DayView
           currentDateKey={currentDateKey}
           appointments={appointments}
           clientNames={clientNames}
           serviceNames={serviceNames}
-          onAppointmentClick={(appointment, anchor) => {
-            if (onTimeGridAppointmentClick) {
-              onTimeGridAppointmentClick(appointment, anchor);
-            } else {
-              onAppointmentClick(appointment);
-            }
-          }}
-          onSlotClick={onSlotClick}
           todayKey={todayKey}
+          isMobileViewport={timeGridMobile}
+          canCreate={timeGrid?.canCreate}
+          onSlotClick={onSlotClick}
+          onAppointmentClick={onAppointmentClick}
+          onTimeGridAppointmentClick={onTimeGridAppointmentClick}
         />
       )}
     </div>
