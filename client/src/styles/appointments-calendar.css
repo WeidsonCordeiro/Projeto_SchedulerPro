@@ -790,3 +790,82 @@
 .appointment-quick-details-modal .modal-backdrop {
   z-index: 1040;
 }
+
+/* --- Agendas mobile Semana / Dia (Etapa 6.2) --- */
+.week-mobile-agenda {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 100%;
+  width: 100%;
+}
+.week-mobile-agenda-day {
+  border-top: 1px solid var(--sp-border);
+  box-sizing: border-box;
+  max-width: 100%;
+  padding-top: 0.85rem;
+  width: 100%;
+}
+.week-mobile-agenda-day:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.week-mobile-agenda-day--today .week-mobile-agenda-day-header {
+  background: var(--bs-primary-bg-subtle, #cfe2ff);
+  border-radius: 0.375rem;
+  padding: 0.35rem 0.5rem;
+}
+.week-mobile-agenda-day-header {
+  margin-bottom: 0.65rem;
+}
+.week-mobile-agenda-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.week-mobile-agenda-day-items .calendar-item.calendar-week-event {
+  min-height: 4.25rem;
+  padding: 0.55rem 0.65rem !important;
+}
+
+.day-mobile-agenda {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 100%;
+  width: 100%;
+}
+.day-mobile-agenda-header {
+  margin-bottom: 0.25rem;
+}
+.day-mobile-agenda-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.day-mobile-agenda-appointments .calendar-item.calendar-week-event {
+  min-height: 4.25rem;
+  padding: 0.55rem 0.65rem !important;
+}
+.day-mobile-agenda-hours {
+  border-top: 1px solid var(--sp-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.85rem;
+}
+.day-mobile-agenda-hours-title {
+  color: var(--bs-secondary-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+.day-mobile-hour-slot {
+  box-sizing: border-box;
+  max-width: 100%;
+  text-align: start;
+  width: 100%;
+}
