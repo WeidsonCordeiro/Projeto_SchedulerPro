@@ -89,16 +89,17 @@ export default function WeekCalendar({
 
   return (
     <div className="week-calendar d-flex flex-column" style={{ position: "relative" }}>
-      {/* Header: day labels */}
-      <div className="d-flex border-bottom">
-        <div style={{ width: 56, flexShrink: 0 }} />
+      <div className="week-calendar-time-scroll flex-grow-1">
+        <div className="week-calendar-time-grid">
+          <div className="week-calendar-day-headers border-bottom">
+            <div className="calendar-time-gutter" aria-hidden="true" />
         {dayKeys.map((dk, idx) => {
           const dt = DateTime.fromISO(dk, { zone: timezone });
           const isToday = dk === todayKeyInternal;
           return (
             <div
               key={dk}
-              className={`flex-fill text-center py-2 border-start calendar-week-day-header ${isToday ? "calendar-week-day-header-today bg-primary-subtle fw-bold" : ""}`}
+              className={`text-center py-2 border-start calendar-week-day-header ${isToday ? "calendar-week-day-header-today bg-primary-subtle fw-bold" : ""}`}
               style={{ cursor: "pointer" }}
               onClick={() => onDayClick(dk)}
             >
@@ -109,12 +110,10 @@ export default function WeekCalendar({
             </div>
           );
         })}
-      </div>
+          </div>
 
-      {/* Body: time axis + columns */}
-      <div className="d-flex flex-grow-1 overflow-auto" style={{ position: "relative" }}>
-        {/* Time axis */}
-        <div style={{ width: 56, flexShrink: 0 }}>
+          <div className="week-calendar-time-body">
+            <div className="calendar-time-gutter">
           {hours.map((h) => (
             <div
               key={h}
@@ -126,8 +125,7 @@ export default function WeekCalendar({
           ))}
         </div>
 
-        {/* Day columns */}
-        {dayKeys.map((dk, dayIdx) => {
+            {dayKeys.map((dk, dayIdx) => {
           const layout = layoutPerDay[dayIdx];
           const isToday = dk === todayKeyInternal;
           const nowLineTop =
@@ -143,7 +141,7 @@ export default function WeekCalendar({
           return (
             <div
               key={dk}
-              className={`flex-fill border-start calendar-week-day-column ${isToday ? "calendar-week-day-column-today bg-primary-subtle" : ""}`}
+              className={`border-start calendar-week-day-column ${isToday ? "calendar-week-day-column-today" : ""}`}
               style={{ position: "relative" }}
             >
               {/* Hour grid lines */}
@@ -227,6 +225,8 @@ export default function WeekCalendar({
             </div>
           );
         })}
+          </div>
+        </div>
       </div>
     </div>
   );

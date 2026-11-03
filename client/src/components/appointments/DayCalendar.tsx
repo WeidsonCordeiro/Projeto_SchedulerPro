@@ -83,7 +83,7 @@ export default function DayCalendar({
       hourRange.endHour,
       hourHeight,
     );
-  }, [isToday, timezone, hourRange]);
+  }, [isToday, timezone, hourRange, hourHeight]);
 
   const handleSlotClick = useCallback(
     (hour: number) => {
@@ -94,15 +94,17 @@ export default function DayCalendar({
 
   return (
     <div className="day-calendar d-flex flex-column">
-      <div
-        className={`text-center py-2 border-bottom calendar-day-header ${isToday ? "calendar-day-header-today bg-primary-subtle" : ""}`}
-      >
-        <div className="fw-semibold">{formatWeekdayDate(currentDateKey, timezone)}</div>
+      <div className="calendar-day-header-row d-flex border-bottom">
+        <div className="calendar-time-gutter" aria-hidden="true" />
+        <div
+          className={`calendar-day-header-slot flex-grow-1 text-center py-2 calendar-day-header ${isToday ? "calendar-day-header-today bg-primary-subtle" : ""}`}
+        >
+          <div className="fw-semibold">{formatWeekdayDate(currentDateKey, timezone)}</div>
+        </div>
       </div>
 
-      <div className="d-flex flex-grow-1 overflow-auto" style={{ position: "relative" }}>
-        {/* Time axis */}
-        <div style={{ width: 56, flexShrink: 0 }}>
+      <div className="day-calendar-time-body d-flex flex-grow-1 overflow-auto" style={{ position: "relative" }}>
+        <div className="calendar-time-gutter">
           {hours.map((h) => (
             <div
               key={h}
@@ -116,7 +118,7 @@ export default function DayCalendar({
 
         {/* Day column */}
         <div
-          className={`flex-grow-1 border-start calendar-day-column ${isToday ? "calendar-day-column-today bg-primary-subtle" : ""}`}
+          className={`flex-grow-1 border-start calendar-day-column ${isToday ? "calendar-day-column-today" : ""}`}
           style={{ position: "relative" }}
         >
           {/* Hour grid lines */}
