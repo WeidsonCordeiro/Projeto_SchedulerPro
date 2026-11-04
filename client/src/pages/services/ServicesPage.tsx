@@ -114,6 +114,53 @@ export default function ServicesPage() {
     }
   }
 
+  const serviceActionsVisible = canUpdate || canDelete;
+
+  function renderServiceRowActions(service: Service) {
+    return (
+      <div className="table-actions">
+        {canUpdate && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => openEdit(service)}
+            disabled={togglingId === service.id}
+          >
+            Editar
+          </button>
+        )}
+        {canUpdate && (
+          <button
+            type="button"
+            className={`btn btn-sm ${
+              service.isActive
+                ? "btn-outline-secondary"
+                : "btn-outline-success"
+            }`}
+            onClick={() => void handleToggleActive(service)}
+            disabled={togglingId === service.id}
+          >
+            {togglingId === service.id
+              ? "Aguarde..."
+              : service.isActive
+                ? "Desativar"
+                : "Ativar"}
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger"
+            onClick={() => setDeletingService(service)}
+            disabled={togglingId === service.id}
+          >
+            Excluir
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section>
       <PageHeader
@@ -204,88 +251,88 @@ export default function ServicesPage() {
       )}
 
       {!isLoading && !loadError && services.length > 0 && (
-        <div className="card table-card mt-3">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th scope="col">Serviço</th>
-                  <th scope="col">Duração</th>
-                  <th scope="col">Preço</th>
-                  <th scope="col">Status</th>
-                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((service) => (
-                  <tr key={service.id}>
-                    <td>
-                      {service.name}
-                      {service.description && (
-                        <span className="table-subline">
-                          {service.description}
-                        </span>
-                      )}
-                    </td>
-                    <td>{service.duration} min</td>
-                    <td>{formatPrice(service.price)}</td>
-                    <td>
-                      {service.isActive ? (
-                        <span className="badge text-bg-success">Ativo</span>
-                      ) : (
-                        <span className="badge text-bg-secondary">Inativo</span>
-                      )}
-                    </td>
-                    {(canUpdate || canDelete) && (
-                      <td>
-                        <div className="table-actions">
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => openEdit(service)}
-                              disabled={togglingId === service.id}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${
-                                service.isActive
-                                  ? "btn-outline-secondary"
-                                  : "btn-outline-success"
-                              }`}
-                              onClick={() => void handleToggleActive(service)}
-                              disabled={togglingId === service.id}
-                            >
-                              {togglingId === service.id
-                                ? "Aguarde..."
-                                : service.isActive
-                                ? "Desativar"
-                                : "Ativar"}
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingService(service)}
-                              disabled={togglingId === service.id}
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
+        <>
+          <div
+            className="card table-card mt-3 d-none d-md-block"
+            data-testid="services-list-desktop"
+          >
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">Serviço</th>
+                    <th scope="col">Duração</th>
+                    <th scope="col">Preço</th>
+                    <th scope="col">Status</th>
+                    {serviceActionsVisible && <th scope="col">Ações</th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {services.map((service) => (
+                    <tr key={service.id}>
+                      <td>
+                        {service.name}
+                        {service.description && (
+                          <span className="table-subline">
+                            {service.description}
+                          </span>
+                        )}
+                      </td>
+                      <td>{service.duration} min</td>
+                      <td>{formatPrice(service.price)}</td>
+                      <td>
+                        {service.isActive ? (
+                          <span className="badge text-bg-success">Ativo</span>
+                        ) : (
+                          <span className="badge text-bg-secondary">
+                            Inativo
+                          </span>
+                        )}
+                      </td>
+                      {serviceActionsVisible && (
+                        <td>{renderServiceRowActions(service)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div
+            className="entity-list-mobile d-md-none mt-3"
+            data-testid="services-list-mobile"
+          >
+            {services.map((service) => (
+              <div key={service.id} className="card">
+                <div className="card-body">
+                  <h3 className="h6 mb-1">{service.name}</h3>
+                  {service.description && (
+                    <p
+                      className="table-subline entity-card-description mb-2"
+                      title={service.description}
+                    >
+                      {service.description}
+                    </p>
+                  )}
+                  <p className="mb-2 small">
+                    {service.duration} min · {formatPrice(service.price)}
+                  </p>
+                  {service.isActive ? (
+                    <span className="badge text-bg-success">Ativo</span>
+                  ) : (
+                    <span className="badge text-bg-secondary">Inativo</span>
+                  )}
+                </div>
+                {serviceActionsVisible && (
+                  <div className="card-footer bg-transparent border-top-0 pt-0">
+                    {renderServiceRowActions(service)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {formOpen && (

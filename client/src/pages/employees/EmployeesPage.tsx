@@ -162,6 +162,54 @@ export default function EmployeesPage() {
     (employee) => employee.role === "MANAGER"
   ).length;
 
+  function renderEmployeeRowActions(employee: Employee) {
+    const isSelf = employee.id === currentUser?.id;
+    return (
+      <div className="table-actions">
+        {canEdit && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => openEdit(employee)}
+            disabled={togglingId === employee.id}
+          >
+            Editar
+          </button>
+        )}
+        {!isSelf && canDeactivate && employee.isActive !== false && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => void handleToggle(employee, false)}
+            disabled={togglingId === employee.id}
+          >
+            {togglingId === employee.id ? "Aguarde..." : "Desativar"}
+          </button>
+        )}
+        {!isSelf && canActivate && employee.isActive === false && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-success"
+            onClick={() => void handleToggle(employee, true)}
+            disabled={togglingId === employee.id}
+          >
+            {togglingId === employee.id ? "Aguarde..." : "Ativar"}
+          </button>
+        )}
+        {!isSelf && canDelete && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger"
+            onClick={() => setDeletingEmployee(employee)}
+            disabled={togglingId === employee.id}
+          >
+            Excluir
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section>
       <PageHeader
@@ -244,124 +292,127 @@ export default function EmployeesPage() {
       )}
 
       {!isLoading && !loadError && employees.length > 0 && (
-        <div className="card table-card mt-3">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th scope="col">Funcionário</th>
-                  <th scope="col">E-mail</th>
-                  <th scope="col">Perfil</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Adicionado em</th>
-                  {actionsVisible && <th scope="col">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {employees.map((employee) => {
-                  const isSelf = employee.id === currentUser?.id;
-                  return (
-                    <tr key={employee.id}>
-                      <td>
-                        <div className="person-cell">
-                          <ImageAvatar
-                            image={employee.avatar}
-                            name={employee.name}
-                            size="sm"
-                            shape="rounded"
-                            alt=""
-                          />
-                          <span>
-                            <strong className="d-block">{employee.name}</strong>
-                            {isSelf && (
-                              <span className="table-subline">Você</span>
-                            )}
-                          </span>
-                        </div>
-                      </td>
-                      <td>{employee.email}</td>
-                      <td>
-                        <span
-                          className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}
-                        >
-                          {employee.role}
-                        </span>
-                      </td>
-                      <td>
-                        {employee.isActive === false ? (
-                          <span className="badge text-bg-secondary">
-                            Inativo
-                          </span>
-                        ) : (
-                          <span className="badge text-bg-success">Ativo</span>
-                        )}
-                      </td>
-                      <td>{formatDate(employee.createdAt)}</td>
-                      {actionsVisible && (
+        <>
+          <div
+            className="card table-card mt-3 d-none d-md-block"
+            data-testid="employees-list-desktop"
+          >
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">Funcionário</th>
+                    <th scope="col">E-mail</th>
+                    <th scope="col">Perfil</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Adicionado em</th>
+                    {actionsVisible && <th scope="col">Ações</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {employees.map((employee) => {
+                    const isSelf = employee.id === currentUser?.id;
+                    return (
+                      <tr key={employee.id}>
                         <td>
-                          <div className="table-actions">
-                            {canEdit && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-primary"
-                                onClick={() => openEdit(employee)}
-                                disabled={togglingId === employee.id}
-                              >
-                                Editar
-                              </button>
-                            )}
-                            {!isSelf &&
-                              canDeactivate &&
-                              employee.isActive !== false && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-secondary"
-                                  onClick={() =>
-                                    void handleToggle(employee, false)
-                                  }
-                                  disabled={togglingId === employee.id}
-                                >
-                                  {togglingId === employee.id
-                                    ? "Aguarde..."
-                                    : "Desativar"}
-                                </button>
+                          <div className="person-cell">
+                            <ImageAvatar
+                              image={employee.avatar}
+                              name={employee.name}
+                              size="sm"
+                              shape="rounded"
+                              alt=""
+                            />
+                            <span>
+                              <strong className="d-block">{employee.name}</strong>
+                              {isSelf && (
+                                <span className="table-subline">Você</span>
                               )}
-                            {!isSelf &&
-                              canActivate &&
-                              employee.isActive === false && (
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-success"
-                                  onClick={() =>
-                                    void handleToggle(employee, true)
-                                  }
-                                  disabled={togglingId === employee.id}
-                                >
-                                  {togglingId === employee.id
-                                    ? "Aguarde..."
-                                    : "Ativar"}
-                                </button>
-                              )}
-                            {!isSelf && canDelete && (
-                              <button
-                                type="button"
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => setDeletingEmployee(employee)}
-                                disabled={togglingId === employee.id}
-                              >
-                                Excluir
-                              </button>
-                            )}
+                            </span>
                           </div>
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td>{employee.email}</td>
+                        <td>
+                          <span
+                            className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}
+                          >
+                            {employee.role}
+                          </span>
+                        </td>
+                        <td>
+                          {employee.isActive === false ? (
+                            <span className="badge text-bg-secondary">
+                              Inativo
+                            </span>
+                          ) : (
+                            <span className="badge text-bg-success">Ativo</span>
+                          )}
+                        </td>
+                        <td>{formatDate(employee.createdAt)}</td>
+                        {actionsVisible && (
+                          <td>{renderEmployeeRowActions(employee)}</td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div
+            className="entity-list-mobile d-md-none mt-3"
+            data-testid="employees-list-mobile"
+          >
+            {employees.map((employee) => {
+              const isSelf = employee.id === currentUser?.id;
+              return (
+                <div key={employee.id} className="card">
+                  <div className="card-body">
+                    <div className="person-cell mb-2">
+                      <ImageAvatar
+                        image={employee.avatar}
+                        name={employee.name}
+                        size="sm"
+                        shape="rounded"
+                        alt=""
+                      />
+                      <span>
+                        <strong className="d-block">{employee.name}</strong>
+                        {isSelf && (
+                          <span className="table-subline">Você</span>
+                        )}
+                      </span>
+                    </div>
+                    <p className="mb-2 small text-muted entity-card-email">
+                      {employee.email}
+                    </p>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                      <span
+                        className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}
+                      >
+                        {employee.role}
+                      </span>
+                      {employee.isActive === false ? (
+                        <span className="badge text-bg-secondary">Inativo</span>
+                      ) : (
+                        <span className="badge text-bg-success">Ativo</span>
+                      )}
+                    </div>
+                    <p className="mb-0 small text-muted">
+                      Adicionado em {formatDate(employee.createdAt)}
+                    </p>
+                  </div>
+                  {actionsVisible && (
+                    <div className="card-footer bg-transparent border-top-0 pt-0">
+                      {renderEmployeeRowActions(employee)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {formOpen && (

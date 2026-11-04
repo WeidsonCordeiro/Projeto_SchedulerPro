@@ -108,6 +108,42 @@ export default function ClientsPage() {
     );
   }
 
+  const clientActionsVisible = canUpdate || canDelete;
+
+  function renderClientRowActions(client: Client) {
+    return (
+      <div className="table-actions">
+        {canUpdate && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => openEdit(client)}
+          >
+            Editar
+          </button>
+        )}
+        {canInvite && client.email && !client.portalAccess.exists && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => setInvitingClient(client)}
+          >
+            Convidar
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger"
+            onClick={() => setDeletingClient(client)}
+          >
+            Excluir
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section>
       <PageHeader
@@ -172,83 +208,98 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="card table-card mt-3">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th scope="col">Cliente</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Telefone</th>
-                  <th scope="col">Status</th>
-                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td>
-                      <div className="person-cell">
-                        <ImageAvatar
-                          image={client.avatar}
-                          name={client.name}
-                          size="sm"
-                          shape="rounded"
-                          alt=""
-                        />
-                        <span>
-                          <strong className="d-block">{client.name}</strong>
-                        </span>
-                      </div>
-                    </td>
-                    <td className="text-nowrap">{client.email ?? "—"}</td>
-                    <td>{client.phone}</td>
-                    <td>
-                      {client.isActive ? (
-                        <span className="badge text-bg-success">Ativo</span>
-                      ) : (
-                        <span className="badge text-bg-secondary">Inativo</span>
-                      )}
-                    </td>
-                    {(canUpdate || canDelete) && (
+        <>
+          <div
+            className="card table-card mt-3 d-none d-md-block"
+            data-testid="clients-list-desktop"
+          >
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Telefone</th>
+                    <th scope="col">Status</th>
+                    {clientActionsVisible && <th scope="col">Ações</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {clients.map((client) => (
+                    <tr key={client.id}>
                       <td>
-                        <div className="table-actions">
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => openEdit(client)}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {canInvite && client.email && !client.portalAccess.exists && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => setInvitingClient(client)}
-                            >
-                              Convidar
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingClient(client)}
-                            >
-                              Excluir
-                            </button>
-                          )}
+                        <div className="person-cell">
+                          <ImageAvatar
+                            image={client.avatar}
+                            name={client.name}
+                            size="sm"
+                            shape="rounded"
+                            alt=""
+                          />
+                          <span>
+                            <strong className="d-block">{client.name}</strong>
+                          </span>
                         </div>
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <td className="text-nowrap">{client.email ?? "—"}</td>
+                      <td>{client.phone}</td>
+                      <td>
+                        {client.isActive ? (
+                          <span className="badge text-bg-success">Ativo</span>
+                        ) : (
+                          <span className="badge text-bg-secondary">
+                            Inativo
+                          </span>
+                        )}
+                      </td>
+                      {clientActionsVisible && (
+                        <td>{renderClientRowActions(client)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div
+            className="entity-list-mobile d-md-none mt-3"
+            data-testid="clients-list-mobile"
+          >
+            {clients.map((client) => (
+              <div key={client.id} className="card">
+                <div className="card-body">
+                  <div className="person-cell mb-2">
+                    <ImageAvatar
+                      image={client.avatar}
+                      name={client.name}
+                      size="sm"
+                      shape="rounded"
+                      alt=""
+                    />
+                    <span>
+                      <strong className="d-block">{client.name}</strong>
+                    </span>
+                  </div>
+                  <p className="mb-2 small text-muted entity-card-email">
+                    {client.email ?? "—"}
+                  </p>
+                  <p className="mb-2 small">{client.phone}</p>
+                  {client.isActive ? (
+                    <span className="badge text-bg-success">Ativo</span>
+                  ) : (
+                    <span className="badge text-bg-secondary">Inativo</span>
+                  )}
+                </div>
+                {clientActionsVisible && (
+                  <div className="card-footer bg-transparent border-top-0 pt-0">
+                    {renderClientRowActions(client)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {formOpen && (

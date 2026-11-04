@@ -59,6 +59,19 @@ function renderPage(store = makeStore()) {
   );
 }
 
+async function findDesktopTable() {
+  const desktop = await screen.findByTestId("clients-list-desktop");
+  return within(desktop).getByRole("table");
+}
+
+function clientsDesktop() {
+  return within(screen.getByTestId("clients-list-desktop"));
+}
+
+function clientsMobile() {
+  return within(screen.getByTestId("clients-list-mobile"));
+}
+
 describe("ClientsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,7 +103,7 @@ describe("ClientsPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
 
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(await findDesktopTable()).toBeInTheDocument();
     expect(clientsApi.getClients).toHaveBeenCalledTimes(2);
   });
 
@@ -135,14 +148,14 @@ describe("ClientsPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(within(table).getByText("Ana Silva")).toBeInTheDocument();
     expect(within(table).getByText("Bruno Costa")).toBeInTheDocument();
     expect(within(table).getByText("912345678")).toBeInTheDocument();
     expect(within(table).getByText("933123456")).toBeInTheDocument();
-    expect(screen.getByText("Ativo")).toBeInTheDocument();
-    expect(screen.getByText("Inativo")).toBeInTheDocument();
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(within(table).getByText("Ativo")).toBeInTheDocument();
+    expect(within(table).getByText("Inativo")).toBeInTheDocument();
+    expect(within(table).getByText("—")).toBeInTheDocument();
   });
 
   it("uses the shared table surface, status column and action row", async () => {
@@ -154,7 +167,7 @@ describe("ClientsPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(table.closest(".table-card")).not.toBeNull();
     expect(table.closest(".table-responsive")).not.toBeNull();
     expect(
@@ -183,7 +196,7 @@ describe("ClientsPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
     fireEvent.click(screen.getByRole("button", { name: /novo cliente/i }));
 
@@ -223,9 +236,9 @@ describe("ClientsPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /editar/i }));
+    fireEvent.click(clientsDesktop().getByRole("button", { name: /editar/i }));
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Nome")).toHaveValue("Ana Silva");
@@ -260,9 +273,9 @@ describe("ClientsPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /excluir/i })[0]);
+    fireEvent.click(clientsDesktop().getAllByRole("button", { name: /excluir/i })[0]);
 
     const dialog = screen.getByRole("dialog");
     expect(
@@ -284,9 +297,9 @@ describe("ClientsPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /excluir/i }));
+    fireEvent.click(clientsDesktop().getByRole("button", { name: /excluir/i }));
 
     const dialog = screen.getByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /cancelar/i }));
@@ -306,9 +319,9 @@ describe("ClientsPage", () => {
     );
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /excluir/i }));
+    fireEvent.click(clientsDesktop().getByRole("button", { name: /excluir/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }),
     );
@@ -327,7 +340,7 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("EMPLOYEE"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(screen.queryByRole("button", { name: /novo cliente/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /editar/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /excluir/i })).not.toBeInTheDocument();
@@ -347,8 +360,8 @@ describe("ClientsPage", () => {
 
     renderPage();
 
-    await screen.findByRole("table");
-    expect(screen.getByRole("button", { name: /convidar/i })).toBeInTheDocument();
+    await findDesktopTable();
+    expect(clientsDesktop().getByRole("button", { name: /convidar/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
         name: /dar acesso|gerenciar acesso|reativar acesso/i,
@@ -366,8 +379,8 @@ describe("ClientsPage", () => {
 
     renderPage();
 
-    await screen.findByRole("table");
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+    await findDesktopTable();
+    expect(clientsDesktop().getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", {
         name: /dar acesso|gerenciar acesso|reativar acesso/i,
@@ -387,9 +400,9 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("ADMIN"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(screen.getByRole("button", { name: /novo cliente/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+    expect(clientsDesktop().getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /excluir/i })).not.toBeInTheDocument();
   });
 
@@ -402,10 +415,10 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(screen.getByRole("button", { name: /novo cliente/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /excluir/i })).toBeInTheDocument();
+    expect(clientsDesktop().getByRole("button", { name: /editar/i })).toBeInTheDocument();
+    expect(clientsDesktop().getByRole("button", { name: /excluir/i })).toBeInTheDocument();
   });
 
   it("never persists client tokens to storage", async () => {
@@ -417,7 +430,7 @@ describe("ClientsPage", () => {
 
     const store = makeStore();
     renderPage(store);
-    await screen.findByRole("table");
+    await findDesktopTable();
 
     const storageKeys = [
       ...Object.keys(window.localStorage),
@@ -436,8 +449,8 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    await screen.findByRole("table");
-    expect(screen.getByRole("button", { name: /convidar/i })).toBeInTheDocument();
+    await findDesktopTable();
+    expect(clientsDesktop().getByRole("button", { name: /convidar/i })).toBeInTheDocument();
   });
 
   it("ADMIN can invite the same client", async () => {
@@ -449,8 +462,8 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("ADMIN"));
 
-    await screen.findByRole("table");
-    expect(screen.getByRole("button", { name: /convidar/i })).toBeInTheDocument();
+    await findDesktopTable();
+    expect(clientsDesktop().getByRole("button", { name: /convidar/i })).toBeInTheDocument();
   });
 
   it("MANAGER can edit but cannot invite", async () => {
@@ -462,11 +475,11 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("MANAGER"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(
       screen.queryByRole("button", { name: /convidar/i }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+    expect(clientsDesktop().getByRole("button", { name: /editar/i })).toBeInTheDocument();
   });
 
   it("EMPLOYEE cannot invite", async () => {
@@ -478,7 +491,7 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("EMPLOYEE"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(
       screen.queryByRole("button", { name: /convidar/i }),
     ).not.toBeInTheDocument();
@@ -493,7 +506,7 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(
       screen.queryByRole("button", { name: /convidar/i }),
     ).not.toBeInTheDocument();
@@ -508,7 +521,7 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(
       screen.queryByRole("button", { name: /convidar/i }),
     ).not.toBeInTheDocument();
@@ -527,9 +540,9 @@ describe("ClientsPage", () => {
     });
 
     renderPage(makeStore("OWNER"));
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /convidar/i }));
+    fireEvent.click(clientsDesktop().getByRole("button", { name: /convidar/i }));
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("ana@example.com")).toBeInTheDocument();
@@ -557,9 +570,9 @@ describe("ClientsPage", () => {
     );
 
     renderPage(makeStore("OWNER"));
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /convidar/i }));
+    fireEvent.click(clientsDesktop().getByRole("button", { name: /convidar/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", {
         name: /enviar convite/i,
@@ -574,5 +587,79 @@ describe("ClientsPage", () => {
     expect(
       screen.queryByText(/convite enviado para/i),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses responsive wrappers for desktop table and mobile cards", async () => {
+    vi.mocked(clientsApi.getClients).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeClient()],
+    });
+
+    renderPage();
+    await findDesktopTable();
+
+    expect(screen.getByTestId("clients-list-desktop")).toHaveClass(
+      "d-none",
+      "d-md-block",
+    );
+    expect(screen.getByTestId("clients-list-mobile")).toHaveClass("d-md-none");
+  });
+
+  describe("mobile entity cards", () => {
+    it("renders client details in mobile cards", async () => {
+      vi.mocked(clientsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeClient()],
+      });
+
+      renderPage();
+      await findDesktopTable();
+
+      const mobile = clientsMobile();
+      expect(mobile.getByText("Ana Silva")).toBeInTheDocument();
+      expect(mobile.getByText("ana@example.com")).toBeInTheDocument();
+      expect(mobile.getByText("912345678")).toBeInTheDocument();
+      expect(mobile.getByText("Ativo")).toBeInTheDocument();
+    });
+
+    it("shows Convidar on mobile when invite is allowed", async () => {
+      vi.mocked(clientsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeClient()],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      expect(
+        clientsMobile().getByRole("button", { name: /convidar/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides mobile action footer for EMPLOYEE read-only", async () => {
+      vi.mocked(clientsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeClient()],
+      });
+
+      renderPage(makeStore("EMPLOYEE"));
+      await findDesktopTable();
+
+      const mobile = clientsMobile();
+      expect(mobile.getByText("Ana Silva")).toBeInTheDocument();
+      expect(
+        mobile.queryByRole("button", { name: /editar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        mobile.queryByRole("button", { name: /convidar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        mobile.queryByRole("button", { name: /excluir/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
