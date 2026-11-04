@@ -8,6 +8,7 @@ import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
 import companyReducer from "../../store/slices/companySlice";
+import { formatTimezoneOptionLabel } from "../../config/timezones";
 import { getPublicBookingUrl } from "../../config/publicBookingUrl";
 import type { Role } from "../../types/auth";
 import type { Company } from "../../types/company";
@@ -57,11 +58,45 @@ function renderPage(role: Role | null = "OWNER") {
   return store;
 }
 
+function mockViewportDesktop() {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  });
+}
+
+function getTimezoneCombobox() {
+  return screen.getByRole("combobox", { name: "Timezone" });
+}
+
+function selectTimezoneBySearch(iana: string) {
+  fireEvent.click(getTimezoneCombobox());
+  fireEvent.change(screen.getByRole("searchbox"), {
+    target: { value: iana },
+  });
+  fireEvent.click(
+    screen.getByRole("option", {
+      name: formatTimezoneOptionLabel(iana),
+    }),
+  );
+}
+
 describe("CompanyPage", () => {
   const writeText = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockViewportDesktop();
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText },
@@ -91,7 +126,9 @@ describe("CompanyPage", () => {
       await screen.findByRole("heading", { name: "Empresa" }),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toHaveValue("salao do centro");
-    expect(screen.getByLabelText("Timezone")).toHaveValue("Europe/Lisbon");
+    expect(getTimezoneCombobox()).toHaveTextContent(
+      formatTimezoneOptionLabel("Europe/Lisbon"),
+    );
     expect(screen.getByText("Ativa")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /desativar empresa/i }),
@@ -188,8 +225,8 @@ describe("CompanyPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
 
     expect(
-      await screen.findByLabelText("Timezone"),
-    ).toHaveValue("Europe/Lisbon");
+      await screen.findByRole("combobox", { name: "Timezone" }),
+    ).toHaveTextContent(formatTimezoneOptionLabel("Europe/Lisbon"));
   });
 
   it("shows a message when the authenticated company is not found", async () => {
@@ -252,9 +289,7 @@ describe("CompanyPage", () => {
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "Salao Novo" },
     });
-    fireEvent.change(screen.getByLabelText("Timezone"), {
-      target: { value: "America/Sao_Paulo" },
-    });
+    selectTimezoneBySearch("America/Sao_Paulo");
     fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
 
     expect(await screen.findByText("Empresa atualizada com sucesso.")).toBeInTheDocument();

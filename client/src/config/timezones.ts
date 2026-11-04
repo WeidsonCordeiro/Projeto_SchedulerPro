@@ -10,7 +10,7 @@
  * com os principais fusos IANA do mundo.
  */
 
-import { IANAZone } from "luxon";
+import { DateTime, IANAZone } from "luxon";
 
 const FALLBACK_TIMEZONES = [
   "Africa/Abidjan",
@@ -120,3 +120,46 @@ export function getIanaTimezones(): string[] {
 export function isValidIanaTimezone(value: string): boolean {
   return typeof value === "string" && IANAZone.isValidZone(value);
 }
+
+/**
+ * Rótulo legível para listas e pesquisa do TimezonePicker. O offset reflecte
+ * DateTime.now() na zona (inclui DST); o valor persistido continua a ser o
+ * identificador IANA.
+ */
+export function formatTimezoneOptionLabel(zone: string): string {
+  if (!isValidIanaTimezone(zone)) {
+    return zone;
+  }
+
+  const localNow = DateTime.now().setZone(zone);
+  if (!localNow.isValid) {
+    return zone;
+  }
+
+  const offset = localNow.toFormat("ZZ");
+  return `(UTC${offset}) ${zone}`;
+}
+
+function normalizeTimezoneSearchQuery(query: string): string {
+  return query.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * Filtra zonas IANA por identificador ou rótulo formatado. Não altera `zones`.
+ */
+export function filterIanaTimezones(zones: string[], query: string): string[] {
+  const normalizedQuery = normalizeTimezoneSearchQuery(query);
+  if (normalizedQuery === "") {
+    return [...zones];
+  }
+
+  return zones.filter((zone) => {
+    if (zone.toLowerCase().includes(normalizedQuery)) {
+      return true;
+    }
+    return formatTimezoneOptionLabel(zone)
+      .toLowerCase()
+      .includes(normalizedQuery);
+  });
+}
+
