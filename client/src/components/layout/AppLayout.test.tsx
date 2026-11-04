@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AppLayout from "./AppLayout";
 import authApi from "../../api/endpoints/auth.api";
@@ -177,6 +177,48 @@ function renderLayoutWithPortal(store = makeStore(), initialEntries: string[] = 
   );
 }
 
+function getMenuToggle() {
+  const navbar = document.querySelector(".app-navbar");
+  if (!navbar) {
+    throw new Error("Navbar not found");
+  }
+  return within(navbar as HTMLElement).getByRole("button", {
+    name: /(abrir|fechar) menu/i,
+  });
+}
+
+function ProgrammaticNavProbe() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate("/clients")}>
+      Go clients programmatically
+    </button>
+  );
+}
+
+function renderLayoutWithClientRoute(store = makeStore({ authenticated: true })) {
+  return render(
+    <Provider store={store}>
+      <MemoryRouter initialEntries={["/"]}>
+        <Routes>
+          <Route path="/" element={<AppLayout />}>
+            <Route
+              index
+              element={
+                <div>
+                  Home content
+                  <ProgrammaticNavProbe />
+                </div>
+              }
+            />
+            <Route path="clients" element={<div>Clients page</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </Provider>,
+  );
+}
+
 describe("AppLayout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -241,7 +283,7 @@ describe("AppLayout", () => {
 
     expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
 
-    fireEvent.click(screen.getByRole("button", { name: /abrir menu/i }));
+    fireEvent.click(getMenuToggle());
 
     expect(screen.getByTestId("sidebar")).toHaveClass("open");
     expect(screen.getByTestId("sidebar-backdrop")).toBeInTheDocument();
@@ -254,7 +296,7 @@ describe("AppLayout", () => {
   it("closes the mobile sidebar with the Escape key", () => {
     renderLayout(makeStore({ authenticated: true }));
 
-    fireEvent.click(screen.getByRole("button", { name: /abrir menu/i }));
+    fireEvent.click(getMenuToggle());
     expect(screen.getByTestId("sidebar")).toHaveClass("open");
 
     fireEvent.keyDown(window, { key: "Escape" });
@@ -266,7 +308,7 @@ describe("AppLayout", () => {
   it("exposes the sidebar toggle state and a scrollable menu region", () => {
     renderLayout(makeStore({ authenticated: true }));
 
-    const toggle = screen.getByRole("button", { name: /abrir menu/i });
+    const toggle = getMenuToggle();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     expect(
       screen.getByTestId("sidebar").querySelector(".app-sidebar-scroll"),
@@ -396,5 +438,103 @@ describe("AppLayout", () => {
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(store.getState().auth.staffCompanyAccessSuspended).toBe(false);
+  });
+
+  describe("mobile sidebar a11y and toggle", () => {
+    it("closes the sidebar when the menu toggle is clicked a second time", () => {
+      renderLayout(makeStore({ authenticated: true }));
+      fireEvent.click(getMenuToggle());
+      expect(screen.getByTestId("sidebar")).toHaveClass("open");
+      fireEvent.click(getMenuToggle());
+      expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
+    });
+
+    it("closes the sidebar from the internal close button", () => {
+      renderLayout(makeStore({ authenticated: true }));
+      fireEvent.click(getMenuToggle());
+      const sidebar = screen.getByTestId("sidebar");
+      fireEvent.click(within(sidebar).getByRole("button", { name: /fechar menu/i }));
+      expect(sidebar).not.toHaveClass("open");
+    });
+
+    it("closes the sidebar when a navigation link is selected", () => {
+      renderLayoutWithClientRoute();
+      fireEvent.click(getMenuToggle());
+      fireEvent.click(screen.getByRole("link", { name: "Clientes" }));
+      expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
+      expect(screen.getByText("Clients page")).toBeInTheDocument();
+    });
+
+    it("closes the sidebar when the route changes programmatically", () => {
+      renderLayoutWithClientRoute();
+      fireEvent.click(getMenuToggle());
+      expect(screen.getByTestId("sidebar")).toHaveClass("open");
+      fireEvent.click(screen.getByRole("button", { name: /go clients programmatically/i }));
+      expect(screen.getByTestId("sidebar")).not.toHaveClass("open");
+      expect(screen.getByText("Clients page")).toBeInTheDocument();
+    });
+
+    it("exposes aria-controls on the menu toggle", () => {
+      renderLayout(makeStore({ authenticated: true }));
+      expect(getMenuToggle()).toHaveAttribute("aria-controls", "app-sidebar");
+      expect(screen.getByTestId("sidebar")).toHaveAttribute("id", "app-sidebar");
+    });
+
+    it("marks main content inert while the drawer is open", () => {
+      renderLayout(makeStore({ authenticated: true }));
+      expect(screen.getByTestId("app-main")).not.toHaveAttribute("inert");
+      fireEvent.click(getMenuToggle());
+      expect(screen.getByTestId("app-main")).toHaveAttribute("inert");
+    });
+
+    it("moves focus to the drawer close control when opened and restores it when closed", async () => {
+      renderLayout(makeStore({ authenticated: true }));
+      fireEvent.click(getMenuToggle());
+      const sidebar = screen.getByTestId("sidebar");
+      await waitFor(() => {
+        expect(within(sidebar).getByRole("button", { name: /fechar menu/i })).toHaveFocus();
+      });
+      fireEvent.click(within(sidebar).getByRole("button", { name: /fechar menu/i }));
+      await waitFor(() => {
+        expect(getMenuToggle()).toHaveFocus();
+      });
+    });
+
+    it("traps Tab navigation inside the drawer", async () => {
+      renderLayout(makeStore({ authenticated: true }));
+      fireEvent.click(getMenuToggle());
+      const sidebar = screen.getByTestId("sidebar");
+      await waitFor(() => {
+        expect(within(sidebar).getByRole("button", { name: /fechar menu/i })).toHaveFocus();
+      });
+      const focusable = within(sidebar)
+        .getAllByRole("button")
+        .concat(within(sidebar).getAllByRole("link"));
+      const last = focusable[focusable.length - 1];
+      last.focus();
+      fireEvent.keyDown(window, { key: "Tab" });
+      expect(sidebar.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement).not.toBe(last);
+    });
+
+    it("wraps Shift+Tab from the first focusable element to the last", async () => {
+      renderLayout(makeStore({ authenticated: true }));
+      fireEvent.click(getMenuToggle());
+      const sidebar = screen.getByTestId("sidebar");
+      await waitFor(() => {
+        expect(within(sidebar).getByRole("button", { name: /fechar menu/i })).toHaveFocus();
+      });
+      const focusable = within(sidebar)
+        .getAllByRole("button")
+        .concat(within(sidebar).getAllByRole("link"));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      first.focus();
+      fireEvent.keyDown(window, { key: "Tab", shiftKey: true });
+      expect(document.activeElement).toBe(last);
+      expect(sidebar.contains(document.activeElement)).toBe(true);
+    });
+
+
   });
 });
