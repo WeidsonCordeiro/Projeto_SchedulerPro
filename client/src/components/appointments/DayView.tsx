@@ -12,10 +12,6 @@ export interface DayViewProps {
   canCreate?: boolean;
   onSlotClick: (dateKey: string, hour: number) => void;
   onAppointmentClick: (appointment: Appointment) => void;
-  onTimeGridAppointmentClick?: (
-    appointment: Appointment,
-    anchor: HTMLElement,
-  ) => void;
 }
 
 export default function DayView({
@@ -28,7 +24,6 @@ export default function DayView({
   canCreate = false,
   onSlotClick,
   onAppointmentClick,
-  onTimeGridAppointmentClick,
 }: DayViewProps) {
   if (isMobileViewport) {
     return (
@@ -53,13 +48,7 @@ export default function DayView({
       serviceNames={serviceNames}
       onSlotClick={onSlotClick}
       todayKey={todayKey}
-      onAppointmentClick={(appointment, anchor) => {
-        if (onTimeGridAppointmentClick) {
-          onTimeGridAppointmentClick(appointment, anchor);
-        } else {
-          onAppointmentClick(appointment);
-        }
-      }}
+      onAppointmentClick={(appointment) => onAppointmentClick(appointment)}
     />
   );
 }

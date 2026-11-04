@@ -136,8 +136,7 @@ describe("CalendarView", () => {
     expect(screen.getByText("Seg")).toBeInTheDocument();
   });
 
-  it("routes week block clicks to onTimeGridAppointmentClick with anchor", () => {
-    const onTimeGridAppointmentClick = vi.fn();
+  it("routes week block clicks to onAppointmentClick", () => {
     const onAppointmentClick = vi.fn();
     renderWithStore(
       <CalendarView
@@ -149,16 +148,13 @@ describe("CalendarView", () => {
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={onAppointmentClick}
-        onTimeGridAppointmentClick={onTimeGridAppointmentClick}
       />,
     );
 
     fireEvent.click(screen.getByText("Maria Silva"));
-    expect(onTimeGridAppointmentClick).toHaveBeenCalledWith(
+    expect(onAppointmentClick).toHaveBeenCalledWith(
       expect.objectContaining({ id: "appt1" }),
-      expect.any(HTMLElement),
     );
-    expect(onAppointmentClick).not.toHaveBeenCalled();
   });
 });
 

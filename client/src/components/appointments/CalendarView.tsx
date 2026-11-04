@@ -38,11 +38,6 @@ interface CalendarViewProps {
   onDayClick: (dateKey: string) => void;
   onSlotClick: (dateKey: string, hour: number) => void;
   onAppointmentClick: (appointment: Appointment) => void;
-  /** Semana/Dia: consulta rápida com âncora do bloco (popover). Se omitido, usa `onAppointmentClick`. */
-  onTimeGridAppointmentClick?: (
-    appointment: Appointment,
-    anchor: HTMLElement,
-  ) => void;
   /** Data de hoje no calendário local da empresa ("AAAA-MM-DD"). */
   todayKey?: string;
   month?: CalendarViewMonthConfig;
@@ -61,7 +56,6 @@ export default function CalendarView({
   onDayClick,
   onSlotClick,
   onAppointmentClick,
-  onTimeGridAppointmentClick,
   todayKey,
   month,
   timeGrid,
@@ -126,7 +120,6 @@ export default function CalendarView({
           onDayClick={onDayClick}
           onSlotClick={onSlotClick}
           onAppointmentClick={onAppointmentClick}
-          onTimeGridAppointmentClick={onTimeGridAppointmentClick}
         />
       )}
 
@@ -141,7 +134,6 @@ export default function CalendarView({
           canCreate={timeGrid?.canCreate}
           onSlotClick={onSlotClick}
           onAppointmentClick={onAppointmentClick}
-          onTimeGridAppointmentClick={onTimeGridAppointmentClick}
         />
       )}
     </div>
