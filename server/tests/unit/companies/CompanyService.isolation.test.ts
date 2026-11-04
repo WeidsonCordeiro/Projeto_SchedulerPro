@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { companyRepository } = vi.hoisted(() => ({
+const { companyRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
   companyRepository: {
     findById: vi.fn(),
     findAll: vi.fn(),
@@ -9,11 +9,29 @@ const { companyRepository } = vi.hoisted(() => ({
     activate: vi.fn(),
     deactivate: vi.fn(),
   },
+  userRepository: {
+    suspendActiveNonOwnerStaffForCompanyDeactivation: vi.fn(),
+    restoreUsersSuspendedByCompanyDeactivation: vi.fn(),
+  },
+  lifecycleTx: {
+    withCompanyLifecycleTransaction: vi.fn(),
+  },
 }));
 
 vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({
   default: companyRepository,
 }));
+
+vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
+  default: userRepository,
+}));
+
+vi.mock(
+  "../../../src/modules/companies/services/company-lifecycle-transaction",
+  () => ({
+    withCompanyLifecycleTransaction: lifecycleTx.withCompanyLifecycleTransaction,
+  }),
+);
 
 import CompanyService from "../../../src/modules/companies/services/CompanyService";
 import { AppError } from "../../../src/errors/AppError";
@@ -32,6 +50,11 @@ const companyDocument = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  lifecycleTx.withCompanyLifecycleTransaction.mockImplementation(
+    async (operation: (session: object) => Promise<unknown>) => operation({}),
+  );
+  userRepository.suspendActiveNonOwnerStaffForCompanyDeactivation.mockResolvedValue(0);
+  userRepository.restoreUsersSuspendedByCompanyDeactivation.mockResolvedValue(0);
   companyRepository.findById.mockResolvedValue(companyDocument);
   companyRepository.findAll.mockResolvedValue([companyDocument]);
   companyRepository.update.mockResolvedValue(companyDocument);
@@ -74,8 +97,10 @@ describe("CompanyService - isolamento multiempresa", () => {
   });
 
   it("permite ativar a própria empresa", async () => {
+    companyRepository.findById.mockResolvedValue({ ...companyDocument, isActive: false });
     await expect(CompanyService.activate(companyA, companyA)).resolves.toBeTruthy();
-    expect(companyRepository.activate).toHaveBeenCalledWith(companyA);
+    expect(lifecycleTx.withCompanyLifecycleTransaction).toHaveBeenCalled();
+    expect(companyRepository.activate).toHaveBeenCalledWith(companyA, expect.anything());
   });
 
   it("não permite ativar empresa de outro tenant", async () => {
@@ -86,7 +111,8 @@ describe("CompanyService - isolamento multiempresa", () => {
 
   it("permite desativar a própria empresa", async () => {
     await expect(CompanyService.deactivate(companyA, companyA)).resolves.toBeTruthy();
-    expect(companyRepository.deactivate).toHaveBeenCalledWith(companyA);
+    expect(lifecycleTx.withCompanyLifecycleTransaction).toHaveBeenCalled();
+    expect(companyRepository.deactivate).toHaveBeenCalledWith(companyA, expect.anything());
   });
 
   it("não permite desativar empresa de outro tenant", async () => {

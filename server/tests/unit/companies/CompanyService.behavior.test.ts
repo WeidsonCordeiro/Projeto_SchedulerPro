@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { companyRepository } = vi.hoisted(() => ({
+const { companyRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
   companyRepository: {
     findById: vi.fn(),
     update: vi.fn(),
@@ -8,9 +8,27 @@ const { companyRepository } = vi.hoisted(() => ({
     activate: vi.fn(),
     deactivate: vi.fn(),
   },
+  userRepository: {
+    suspendActiveNonOwnerStaffForCompanyDeactivation: vi.fn(),
+    restoreUsersSuspendedByCompanyDeactivation: vi.fn(),
+  },
+  lifecycleTx: {
+    withCompanyLifecycleTransaction: vi.fn(),
+  },
 }));
 
 vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
+
+vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
+  default: userRepository,
+}));
+
+vi.mock(
+  "../../../src/modules/companies/services/company-lifecycle-transaction",
+  () => ({
+    withCompanyLifecycleTransaction: lifecycleTx.withCompanyLifecycleTransaction,
+  }),
+);
 
 import CompanyService from "../../../src/modules/companies/services/CompanyService";
 import { AppError } from "../../../src/errors/AppError";
@@ -29,6 +47,11 @@ const company = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  lifecycleTx.withCompanyLifecycleTransaction.mockImplementation(
+    async (operation: (session: object) => Promise<unknown>) => operation({}),
+  );
+  userRepository.suspendActiveNonOwnerStaffForCompanyDeactivation.mockResolvedValue(0);
+  userRepository.restoreUsersSuspendedByCompanyDeactivation.mockResolvedValue(0);
   companyRepository.findById.mockResolvedValue(company);
   companyRepository.update.mockResolvedValue(company);
   companyRepository.activate.mockResolvedValue(company);
@@ -62,12 +85,15 @@ describe("CompanyService", () => {
 
   it("atualiza, ativa, desativa e remove somente a própria empresa", async () => {
     await CompanyService.update(id, { timezone: "UTC" }, id);
+    companyRepository.findById.mockResolvedValue({ ...company, isActive: false });
     await CompanyService.activate(id, id);
+    companyRepository.findById.mockResolvedValue(company);
     await CompanyService.deactivate(id, id);
     await CompanyService.delete(id, id);
     expect(companyRepository.update).toHaveBeenCalledWith(id, { timezone: "UTC" });
-    expect(companyRepository.activate).toHaveBeenCalledWith(id);
-    expect(companyRepository.deactivate).toHaveBeenCalledWith(id);
+    expect(lifecycleTx.withCompanyLifecycleTransaction).toHaveBeenCalled();
+    expect(companyRepository.activate).toHaveBeenCalledWith(id, expect.anything());
+    expect(companyRepository.deactivate).toHaveBeenCalledWith(id, expect.anything());
     expect(companyRepository.softDelete).toHaveBeenCalledWith(id);
   });
 });

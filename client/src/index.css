@@ -1,11 +1,32 @@
+html {
+  height: 100%;
+}
+
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   color: #172033;
   background: #f5f7fb;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Shell autenticado: um único scroll em `main`, sem documento a crescer além da viewport. */
+body:has(.app-shell) {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#root:has(.app-shell) {
+  height: 100%;
 }
 
 :root {
@@ -17,6 +38,13 @@ body {
   --sp-surface: #ffffff;
   --sp-radius: 0.85rem;
   --sp-shadow: 0 8px 24px rgba(25, 38, 67, 0.06);
+  --sp-btn-min-height: 2.5rem;
+  --sp-btn-sm-min-height: 2.25rem;
+  --sp-btn-padding-x: 1rem;
+  --sp-btn-sm-padding-x: 0.75rem;
+  --sp-btn-action-min-width: 6.75rem;
+  --sp-btn-action-gap: 0.5rem;
+  --sp-btn-save-min-width: 11.75rem;
 }
 
 button,
@@ -28,16 +56,16 @@ textarea {
 }
 button,
 .btn {
-  min-height: 2.5rem;
+  min-height: var(--sp-btn-min-height);
 }
 .btn {
   border-radius: 0.6rem;
   font-weight: 600;
-  padding-inline: 1rem;
+  padding-inline: var(--sp-btn-padding-x);
 }
 .btn-sm {
-  min-height: 2.25rem;
-  padding-inline: 0.75rem;
+  min-height: var(--sp-btn-sm-min-height);
+  padding-inline: var(--sp-btn-sm-padding-x);
 }
 .btn-primary {
   background: var(--sp-primary);
@@ -122,11 +150,37 @@ button,
 .table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--sp-btn-action-gap);
 }
 .table-actions > * {
   flex: 0 0 auto;
 }
+.table-actions .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-width: var(--sp-btn-action-min-width);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Listagens de entidades (clientes, serviços, funcionários) — cards mobile */
+.entity-list-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.entity-list-mobile .entity-card-email {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.entity-list-mobile .entity-card-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
 .badge {
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -209,14 +263,60 @@ button,
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.section-actions > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 /* Barra de filtros segmentados: o deslocamento horizontal fica restrito ao
    próprio contentor, nunca à página. */
 .filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-btn-action-gap);
   max-width: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding-bottom: 0.1rem;
   -webkit-overflow-scrolling: touch;
+}
+.filter-bar .btn-group {
+  flex-wrap: nowrap;
+}
+.filter-bar .btn-group .btn {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  justify-content: center;
+  min-height: var(--sp-btn-sm-min-height);
+  white-space: nowrap;
+}
+
+/* CompanyPage — link público: alinhamento, acções simétricas e stack em mobile. */
+.company-public-booking-link {
+  align-items: stretch;
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+.company-public-booking-link > .form-control {
+  flex: 1 1 auto;
+  min-height: var(--sp-btn-min-height);
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+.company-public-booking-link > .btn {
+  align-items: center;
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: center;
+  min-height: var(--sp-btn-min-height);
+  min-width: var(--sp-btn-action-min-width);
+  padding-inline: var(--sp-btn-padding-x);
+  white-space: nowrap;
 }
 
 .loading-state {
@@ -312,6 +412,9 @@ button,
   justify-content: center;
   width: min(100%, 74rem);
 }
+.public-layout-not-found {
+  min-height: 50vh;
+}
 .public-context {
   max-width: 40rem;
 }
@@ -361,10 +464,10 @@ button,
 .card dd {
   overflow-wrap: anywhere;
 }
-.list-intro,
+/* .list-intro,
 .service-summary {
   flex-wrap: wrap;
-}
+} */
 
 .app-sidebar {
   background: #fff !important;
@@ -372,11 +475,20 @@ button,
 }
 
 .app-shell {
+  --sp-navbar-height: 4.25rem;
   background: #f5f7fb;
-  height: 100vh;
-  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.app-body {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .app-body > main {
+  min-height: 0;
   min-width: 0;
 }
 
@@ -386,6 +498,7 @@ button,
   border-radius: 0.6rem;
   display: flex;
   font-weight: 550;
+  margin-left: 2rem;
   margin-bottom: 0.25rem;
   min-height: 2.7rem;
   padding: 0.7rem 0.85rem;
@@ -404,9 +517,9 @@ button,
   margin-top: 1.1rem;
 }
 .sidebar-group-label {
-  color: #98a2b3;
-  font-size: 0.68rem;
-  font-weight: 750;
+  color: #3157d5;
+  font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0.1em;
   margin: 0 0.85rem 0.45rem;
   text-transform: uppercase;
@@ -428,10 +541,38 @@ button,
 }
 
 .app-navbar {
-  --sp-navbar-height: 4.25rem;
   background: #17233f;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
   min-height: var(--sp-navbar-height);
+}
+.app-navbar .container-fluid {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.app-navbar .navbar-actions {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.75rem;
+  margin-inline-start: auto;
+  min-width: 0;
+}
+.app-navbar .navbar-actions > .btn,
+.app-navbar .navbar-actions > .notification-bell-anchor {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+}
+.app-navbar .navbar-user-cluster {
+  align-items: center;
+  display: flex;
+  flex-shrink: 1;
+  gap: 0.5rem;
+  min-width: 0;
 }
 .app-navbar .navbar-brand {
   font-weight: 750;
@@ -440,12 +581,19 @@ button,
 .app-navbar .navbar-text {
   color: #fff !important;
   line-height: 1.25;
+  padding-bottom: 0;
+  padding-top: 0;
 }
 .app-navbar .user-role {
   color: #abb8d6 !important;
 }
 .app-navbar .user-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  justify-content: center;
   min-width: 0;
+  text-align: end;
 }
 .app-navbar .user-name {
   display: block;
@@ -467,10 +615,20 @@ button,
   text-align: center;
 }
 .notification-menu {
-  max-width: calc(100vw - 1rem);
-  width: 22rem;
+  display: flex;
+  flex-direction: column;
+  inset-inline: auto 0.5rem;
+  left: auto;
+  max-height: calc(100dvh - var(--sp-navbar-height) - 1.25rem);
+  max-width: min(22rem, calc(100vw - 1rem));
+  min-height: 0;
+  position: fixed;
+  top: calc(var(--sp-navbar-height) + 0.35rem);
+  width: min(22rem, calc(100vw - 1rem));
+  z-index: 1060;
 }
 .notification-menu-header {
+  flex-shrink: 0;
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -490,177 +648,11 @@ button,
   overflow-wrap: anywhere;
 }
 .dropdown-menu-body {
-  max-height: 18rem;
+  flex: 1 1 auto;
+  max-height: min(18rem, calc(100dvh - var(--sp-navbar-height) - 6rem));
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-}
-
-.calendar-surface {
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius);
-  box-shadow: var(--sp-shadow);
-  padding: 1rem;
-}
-
-.calendar-toolbar {
-  align-items: center;
-  background: #fff;
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-}
-/* O período é a informação que orienta a leitura da agenda, portanto fica
-   sempre visível (todas as vistas, todas as larguras) e encolhe antes das ações. */
-.calendar-toolbar-label {
-  flex: 1 1 100%;
-  font-size: 1.15rem;
-  font-weight: 700;
-  line-height: 1.25;
-  margin: 0;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.calendar-item {
-  border-radius: 0.35rem !important;
-  color: #fff !important;
-  min-height: 3.45rem;
-  overflow: hidden;
-}
-.calendar-item-time {
-  font-size: 0.65rem;
-  font-weight: 750;
-  opacity: 0.82;
-}
-.calendar-item-client {
-  font-size: 0.72rem;
-  font-weight: 750;
-  line-height: 1.15;
-}
-.calendar-item-service {
-  font-size: 0.62rem;
-  opacity: 0.82;
-}
-.status-scheduled {
-  background: #526bd8 !important;
-  color: #fff !important;
-}
-.status-confirmed {
-  background: #168c72 !important;
-  color: #fff !important;
-}
-.status-completed {
-  background: #667085 !important;
-  color: #fff !important;
-}
-.status-cancelled {
-  background: #d95368 !important;
-  color: #fff !important;
-}
-.status-no-show {
-  background: #d18b20 !important;
-  color: #fff !important;
-}
-.status-default {
-  background: #94a3b8 !important;
-  color: #fff !important;
-}
-/* A cor do bloco vem da classe .status-* partilhada pelas vistas Month, Week e
-   Day (APPOINTMENT_STATUS_CALENDAR_CLASS), por isso não é repetida por vista. */
-.calendar-week-event {
-  border-left: 3px solid rgba(255, 255, 255, 0.7) !important;
-  color: #fff;
-  font-size: 0.72rem;
-}
-.calendar-event-time {
-  font-size: 0.64rem;
-  opacity: 0.85;
-}
-.calendar-event-client {
-  font-weight: 750;
-}
-.calendar-event-service {
-  font-size: 0.66rem;
-  opacity: 0.85;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.month-calendar .calendar-day-cell {
-  background: #fff;
-  border-color: #edf0f5 !important;
-  padding: 0.35rem !important;
-}
-/* As 7 colunas da grelha mensal podem encolher abaixo do conteúdo, para que
-   a grade do mês nunca ultrapasse a largura disponível. */
-.month-calendar .col,
-.month-calendar .calendar-day-cell {
-  min-width: 0;
-}
-
-.month-calendar .calendar-day-cell.bg-light {
-  background: #fafbfc !important;
-}
-.month-calendar .calendar-day-cell-past {
-  opacity: 0.7;
-}
-.month-calendar .calendar-day-cell:focus-visible,
-.week-slot:focus-visible {
-  outline: 2px solid var(--sp-primary);
-  outline-offset: -2px;
-}
-/* Itens do mês: 3 linhas (hora, cliente, serviço) em altura compacta para que
-   4 eventos + indicador "+N mais" caibam no mesmo dia, sem cortar conteúdo. */
-.month-calendar .calendar-item {
-  line-height: 1.2;
-  margin-bottom: 0.15rem;
-  min-height: 0;
-  padding: 0.15rem 0.3rem !important;
-}
-.month-calendar .calendar-item-time {
-  font-size: 0.58rem;
-}
-.month-calendar .calendar-item-client {
-  font-size: 0.66rem;
-}
-.month-calendar .calendar-item-service {
-  font-size: 0.58rem;
-}
-.month-calendar .calendar-day-number {
-  align-items: center;
-  display: inline-flex;
-  height: 1.5rem;
-  justify-content: center;
-  margin-bottom: 0.1rem;
-  min-width: 1.5rem;
-}
-.month-calendar .calendar-day-cell.today .calendar-day-number {
-  background: var(--sp-primary);
-  border-radius: 50%;
-  color: #fff;
-  font-weight: 750;
-}
-/* "+N mais": indica que o dia tem mais eventos e que o clique abre o dia. */
-.calendar-overflow {
-  border-radius: 0.3rem;
-  color: var(--sp-muted);
-  cursor: pointer;
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 700;
-  line-height: 1.4;
-  padding: 0.1rem 0.3rem;
-}
-.calendar-overflow:hover,
-.calendar-overflow:focus-visible {
-  background: #eef2ff;
-  color: var(--sp-primary);
-  outline: none;
 }
 
 .insight-strip {
@@ -684,22 +676,22 @@ button,
 .insight-strip > div:last-child {
   border-right: 0;
 }
-.insight-strip span,
+/* .insight-strip span,
 .service-summary {
   color: var(--sp-muted);
   font-size: 0.78rem;
-}
-.insight-strip strong {
+} */
+/* .insight-strip strong {
   color: var(--sp-ink);
   font-size: 1.35rem;
-}
-.list-intro,
+} */
+/* .list-intro,
 .service-summary {
   align-items: center;
   display: flex;
   gap: 0.65rem;
-}
-.list-intro-number {
+} */
+/* .list-intro-number {
   align-items: center;
   background: #eaf0ff;
   border-radius: 0.5rem;
@@ -711,14 +703,14 @@ button,
   justify-content: center;
   min-width: 1.8rem;
   padding: 0 0.4rem;
-}
-.service-summary {
+} */
+/* .service-summary {
   gap: 1.25rem;
 }
 .service-summary strong {
   color: var(--sp-ink);
   font-size: 1rem;
-}
+} */
 
 .availability-day-card {
   overflow: hidden;
@@ -773,10 +765,27 @@ button,
   padding-left: 1rem;
 }
 .exception-item {
+  align-items: center;
   border-bottom: 1px solid #edf0f5;
+  display: flex;
   gap: 1rem;
+  justify-content: space-between;
   padding: 0.9rem 0;
   position: relative;
+}
+.exception-item-main {
+  align-items: flex-start;
+  display: flex;
+  flex: 1;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.exception-item-details {
+  flex: 1;
+  min-width: 0;
+}
+.exception-item-actions {
+  flex-shrink: 0;
 }
 .exception-item::before {
   background: var(--sp-primary);
@@ -848,6 +857,7 @@ button,
   padding: 1rem 1.1rem;
 }
 .availability-day-column .availability-day-card {
+  align-items: start;
   border: 0;
   box-shadow: none;
   display: grid;
@@ -877,8 +887,20 @@ button,
   grid-row: 2;
 }
 .availability-day-column .availability-day-save {
+  align-items: center;
+  align-self: end;
   grid-column: 2;
   grid-row: 3;
+  justify-content: flex-end;
+}
+.availability-day-column .availability-day-save .btn {
+  align-items: center;
+  align-self: center;
+  display: inline-flex;
+  height: auto;
+  justify-content: center;
+  min-width: var(--sp-btn-save-min-width);
+  text-align: center;
 }
 /* Sem disponibilidade: além da cor, o traço tracejado e o cartão esbatido
    distinguem o dia fechado dos dias com atendimento. */
@@ -908,6 +930,93 @@ button,
 
 .public-shell .page-header {
   margin-bottom: 1.25rem;
+}
+
+/* =========================================================
+   Página pública do agendamento (/agendar/:token)
+   ========================================================= */
+/* Resumo do agendamento: rótulo em cima, valor em baixo. Empilhado por
+   omissão (a coluna mais estreita é a do telemóvel) e lado a lado a partir
+   de 480px, onde há largura para os dois. */
+.public-summary {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.public-summary-row {
+  border-bottom: 1px solid var(--sp-border);
+  display: grid;
+  gap: 0.15rem 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0.85rem 0;
+}
+.public-summary-row:first-child {
+  padding-top: 0;
+}
+.public-summary-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.public-summary dt {
+  color: var(--sp-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.public-summary dd {
+  color: var(--sp-ink);
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+/* Versão compacta, dentro do modal de confirmação. */
+.public-summary-compact .public-summary-row {
+  padding: 0.5rem 0;
+}
+.public-summary-compact dd {
+  font-size: 0.92rem;
+}
+/* Ações da página: pilha em ecrãs estreitos (alvos de toque comfortable) e
+   linha a partir de 480px. */
+.public-appointment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+.public-form-note {
+  background: #f7f9ff;
+  border: 1px solid var(--sp-border);
+  border-radius: 0.7rem;
+  color: var(--sp-muted);
+  font-size: 0.82rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+}
+@media (min-width: 480px) {
+  .public-summary-row {
+    align-items: baseline;
+    grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+  }
+  .public-summary-row:first-child,
+  .public-summary-row:last-child {
+    padding: 0.85rem 0;
+  }
+  .public-summary-row:first-child {
+    padding-top: 0;
+  }
+  .public-summary-row:last-child {
+    padding-bottom: 0;
+  }
+  .public-appointment-actions {
+    flex-direction: row;
+  }
+  .public-appointment-actions > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 .portal-shell-note {
   background: #edf2ff;
@@ -1009,61 +1118,21 @@ button,
   text-align: center;
 }
 
-/* Seletor de data do formulário de agendamento. As classes existem no
-   AppointmentCalendar.tsx; sem estas regras o mês era desenhado apenas com o
-   Bootstrap base e ficava sem a identidade visual do calendário principal. */
-.calendar-grid {
-  background: #fff;
-  border: 1px solid var(--sp-border);
-  border-radius: var(--sp-radius);
-  padding: 0.5rem;
-}
-.calendar-grid .col {
-  min-width: 0;
-}
-.calendar-grid .calendar-day {
-  font-weight: 650;
-  margin-inline: 0.1rem;
-  min-height: 2.1rem;
-  padding: 0.15rem 0.1rem;
-  width: calc(100% - 0.2rem);
-}
-.calendar-grid .calendar-day.btn-primary {
-  box-shadow: inset 0 0 0 2px var(--sp-primary);
-  font-weight: 750;
-}
-.calendar-grid .calendar-day.btn-outline-success {
-  color: #12806a;
-}
-.calendar-grid .calendar-day.btn-outline-secondary {
-  background: #f7f9fc;
-}
-.calendar-grid .calendar-day:disabled {
-  opacity: 0.55;
-}
-.calendar-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
-  justify-content: center;
-  margin-top: 0.65rem;
-  padding: 0 0.35rem;
-}
-.calendar-legend > span {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.3rem;
-}
-
 @media (max-width: 991.98px) {
   .app-sidebar {
     position: fixed;
-    top: 0;
+    top: var(--sp-navbar-height);
     left: 0;
     bottom: 0;
+    height: auto;
+    max-height: none;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    max-width: min(240px, 66vw);
     transform: translateX(-100%);
     transition: transform 0.2s ease;
-    width: min(260px, 82vw);
+    /* ~238px em 360px (66vw); tecto 240px — mais area util que min(260px, 82vw) */
+    width: min(240px, 66vw);
     z-index: 1050;
   }
 
@@ -1071,11 +1140,46 @@ button,
     transform: translateX(0);
   }
 
+  .app-sidebar .nav-link {
+    margin-left: 0.65rem;
+    padding-inline: 0.75rem;
+  }
+
+  .sidebar-group-label {
+    margin-inline: 0.65rem;
+  }
+
+  .sidebar-context {
+    margin-inline: 0.05rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .sidebar-context > div {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .sidebar-context .sidebar-context-label,
+  .sidebar-context strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-context-avatar {
+    flex-shrink: 0;
+  }
+
   /* O conteúdo do menu rola dentro do próprio drawer; o cabeçalho "Menu" e o
      botão de fechar permanecem fixos. */
   .app-sidebar-scroll {
     flex: 1 1 auto;
     min-height: 0;
+    min-width: 0;
+    overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
@@ -1090,58 +1194,23 @@ button,
     cursor: pointer;
   }
 
-  /* Abaixo do breakpoint da sidebar as grelhas do calendário mantêm largura
-     mínima legível; o deslocamento fica dentro da superfície do calendário. */
-  .week-calendar,
-  .day-calendar {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .week-calendar > *,
-  .day-calendar > * {
-    min-width: 620px;
-  }
-
-  .week-calendar .btn-group {
-    flex-wrap: wrap;
-  }
-
-  /* Painel de notificações ancorado à viewport: nunca ultrapassa as margens
-     laterais, independentemente da posição do sino. */
+  /* Painel de notificações: margens laterais simétricas em ecrãs estreitos. */
   .notification-menu {
-    position: fixed;
-    top: calc(var(--sp-navbar-height) + 0.35rem);
+    inset-inline: 0.5rem;
     left: 0.5rem;
     right: 0.5rem;
     width: auto;
     max-width: none;
-    max-height: calc(100vh - var(--sp-navbar-height) - 1.25rem);
-    max-height: calc(100dvh - var(--sp-navbar-height) - 1.25rem);
   }
 }
 
-/* ------------------------------------------------------------------ */
-/*  Calendário da Agenda                                               */
-/* ------------------------------------------------------------------ */
-
-.month-calendar .calendar-day-cell {
-  transition: background-color 0.12s ease;
-}
-
-.month-calendar .calendar-day-cell:hover {
-  background-color: rgba(13, 110, 253, 0.04);
-}
-
-.month-calendar .calendar-item {
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-
-.week-calendar,
-.day-calendar {
-  min-height: 200px;
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .app-navbar .user-role {
+    display: none;
+  }
+  .app-navbar .user-name {
+    max-width: 9rem;
+  }
 }
 
 /* Responsivo: simplifica grade em telas pequenas */
@@ -1160,6 +1229,111 @@ button,
   }
   .page-actions .btn {
     flex: 1;
+  }
+  .filter-bar .btn-group {
+    flex-wrap: wrap;
+    gap: var(--sp-btn-action-gap);
+    max-width: 100%;
+  }
+  .filter-bar .btn-group > .btn {
+    border-radius: 0.6rem;
+    margin-left: 0;
+  }
+  .company-public-booking-link {
+    flex-wrap: wrap;
+    gap: var(--sp-btn-action-gap);
+  }
+  .company-public-booking-link > .form-control {
+    border-radius: 0.6rem;
+    flex: 1 1 100%;
+    margin-left: 0;
+    width: 100%;
+  }
+  .input-group.company-public-booking-link > .btn {
+    flex: 1 1 0;
+    margin-left: 0;
+    min-width: var(--sp-btn-action-min-width);
+  }
+  .input-group.company-public-booking-link:not(.has-validation)
+    > .btn.btn-outline-primary:not(:first-child):not(:last-child):not(.dropdown-toggle):not(.dropdown-menu):not(.form-floating) {
+    border-bottom-left-radius: 0.6rem;
+    border-bottom-right-radius: 0.6rem;
+    border-top-left-radius: 0.6rem;
+    border-top-right-radius: 0.6rem;
+  }
+  .input-group.company-public-booking-link:not(.has-validation)
+    > .btn.btn-outline-secondary:not(:first-child):not(.dropdown-menu):not(.valid-tooltip):not(.valid-feedback):not(.invalid-tooltip):not(.invalid-feedback) {
+    border-bottom-left-radius: 0.6rem;
+    border-bottom-right-radius: 0.6rem;
+    border-top-left-radius: 0.6rem;
+    border-top-right-radius: 0.6rem;
+  }
+  .company-form-logo-uploader .image-uploader {
+    align-items: center;
+    flex-direction: column;
+  }
+  .company-form-logo-uploader .image-uploader-body {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+  .company-form-logo-uploader .image-uploader-actions {
+    justify-content: center;
+  }
+  .company-form-logo-uploader .image-uploader-hint,
+  .company-form-logo-uploader .image-uploader-success,
+  .company-form-logo-uploader .image-uploader-error {
+    text-align: center;
+  }
+  .exception-section-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .exception-section-header > :first-child {
+    min-width: 0;
+  }
+  .section-actions,
+  .section-actions .btn {
+    width: 100%;
+  }
+  .section-actions .btn {
+    flex: 1;
+  }
+  .exception-timeline {
+    margin-left: 0.35rem !important;
+    padding-left: 0.75rem;
+  }
+  .exception-item {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .exception-item::before {
+    left: -1.05rem;
+    top: 1.1rem;
+  }
+  .exception-item-main {
+    align-items: flex-start;
+    width: 100%;
+  }
+  .exception-title {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .exception-title .badge {
+    margin-inline-start: 0;
+  }
+  .exception-item-actions {
+    justify-content: flex-end;
+    max-width: 100%;
+    width: 100%;
+  }
+  .exception-item-actions.table-actions {
+    flex-wrap: wrap;
   }
   .app-body > main {
     padding: 1rem !important;
@@ -1183,19 +1357,6 @@ button,
      vez de forçar deslocamento horizontal. */
   .table-responsive.table-compact .table {
     min-width: 0;
-  }
-  .calendar-toolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .calendar-toolbar > * {
-    justify-content: center;
-  }
-  .calendar-toolbar .btn-group {
-    width: 100%;
-  }
-  .calendar-toolbar .btn-group .btn {
-    flex: 1;
   }
   /* Modais: margem lateral garantida e largura limitada à área útil. */
   .modal {
@@ -1254,32 +1415,23 @@ button,
   .availability-day-column .availability-timeline {
     margin-bottom: 1rem;
   }
-  .month-calendar .calendar-day-cell {
-    min-height: 64px !important;
-  }
-  /* O "+N mais" passa a ocupar a linha inteira do dia em ecrãs estreitos,
-     para não ficar espremido ao lado dos eventos. */
-  .month-calendar .calendar-overflow {
-    padding: 0.15rem 0.3rem;
-  }
-}
-
-@media (max-width: 767.98px) {
-  /* A grelha mensal mantém as 7 colunas (é a leitura do mês que o utilizador
-     espera), mas com largura mínima por coluna e scroll horizontal dentro da
-     própria grelha: comprimir 7 dias em 390px tornaria cada célula ilegível e
-     empurraria a página para fora da viewport. */
-  .month-calendar {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-  }
-  .month-calendar > .row {
-    min-width: 40rem;
-  }
 }
 
 @media (max-width: 575.98px) {
-  .app-navbar {
+  .exception-item-main {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .exception-date {
+    align-items: baseline;
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 0.35rem;
+  }
+  .exception-date-text {
+    text-align: start;
+  }
+  .app-shell {
     --sp-navbar-height: 3.75rem;
   }
   .app-navbar .navbar-brand {
@@ -1287,13 +1439,6 @@ button,
   }
   .app-navbar .user-summary {
     display: none;
-  }
-  .calendar-surface {
-    border-left: 0;
-    border-right: 0;
-    border-radius: 0;
-    margin-inline: -0.5rem;
-    padding: 0.5rem;
   }
   .insight-strip {
     display: grid;
@@ -1307,34 +1452,7 @@ button,
   .insight-strip > div:nth-child(2n) {
     border-right: 0;
   }
-  .exception-item {
-    align-items: flex-start !important;
-    flex-wrap: wrap;
-  }
-  .exception-item > .d-flex {
-    margin-left: 4rem;
-    width: 100%;
-  }
-  .month-calendar,
-  .week-calendar,
-  .day-calendar {
-    font-size: 0.82rem;
-  }
 }
-
-/* Zebra sutil em linhas de hora (alternância) */
-.week-calendar .border-bottom:nth-child(even),
-.day-calendar .border-bottom:nth-child(even) {
-  background-color: rgba(0, 0, 0, 0.015);
-}
-
-/* Bloco de agendamento: efeito hover */
-.week-calendar .position-absolute:hover > div,
-.day-calendar .position-absolute:hover > div {
-  filter: brightness(1.1);
-}
-
-/* Indicador de "mais agendamentos" no mês: ver .calendar-overflow. */
 
 /* Classes customizadas do Bootstrap */
 .invalid-feedback {
@@ -1342,7 +1460,10 @@ button,
 }
 
 .table-responsive {
-  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
 }
 
 /* =========================================================
@@ -1444,3 +1565,425 @@ button,
   }
 }
 
+/* =========================================================
+   Seleção de funcionário (cartões com avatar)
+   ========================================================= */
+/* `min()` no mínimo da coluna evita transbordo em ecrãs muito estreitos:
+   abaixo de 13rem a coluna passa a ocupar a largura disponível. */
+.employee-picker {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+}
+
+.employee-option {
+  align-items: center;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  color: var(--sp-ink);
+  cursor: pointer;
+  display: flex;
+  gap: 0.7rem;
+  min-height: 4rem;
+  padding: 0.6rem 0.75rem;
+  position: relative;
+  text-align: left;
+  width: 100%;
+}
+
+.employee-option:hover:not(:disabled) {
+  background: #f7f9ff;
+  border-color: #c3cff5;
+}
+
+.employee-option:focus-visible {
+  border-color: var(--sp-primary);
+  box-shadow: 0 0 0 0.2rem rgba(49, 87, 213, 0.25);
+  outline: 2px solid transparent;
+}
+
+.employee-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* O estado selecionado não depende só da cor: o cartão ganha uma borda
+  espessa, um fundo distinto e o selo "✓" no canto. */
+.employee-option.is-selected {
+  background: #eef2ff;
+  border-color: var(--sp-primary);
+  border-width: 2px;
+  box-shadow: 0 0 0 1px var(--sp-primary);
+  font-weight: 600;
+  padding: calc(0.6rem - 1px) calc(0.75rem - 1px);
+}
+
+.employee-option-check {
+  align-items: center;
+  background: var(--sp-primary);
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  height: 1.25rem;
+  justify-content: center;
+  margin-left: auto;
+  width: 1.25rem;
+}
+
+.employee-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.employee-option-name {
+  color: var(--sp-ink);
+  overflow-wrap: anywhere;
+}
+
+.employee-option-hint {
+  color: var(--sp-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.employee-picker.is-invalid {
+  border-radius: var(--sp-radius);
+  box-shadow: 0 0 0 1px #d92d20;
+}
+
+/* ================================================================== */
+/* Marcação pública (Parte 5)                                          */
+/* ================================================================== */
+
+/**
+ * O fluxo público tem mais conteúdo por ecrã do que a página de gestão de um
+ * agendamento (uma escolha, cinco etapas), por isso o contentor é mais largo.
+ * Afeta APENAS esta página — a largura padrão de 34rem das restantes páginas
+ * públicas não muda.
+ */
+.public-booking {
+  width: min(100%, 44rem);
+}
+
+/* --- Etapas ------------------------------------------------------- */
+
+.booking-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  list-style: none;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.booking-step {
+  align-items: center;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: 999px;
+  color: var(--sp-muted);
+  display: flex;
+  font-size: 0.78rem;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.3rem;
+}
+
+/**
+ * Concluídas ficam com o número tapado por um disco sólido: dá para ler "já
+ * passei por aqui" sem depender só da cor, o que também ajuda quem não
+ * distingue o verde do cinzento.
+ */
+.booking-step.is-done {
+  background: var(--sp-primary);
+  border-color: var(--sp-primary);
+  color: #fff;
+}
+
+.booking-step.is-current {
+  background: var(--sp-primary);
+  border-color: var(--sp-primary);
+  color: #fff;
+  font-weight: 700;
+}
+
+.booking-step-number {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 0.7rem;
+  font-weight: 700;
+  height: 1.35rem;
+  justify-content: center;
+  width: 1.35rem;
+}
+
+.booking-step:not(.is-current):not(.is-done) .booking-step-number {
+  background: var(--sp-border);
+  color: var(--sp-ink);
+}
+
+.booking-step.is-current .booking-step-number,
+.booking-step.is-done .booking-step-number {
+  background: #fff;
+  color: var(--sp-primary);
+}
+
+@media (max-width: 430px) {
+  /* Em 390px as cinco etapas cabem, mas cada uma tem de ficar com o número
+     visível — esconder o rótulo seria perder a informação de onde se está. */
+  .booking-step {
+    font-size: 0.72rem;
+    padding-right: 0.55rem;
+  }
+}
+
+/* --- Título da etapa ---------------------------------------------- */
+
+.booking-stage-title {
+  font-size: 1.25rem;
+  margin: 0 0 1rem;
+}
+
+/**
+ * O título recebe foco quando a etapa muda (ver `PublicBookingPage`). Sem
+ * `outline: none` o anel de foco apareceria em torno de um texto grande e
+ * distorcia o ecrã; com `outline: none` some o indicador. `:focus-visible`
+ * devolve-o apenas na navegação por teclado, que é quem dele precisa.
+ */
+.booking-stage-title:focus {
+  outline: none;
+}
+
+.booking-stage-title:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 4px;
+}
+
+/* --- Escolha de serviço / profissional ----------------------------- */
+
+.booking-choice-group {
+  border: 0;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.booking-legend {
+  font-size: 0.95rem;
+  font-weight: 650;
+  margin-bottom: 0.75rem;
+}
+
+.booking-cards {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+}
+
+.booking-cards-people {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+
+.booking-card {
+  position: relative;
+}
+
+.booking-card:hover {
+  border-color: var(--sp-primary);
+}
+
+/**
+ * O input fica no DOM, focável e operável por teclado — só deixa de ser
+ * visível. Esconder com `display: none` tiraria-o da navegação por teclado e
+ * do leitor de ecrã, que é exatamente o que os radios existem para evitar.
+ */
+.booking-card-input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.booking-card-label {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  height: 100%;
+  padding: 0.85rem;
+}
+
+.booking-card.is-selected .booking-card-label {
+  border-color: var(--sp-primary);
+  box-shadow: 0 0 0 1px var(--sp-primary);
+}
+
+/* `:focus-within` no cartão, e não `:focus` no input: o input é invisível, e
+   um contorno desenhado nele (1px, opacidade 0) não se veria. */
+.booking-card:focus-within .booking-card-label {
+  border-color: var(--sp-primary);
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 2px;
+}
+
+.booking-card-title {
+  color: var(--sp-ink);
+  font-weight: 650;
+}
+
+.booking-card-description {
+  color: var(--sp-muted);
+  font-size: 0.85rem;
+}
+
+.booking-card-meta {
+  color: var(--sp-muted);
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.booking-cards-people .booking-card-label {
+  align-items: center;
+  text-align: center;
+}
+
+/* --- Data e horários ---------------------------------------------- */
+
+.booking-section {
+  margin-bottom: 1.5rem;
+}
+
+.booking-section-title {
+  font-size: 1.05rem;
+  margin-bottom: 0.75rem;
+}
+
+.booking-field {
+  margin-bottom: 1rem;
+}
+
+.booking-slots {
+  margin: 1rem 0 1.25rem;
+}
+
+.booking-slots-title {
+  font-size: 0.85rem;
+  font-weight: 650;
+  margin-bottom: 0.5rem;
+}
+
+.booking-slots-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+}
+
+.booking-slot {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  color: var(--sp-ink);
+  font-weight: 650;
+  padding: 0.6rem 0.5rem;
+}
+
+.booking-slot:hover {
+  border-color: var(--sp-primary);
+  color: var(--sp-primary);
+}
+
+.booking-slot.is-selected {
+  background: var(--sp-primary);
+  border-color: var(--sp-primary);
+  color: #fff;
+}
+
+/* --- Formulário e revisão ------------------------------------------ */
+
+.booking-form {
+  margin: 0;
+}
+
+.booking-back {
+  margin-top: 1rem;
+}
+
+.booking-review-list {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  display: grid;
+  gap: 0.35rem 1rem;
+  grid-template-columns: minmax(6rem, auto) 1fr;
+  margin: 0 0 1.25rem;
+  padding: 1rem;
+}
+
+.booking-review-list dt {
+  color: var(--sp-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.booking-review-list dd {
+  color: var(--sp-ink);
+  margin: 0;
+}
+
+.booking-review-meta {
+  color: var(--sp-muted);
+  font-size: 0.85rem;
+}
+
+.booking-review-person {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 430px) {
+  /* Numa coluna o par rótulo/valor continua legível; numa linha, "Data e
+     hora" roubaria a largura do valor em ecrãs de 390px. */
+  .booking-review-list {
+    gap: 0.15rem;
+    grid-template-columns: 1fr;
+  }
+
+  .booking-review-list dt {
+    margin-top: 0.4rem;
+  }
+}
+
+/* --- Confirmação --------------------------------------------------- */
+
+.booking-manage {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.booking-manage-hint {
+  font-size: 0.85rem;
+}
+
+.booking-manage-link {
+  overflow-wrap: anywhere;
+  width: 100%;
+}
+
+@media (min-width: 576px) {
+  .booking-manage-link {
+    width: auto;
+  }
+}

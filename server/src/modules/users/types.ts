@@ -37,10 +37,5 @@ export interface CreateUserData {
 
 /**
  * Dados permitidos para atualização.
- *
- * deletedAt é aceito somente para operações de restauração
- * (ver: UserRepository.updateIncludingDeleted).
  */
-export type UpdateUserData = Partial<CreateUserData> & {
-  deletedAt?: Date | null;
-};
+export type UpdateUserData = Partial<CreateUserData>;

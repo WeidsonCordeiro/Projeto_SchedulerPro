@@ -1,20 +1,27 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import appointmentsApi from "../../api/endpoints/appointments.api";
+import dashboardApi from "../../api/endpoints/dashboard.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
 import employeesApi from "../../api/endpoints/employees.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
-import { formatAppointmentDate } from "../../config/appointmentTime";
+import {
+  collectRelatedFailureMessages,
+  formatRelatedFailuresMessage,
+  getApiError,
+  getPageLoadErrorPresentation,
+} from "../../api/errors";
+import { buildReportRange } from "../../config/reportPeriod";
 import { useAppSelector } from "../../store";
-import { selectCompanyTimezone } from "../../store/slices/companySlice";
-import type { Appointment, AppointmentStatus } from "../../types/appointment";
+import { selectCompany, selectCompanyTimezone } from "../../store/slices/companySlice";
+import type { Appointment } from "../../types/appointment";
 import type { Client } from "../../types/client";
 import type { Service } from "../../types/service";
 import type { Employee, EmployeeRole } from "../../types/employee";
-import DashboardCard from "./DashboardCard";
+import type { DashboardSummary } from "../../types/dashboard";
+import DashboardCard from "../../components/common/DashboardCard";
 import DashboardAppointments from "./DashboardAppointments";
-import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import { Link } from "react-router-dom";
 
 /**
@@ -24,39 +31,50 @@ import { Link } from "react-router-dom";
  */
 const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN"];
 
-const UPCOMING_STATUSES: AppointmentStatus[] = ["scheduled", "confirmed"];
-const MAX_UPCOMING = 5;
-
-/**
- * Ordem cronológica de leitura da agenda. Sem isto, "Próximos agendamentos"
- * devolvia os 5 primeiros conforme a ordem do backend, podendo omitir o
- * agendamento mais próximo e mostrar um muito mais distante.
- */
-function byStartAt(a: Appointment, b: Appointment): number {
-  return new Date(a.startAt).getTime() - new Date(b.startAt).getTime();
-}
+const UPCOMING_LIMIT = 5;
 
 export default function DashboardPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
+  const staffCompanyAccessSuspended = useAppSelector(
+    (state) => state.auth.staffCompanyAccessSuspended,
+  );
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const timezone = useAppSelector(selectCompanyTimezone);
 
   const canListEmployees =
     currentUser?.role != null &&
     CAN_LIST_EMPLOYEES_ROLES.includes(currentUser.role);
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [relatedError, setRelatedError] = useState<string | null>(null);
 
-  const loadAppointments = useCallback(async () => {
-    const response = await appointmentsApi.getAppointments();
-    setAppointments(response.data ?? []);
-  }, []);
+  const todayRange = useMemo(
+    () => buildReportRange("today", timezone),
+    [timezone],
+  );
+
+  const loadSummary = useCallback(async () => {
+    if (!todayRange) {
+      throw new Error(
+        "Não foi possível calcular o período do dia no timezone da empresa.",
+      );
+    }
+
+    const response = await dashboardApi.getSummary({
+      startAt: todayRange.startAt,
+      endAt: todayRange.endAt,
+      upcomingLimit: UPCOMING_LIMIT,
+    });
+    setSummary(response.data ?? null);
+  }, [todayRange]);
 
   const loadClients = useCallback(async () => {
     const response = await clientsApi.getClients();
@@ -71,7 +89,7 @@ export default function DashboardPage() {
   const loadEmployees = useCallback(async () => {
     const response = await employeesApi.getEmployees();
     setEmployees(
-      (response.data ?? []).filter((employee) => employee.role !== "CLIENT")
+      (response.data ?? []).filter((employee) => employee.role !== "CLIENT"),
     );
   }, []);
 
@@ -81,100 +99,102 @@ export default function DashboardPage() {
     try {
       await loadClients();
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       await loadServices();
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     if (canListEmployees) {
       try {
         await loadEmployees();
       } catch (error) {
-        failures.push(getFriendlyErrorMessage(getApiError(error)));
+        collectRelatedFailureMessages(failures, error, companyIsActive);
       }
     }
 
     setRelatedError(
-      failures.length > 0
-        ? `Não foi possível carregar alguns nomes. ${failures.join(" ")}`
-        : null
+      formatRelatedFailuresMessage(
+        failures,
+        "Não foi possível carregar alguns nomes.",
+      ),
     );
-  }, [loadClients, loadServices, loadEmployees, canListEmployees]);
+  }, [loadClients, loadServices, loadEmployees, canListEmployees, companyIsActive]);
 
-  useEffect(() => {
-    async function loadAll() {
-      setIsLoading(true);
-      setLoadError(null);
-      setRelatedError(null);
+  const loadAll = useCallback(async () => {
+    if (staffCompanyAccessSuspended) {
+      return;
+    }
+    setIsLoading(true);
+    setLoadError(null);
+    setRelatedError(null);
 
-      try {
-        await loadAppointments();
-      } catch (error) {
-        setLoadError(getFriendlyErrorMessage(getApiError(error)));
+    try {
+      await loadSummary();
+    } catch (error) {
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      if (presentation.message) {
+        setLoadError(presentation.message);
+        setLoadErrorRetryable(presentation.retryable);
         setIsLoading(false);
         return;
       }
-
-      void loadRelated();
-      setIsLoading(false);
     }
 
+    await loadRelated();
+    setIsLoading(false);
+  }, [loadSummary, loadRelated, staffCompanyAccessSuspended, companyIsActive]);
+
+  useEffect(() => {
     void loadAll();
-  }, [loadAppointments, loadRelated]);
+  }, [loadAll]);
 
   const clientNames = useMemo(
     () => new Map(clients.map((c) => [c.id, c.name])),
-    [clients]
+    [clients],
   );
   const serviceNames = useMemo(
     () => new Map(services.map((s) => [s.id, s.name])),
-    [services]
+    [services],
   );
   const employeeNames = useMemo(
     () => new Map(employees.map((e) => [e.id, e.name])),
-    [employees]
+    [employees],
   );
 
-  const todayKey = useMemo(
-    () => formatAppointmentDate(DateTime.now().toISO(), timezone),
-    [timezone]
-  );
+  const todayAppointments: Appointment[] = summary?.todayAppointments ?? [];
+  const upcomingAppointments: Appointment[] =
+    summary?.upcomingAppointments ?? [];
 
-  const todayAppointments = useMemo(
-    () =>
-      appointments
-        .filter(
-          (apt) => formatAppointmentDate(apt.startAt, timezone) === todayKey
-        )
-        .sort(byStartAt),
-    [appointments, timezone, todayKey]
-  );
+  const scheduledCount = summary?.period.byStatus.scheduled ?? 0;
+  const confirmedCount = summary?.period.byStatus.confirmed ?? 0;
 
-  const upcomingAppointments = useMemo(
-    () =>
-      appointments
-        .filter(
-          (apt) =>
-            UPCOMING_STATUSES.includes(apt.status) &&
-            new Date(apt.startAt).getTime() > Date.now()
-        )
-        .sort(byStartAt)
-        .slice(0, MAX_UPCOMING),
-    [appointments]
+  const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
+
+  const pageHeader = (
+    <PageHeader
+      title="Bem-vindo ao SchedulerPro"
+      description={greeting}
+      eyebrow="Visão geral"
+      actions={
+        <Link className="btn btn-primary" to="/appointments">
+          Abrir agenda
+        </Link>
+      }
+    />
   );
 
   if (isLoading) {
     return (
       <section>
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
+        {pageHeader}
+        <LoadingState label="A carregar o painel…" />
       </section>
     );
   }
@@ -182,36 +202,18 @@ export default function DashboardPage() {
   if (loadError) {
     return (
       <section>
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => window.location.reload()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        {pageHeader}
+        <ErrorState
+          message={loadError}
+          onRetry={loadErrorRetryable ? () => void loadAll() : undefined}
+        />
       </section>
     );
   }
 
-  const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
-
   return (
     <section>
-      <PageHeader
-        title="Bem-vindo ao SchedulerPro"
-        description={greeting}
-        eyebrow="Visão geral"
-        actions={
-          <Link className="btn btn-primary" to="/appointments">
-            Abrir agenda
-          </Link>
-        }
-      />
+      {pageHeader}
       {relatedError && (
         <div className="alert alert-warning mt-3" role="alert">
           {relatedError}
@@ -228,24 +230,24 @@ export default function DashboardPage() {
         </div>
       </div>
       <div className="row g-3 dashboard-kpis">
-        <div className="col-12 col-md-4 col-xl-3">
+        <div className="col-12 col-md-4">
           <DashboardCard
             title="Hoje"
             value={todayAppointments.length}
             icon="bi-calendar-check"
           />
         </div>
-        <div className="col-12 col-md-4 col-xl-3">
+        <div className="col-12 col-md-4">
           <DashboardCard
             title="Pendentes"
-            value={appointments.filter((a) => a.status === "scheduled").length}
+            value={scheduledCount}
             icon="bi-clock"
           />
         </div>
-        <div className="col-12 col-md-4 col-xl-3">
+        <div className="col-12 col-md-4">
           <DashboardCard
             title="Confirmados"
-            value={appointments.filter((a) => a.status === "confirmed").length}
+            value={confirmedCount}
             icon="bi-check-circle"
           />
         </div>

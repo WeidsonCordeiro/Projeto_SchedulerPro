@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +14,6 @@ vi.mock("../../api/endpoints/clients.api", () => ({
     createClient: vi.fn(),
     updateClient: vi.fn(),
     deleteClient: vi.fn(),
-    setClientCredentials: vi.fn(),
     uploadClientPhoto: vi.fn(),
     removeClientPhoto: vi.fn(),
   },
@@ -78,8 +77,11 @@ describe("ClientsPage avatars", () => {
 
     const { container } = renderPage();
 
-    expect(await screen.findByText("Ana Silva")).toBeInTheDocument();
-    const img = container.querySelector(".person-cell img");
+    const desktop = await screen.findByTestId("clients-list-desktop");
+    expect(within(desktop).getByText("Ana Silva")).toBeInTheDocument();
+    const img = container.querySelector(
+      '[data-testid="clients-list-desktop"] .person-cell img',
+    );
     expect(img).not.toBeNull();
     expect(img).toHaveAttribute("src", storedImage.url);
   });
@@ -91,8 +93,9 @@ describe("ClientsPage avatars", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Ana Silva")).toBeInTheDocument();
-    expect(screen.getByText("AS")).toBeInTheDocument();
+    const desktop = await screen.findByTestId("clients-list-desktop");
+    expect(within(desktop).getByText("Ana Silva")).toBeInTheDocument();
+    expect(within(desktop).getByText("AS")).toBeInTheDocument();
   });
 
   it("reflects a newly uploaded photo in the list without reloading", async () => {
@@ -106,10 +109,15 @@ describe("ClientsPage avatars", () => {
 
     const { container } = renderPage();
 
-    expect(await screen.findByText("Ana Silva")).toBeInTheDocument();
-    expect(container.querySelector(".person-cell img")).toBeNull();
+    const desktop = await screen.findByTestId("clients-list-desktop");
+    expect(within(desktop).getByText("Ana Silva")).toBeInTheDocument();
+    expect(
+      container.querySelector(
+        '[data-testid="clients-list-desktop"] .person-cell img',
+      ),
+    ).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.click(within(desktop).getByRole("button", { name: "Editar" }));
 
     const file = new File([new Uint8Array([1, 2, 3])], "ana.png", {
       type: "image/png",
@@ -119,9 +127,9 @@ describe("ClientsPage avatars", () => {
     });
 
     await waitFor(() => {
-      const img = container.querySelector(".person-cell img");
-      expect(img).not.toBeNull();
-      expect(img).toHaveAttribute("src", storedImage.url);
+      const images = container.querySelectorAll(".person-cell img");
+      expect(images.length).toBeGreaterThan(0);
+      expect(images[0]).toHaveAttribute("src", storedImage.url);
     });
     expect(clientsApi.uploadClientPhoto).toHaveBeenCalledWith("abc123", file);
     expect(clientsApi.getClients).toHaveBeenCalledTimes(1);

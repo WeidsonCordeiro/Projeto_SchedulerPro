@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import companyApi from "../../api/endpoints/company.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import ImageUploader from "../common/ImageUploader";
-import { getIanaTimezones, isValidIanaTimezone } from "../../config/timezones";
+import { isValidIanaTimezone } from "../../config/timezones";
+import TimezonePicker from "../common/TimezonePicker";
 import type { Company, UpdateCompanyPayload } from "../../types/company";
 import type { StoredImage } from "../../types/image";
 
@@ -52,8 +53,6 @@ export default function CompanyForm({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const zones = useMemo(() => getIanaTimezones(), []);
-
   async function handleLogoUpload(file: File) {
     const response = await companyApi.uploadCompanyLogo(company.id, file);
     const updated = response.data;
@@ -71,15 +70,6 @@ export default function CompanyForm({
       onLogoChanged?.(updated);
     }
   }
-
-  // Preserva o valor real devolvido pelo backend mesmo que não esteja na
-  // lista atual do runtime (ex.: zona legada), evitando texto arbitrário.
-  const timezoneOptions = useMemo(() => {
-    if (zones.includes(company.timezone)) {
-      return zones;
-    }
-    return [company.timezone, ...zones];
-  }, [zones, company.timezone]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -119,8 +109,9 @@ export default function CompanyForm({
         </div>
       )}
 
-      <ImageUploader
-        id="company-logo"
+      <div className="company-form-logo-uploader">
+        <ImageUploader
+          id="company-logo"
         name={name || company.name}
         image={logo}
         kind="company"
@@ -132,7 +123,8 @@ export default function CompanyForm({
         removeLabel="Remover logo"
         successUploadMessage="Logo atualizado com sucesso."
         successRemoveMessage="Logo removido com sucesso."
-      />
+        />
+      </div>
 
       <div className="mb-3">
         <label htmlFor="company-name" className="form-label">
@@ -150,30 +142,17 @@ export default function CompanyForm({
         )}
       </div>
 
-      <div className="mb-3">
-        <label htmlFor="company-timezone" className="form-label">
-          Timezone
-        </label>
-        <select
-          id="company-timezone"
-          className={`form-select ${fieldErrors.timezone ? "is-invalid" : ""}`}
-          value={timezone}
-          onChange={(event) => setTimezone(event.target.value)}
-        >
-          {timezoneOptions.map((zone) => (
-            <option key={zone} value={zone}>
-              {zone}
-            </option>
-          ))}
-        </select>
-        {fieldErrors.timezone && (
-          <div className="invalid-feedback">{fieldErrors.timezone}</div>
-        )}
-        <div className="form-text">
-          Fuso horário da empresa (padrão IANA). Todos os horários de
-          agendamento são interpretados neste fuso.
-        </div>
-      </div>
+      <TimezonePicker
+        id="company-timezone"
+        label="Timezone"
+        value={timezone}
+        onChange={setTimezone}
+        invalid={Boolean(fieldErrors.timezone)}
+        errorMessage={fieldErrors.timezone}
+        helperText="Fuso horário da empresa (padrão IANA). Todos os horários de agendamento são interpretados neste fuso."
+        ensureOption={company.timezone}
+      />
+
 
       <div className="d-grid d-sm-block">
         <button

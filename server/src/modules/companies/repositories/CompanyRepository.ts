@@ -72,11 +72,12 @@ class CompanyRepository {
    */
   public async activate(
     id: string,
+    session?: ClientSession,
   ): Promise<CompanyDocument | null> {
     return Company.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { isActive: true },
-      { new: true },
+      { new: true, ...(session ? { session } : {}) },
     );
   }
 
@@ -87,11 +88,12 @@ class CompanyRepository {
    */
   public async deactivate(
     id: string,
+    session?: ClientSession,
   ): Promise<CompanyDocument | null> {
     return Company.findOneAndUpdate(
       { _id: id, deletedAt: null },
       { isActive: false },
-      { new: true },
+      { new: true, ...(session ? { session } : {}) },
     );
   }
 

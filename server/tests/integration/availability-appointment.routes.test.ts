@@ -27,8 +27,8 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
     updateStatus: vi.fn(), softDelete: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(),
     cancelOverdueScheduled: vi.fn(),
   },
-  userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn() },
-  clientRepository: { findById: vi.fn() },
+  userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
+  clientRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
   serviceRepository: { findById: vi.fn() },
   companyRepository: { findById: vi.fn() },
   availabilityExceptionRepository: { findByEmployeeAndDate: vi.fn() },
@@ -49,13 +49,17 @@ vi.mock("../../src/modules/Clients/repositories/ClientRepository", () => ({ defa
 vi.mock("../../src/modules/services/repositories/ServiceRepository", () => ({ default: serviceRepository }));
 vi.mock("../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
 vi.mock("../../src/modules/availability/repositories/AvailabilityExceptionRepository", () => ({ default: availabilityExceptionRepository }));
+vi.mock("../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 
 import app from "../../src/app";
 import { Role } from "../../src/constants/roles";
 import { AppointmentStatus } from "../../src/constants/appointment-status";
 
 const ref = (id: string) => ({ toString: () => id });
-const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon" };
+const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon", isActive: true };
 const employeeA = { _id: ref(ids.employee), companyId: ref(ids.companyA), role: Role.EMPLOYEE, isActive: true, deletedAt: null };
 const clientA = { _id: ref(ids.client), companyId: ref(ids.companyA), isActive: true };
 const serviceA = { _id: ref(ids.service), companyId: ref(ids.companyA), isActive: true, duration: 30 };
@@ -206,6 +210,8 @@ describe("Appointment HTTP integration", () => {
     ["serviceId inválido", { ...validAppointment, serviceId: "bad" }],
     ["employeeId inválido", { ...validAppointment, employeeId: "bad" }],
     ["startAt inválido", { ...validAppointment, startAt: "not-a-date" }],
+    ["startAt sem offset", { ...validAppointment, startAt: "2027-08-29T08:00:00" }],
+    ["startAt data impossível", { ...validAppointment, startAt: "2026-02-30T09:00:00Z" }],
     ["campos obrigatórios ausentes", { clientId: ids.client }],
   ])("rejeita %s com 400 antes do service", async (_label, payload) => {
     const response = await request(app).post("/api/appointments").send(payload);
@@ -262,6 +268,35 @@ describe("Appointment HTTP integration", () => {
     const differentDay = { ...validAppointment, startAt: "2027-08-30T08:00:00.000Z" };
     availabilityRepository.findByEmployeeAndDay.mockResolvedValueOnce(null);
     expect((await request(app).post("/api/appointments").send(differentDay)).status).toBe(409);
+  });
+
+  it("aceita startAt com offset explícito +01:00 e -03:00", async () => {
+    appointmentRepository.hasEmployeeConflict.mockResolvedValue(false);
+    appointmentRepository.hasClientConflict.mockResolvedValue(false);
+    expect(
+      (
+        await request(app).post("/api/appointments").send({
+          ...validAppointment,
+          startAt: "2027-08-29T09:00:00+01:00",
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await request(app).post("/api/appointments").send({
+          ...validAppointment,
+          startAt: "2027-08-29T11:00:00-03:00",
+        })
+      ).status,
+    ).toBe(201);
+  });
+
+  it("rejeita PATCH com startAt sem offset", async () => {
+    const response = await request(app)
+      .patch(`/api/appointments/${ids.appointment}`)
+      .send({ startAt: "2027-08-29T08:00:00" });
+    expect(response.status).toBe(400);
+    expect(appointmentRepository.update).not.toHaveBeenCalled();
   });
 
   it("rejeita conflitos de employee/client e permite horários adjacentes", async () => {
@@ -348,6 +383,14 @@ describe("Appointment HTTP integration", () => {
   it("rejeita startAt inválido", async () => {
     const response = await request(app).get("/api/appointments?startAt=not-a-date");
     expect(response.status).toBe(400);
+  });
+
+  it("rejeita filtro startAt sem offset explícito", async () => {
+    const response = await request(app).get(
+      "/api/appointments?startAt=2027-08-01T00:00:00",
+    );
+    expect(response.status).toBe(400);
+    expect(appointmentRepository.findByCompanyId).not.toHaveBeenCalled();
   });
 
   it("rejeita endAt anterior a startAt", async () => {

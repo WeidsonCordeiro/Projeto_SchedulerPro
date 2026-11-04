@@ -195,31 +195,6 @@ class ClientController {
 
   /**
    * ==========================================================
-   * Define as credenciais de acesso do cliente ao portal.
-   * ==========================================================
-   */
-  public setCredentials = async (
-    req: Request,
-    res: Response,
-  ): Promise<Response> => {
-    const companyId = req.user!.companyId;
-
-    const client = await this.clientService.setCredentials(
-      req.params.id as string,
-      companyId,
-      req.body,
-    );
-
-    return ResponseHandler.success(
-      res,
-      client,
-      HttpMessages.CLIENT_CREDENTIALS_SET,
-      HttpStatus.OK,
-    );
-  };
-
-  /**
-   * ==========================================================
    * Envia ou substitui a foto de um cliente.
    *
    * O ficheiro já chega em memória e já limitado a 5 MB

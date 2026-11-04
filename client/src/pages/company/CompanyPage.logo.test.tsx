@@ -13,6 +13,8 @@ vi.mock("../../api/endpoints/company.api", () => ({
   default: {
     getCompany: vi.fn(),
     updateCompany: vi.fn(),
+    activateCompany: vi.fn(),
+    deactivateCompany: vi.fn(),
     uploadCompanyLogo: vi.fn(),
     removeCompanyLogo: vi.fn(),
   },

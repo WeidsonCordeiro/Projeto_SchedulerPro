@@ -6,7 +6,7 @@ import CalendarView from "./CalendarView";
 import MonthCalendar from "./MonthCalendar";
 import WeekCalendar from "./WeekCalendar";
 import DayCalendar from "./DayCalendar";
-import CalendarToolbar from "./CalendarToolbar";
+import AppointmentsViewSwitcher from "./AppointmentsViewSwitcher";
 import companyReducer from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
 
@@ -54,9 +54,27 @@ const names = new Map<string, string>([
   ["service1", "Corte de cabelo"],
 ]);
 
+function mockViewportMobile(mobile: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: mobile,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  });
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-09-10T12:00:00.000Z"));
+  mockViewportMobile(false);
 });
 
 afterEach(() => {
@@ -65,159 +83,78 @@ afterEach(() => {
 
 const noopViewChange = vi.fn();
 const noopOnDayClick = vi.fn();
+const noopOnOverflowClick = vi.fn();
+const noopOnMonthDaySelect = vi.fn();
 const noopOnSlotClick = vi.fn();
 const noopOnAppointmentClick = vi.fn();
 
-describe("CalendarToolbar", () => {
-  it("renders view buttons and navigation", () => {
-    render(
-      <CalendarToolbar
-        currentDateKey="2026-09-10"
-        viewType="month"
-        onViewTypeChange={vi.fn()}
-        onPrev={vi.fn()}
-        onNext={vi.fn()}
-        onToday={vi.fn()}
-        label="Setembro 2026"
-      />,
-    );
-
-    expect(screen.getByRole("button", { name: "Mês" })).toHaveClass("btn-primary");
-    expect(screen.getByRole("button", { name: "Semana" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dia" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Lista" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
-    expect(screen.getByText("Setembro 2026")).toBeInTheDocument();
+function makeBusyDayAppointments(count: number, dateKey = "2026-09-15"): Appointment[] {
+  return Array.from({ length: count }, (_, i) => {
+    const start = `${dateKey}T${String(8 + i).padStart(2, "0")}:00:00.000Z`;
+    const end = `${dateKey}T${String(9 + i).padStart(2, "0")}:00:00.000Z`;
+    return makeAppointment({ id: `busy${i}`, startAt: start, endAt: end });
   });
-
-  it("calls the right handlers", () => {
-    const onPrev = vi.fn();
-    const onNext = vi.fn();
-    const onToday = vi.fn();
-    const onViewTypeChange = vi.fn();
-    render(
-      <CalendarToolbar
-        currentDateKey="2026-09-10"
-        viewType="month"
-        onViewTypeChange={onViewTypeChange}
-        onPrev={onPrev}
-        onNext={onNext}
-        onToday={onToday}
-        label="Setembro 2026"
-      />,
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
-    fireEvent.click(screen.getByRole("button", { name: "Próximo" }));
-    fireEvent.click(screen.getByRole("button", { name: "Hoje" }));
-    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
-    expect(onPrev).toHaveBeenCalled();
-    expect(onNext).toHaveBeenCalled();
-    expect(onToday).toHaveBeenCalled();
-    expect(onViewTypeChange).toHaveBeenCalledWith("week");
-  });
-});
+}
 
 describe("CalendarView", () => {
-  it("navigates months with the toolbar", () => {
-    const onDateChange = vi.fn();
+  it("shows loading state without rendering the month grid", () => {
     renderWithStore(
       <CalendarView
-        appointments={[]}
+        appointments={[makeAppointment()]}
         clientNames={names}
         serviceNames={names}
         viewType="month"
-        onViewTypeChange={noopViewChange}
         currentDateKey="2026-09-10"
-        onDateChange={onDateChange}
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
         onAppointmentClick={noopOnAppointmentClick}
+        month={{ isMobileViewport: false }}
+        isLoading
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Próximo" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-10-10");
-    fireEvent.click(screen.getByRole("button", { name: "Anterior" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-08-10");
+    expect(screen.getByRole("status")).toHaveTextContent(/carregar agendamentos/i);
+    expect(screen.queryByText("Seg")).not.toBeInTheDocument();
   });
 
-  it("navigates weeks when in week view", () => {
-    const onDateChange = vi.fn();
+  it("renders the month grid when viewType is month and data is ready", () => {
     renderWithStore(
       <CalendarView
-        appointments={[]}
+        appointments={[makeAppointment()]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="month"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        month={{ isMobileViewport: false }}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    expect(screen.getByText("Seg")).toBeInTheDocument();
+  });
+
+  it("routes week block clicks to onAppointmentClick", () => {
+    const onAppointmentClick = vi.fn();
+    renderWithStore(
+      <CalendarView
+        appointments={[makeAppointment()]}
         clientNames={names}
         serviceNames={names}
         viewType="week"
-        onViewTypeChange={noopViewChange}
         currentDateKey="2026-09-10"
-        onDateChange={onDateChange}
         onDayClick={noopOnDayClick}
         onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
+        onAppointmentClick={onAppointmentClick}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Próximo" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-09-17");
-  });
-
-  it("jumps to today", () => {
-    const onDateChange = vi.fn();
-    renderWithStore(
-      <CalendarView
-        appointments={[]}
-        clientNames={names}
-        serviceNames={names}
-        viewType="day"
-        onViewTypeChange={noopViewChange}
-        currentDateKey="2026-01-01"
-        onDateChange={onDateChange}
-        onDayClick={noopOnDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-      />,
+    fireEvent.click(screen.getByText("Maria Silva"));
+    expect(onAppointmentClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "appt1" }),
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Hoje" }));
-    expect(onDateChange).toHaveBeenCalledWith("2026-09-10");
-  });
-
-  it("renders the correct title per view", () => {
-    const { rerender } = renderWithStore(
-      <CalendarView
-        appointments={[]}
-        clientNames={names}
-        serviceNames={names}
-        viewType="day"
-        onViewTypeChange={noopViewChange}
-        currentDateKey="2026-09-10"
-        onDateChange={noopViewChange}
-        onDayClick={noopOnDayClick}
-        onSlotClick={noopOnSlotClick}
-        onAppointmentClick={noopOnAppointmentClick}
-      />,
-    );
-    expect(screen.getByText("10/09/2026")).toBeInTheDocument();
-
-    rerender(
-      <Provider store={makeStore()}>
-        <CalendarView
-          appointments={[]}
-          clientNames={names}
-          serviceNames={names}
-          viewType="week"
-          onViewTypeChange={noopViewChange}
-          currentDateKey="2026-09-10"
-          onDateChange={noopViewChange}
-          onDayClick={noopOnDayClick}
-          onSlotClick={noopOnSlotClick}
-          onAppointmentClick={noopOnAppointmentClick}
-        />
-      </Provider>,
-    );
-    expect(screen.getByText(/07\/09.*–.*13\/09/i)).toBeInTheDocument();
   });
 });
 
@@ -231,6 +168,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
       />,
     );
@@ -238,7 +177,9 @@ describe("MonthCalendar", () => {
     expect(screen.getByText("Seg")).toBeInTheDocument();
     expect(screen.getByText("Dom")).toBeInTheDocument();
     // O agendamento aparece como item clicável (título com nome do cliente)
-    expect(screen.getByTitle(/Maria Silva/)).toBeInTheDocument();
+    const item = screen.getByTitle(/Maria Silva/);
+    expect(item).toHaveAccessibleName(/Maria Silva.*Agendado/i);
+    expect(item).toHaveTextContent("Agendado");
   });
 
   it("opens the edit callback when an appointment is clicked", () => {
@@ -251,6 +192,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={onAppointmentClick}
       />,
     );
@@ -269,6 +212,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
         todayKey="2026-09-10"
       />,
@@ -289,6 +234,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={noopOnAppointmentClick}
         todayKey="2026-09-10"
       />,
@@ -311,6 +258,8 @@ describe("MonthCalendar", () => {
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
         onAppointmentClick={onAppointmentClick}
         todayKey="2026-09-10"
       />,
@@ -329,6 +278,7 @@ describe("WeekCalendar", () => {
         currentDateKey="2026-09-10"
         appointments={[makeAppointment()]}
         clientNames={names}
+        serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
         onSlotClick={noopOnSlotClick}
@@ -337,6 +287,28 @@ describe("WeekCalendar", () => {
 
     expect(screen.getByText("Qui")).toBeInTheDocument();
     expect(screen.getByText("Maria Silva")).toBeInTheDocument();
+    expect(screen.getByText("Agendado")).toBeInTheDocument();
+  });
+
+  it("passes anchor element to onAppointmentClick", () => {
+    const onAppointmentClick = vi.fn();
+    renderWithStore(
+      <WeekCalendar
+        currentDateKey="2026-09-10"
+        appointments={[makeAppointment()]}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onAppointmentClick={onAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Maria Silva"));
+    expect(onAppointmentClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "appt1" }),
+      expect.any(HTMLElement),
+    );
   });
 
   it("calls onSlotClick with the date and hour", () => {
@@ -346,6 +318,7 @@ describe("WeekCalendar", () => {
         currentDateKey="2026-09-10"
         appointments={[]}
         clientNames={names}
+        serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
         onSlotClick={onSlotClick}
@@ -390,7 +363,10 @@ describe("DayCalendar", () => {
     );
 
     fireEvent.click(screen.getByText(/Maria Silva/));
-    expect(onAppointmentClick).toHaveBeenCalledWith(expect.objectContaining({ id: "appt1" }));
+    expect(onAppointmentClick).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "appt1" }),
+      expect.any(HTMLElement),
+    );
   });
 
   it("calls onSlotClick for empty time slots", () => {
@@ -443,7 +419,7 @@ describe("DayCalendar", () => {
     expect(blocks[0]?.style.width).toBe(blocks[1]?.style.width);
   });
 
-  it("colours each block by its own status, as the week view does", () => {
+  it("uses service backgrounds without status stripe on day blocks", () => {
     const { container } = renderWithStore(
       <DayCalendar
         currentDateKey="2026-09-10"
@@ -458,12 +434,13 @@ describe("DayCalendar", () => {
       />,
     );
 
-    const classes = Array.from(container.querySelectorAll(".calendar-week-event")).map(
-      (el) => el.className,
-    );
-
-    expect(classes.some((c) => c.includes("status-scheduled"))).toBe(true);
-    expect(classes.some((c) => c.includes("status-cancelled"))).toBe(true);
+    const blocks = container.querySelectorAll<HTMLElement>(".calendar-week-event");
+    expect(blocks.length).toBeGreaterThanOrEqual(2);
+    for (const block of blocks) {
+      expect(block.className).not.toMatch(/calendar-status-stripe/);
+      expect(block.style.backgroundColor).not.toBe("");
+    }
+    expect(blocks[1]?.classList.contains("calendar-event--muted")).toBe(true);
   });
 });
 
@@ -476,6 +453,7 @@ describe("WeekCalendar - destaque de hoje", () => {
         currentDateKey="2026-09-10"
         appointments={[]}
         clientNames={names}
+        serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
         onSlotClick={noopOnSlotClick}
@@ -484,41 +462,309 @@ describe("WeekCalendar - destaque de hoje", () => {
 
     expect(container.querySelectorAll(".bg-primary-subtle").length).toBeGreaterThan(0);
   });
-});
 
-describe("MonthCalendar - limite de eventos", () => {
-  it("shows an overflow indicator when a day has more events than the limit", () => {
-    const busyDay = Array.from({ length: 5 }, (_, i) => {
-      const start = `2026-09-15T${String(8 + i).padStart(2, "0")}:00:00.000Z`;
-      const end = `2026-09-15T${String(9 + i).padStart(2, "0")}:00:00.000Z`;
-      return makeAppointment({ id: `busy${i}`, startAt: start, endAt: end });
-    });
-
+  it("renders the now line on today's column in week view", () => {
     const { container } = renderWithStore(
-      <MonthCalendar
-        year={2026}
-        month={9}
-        appointments={busyDay}
+      <WeekCalendar
+        currentDateKey="2026-09-10"
+        appointments={[]}
         clientNames={names}
         serviceNames={names}
         onDayClick={noopOnDayClick}
         onAppointmentClick={noopOnAppointmentClick}
+        onSlotClick={noopOnSlotClick}
+        todayKey="2026-09-10"
       />,
     );
 
-    // Só 4 eventos são desenhados; o resto fica acessível pelo indicador.
+    expect(container.querySelector(".calendar-now-line")).toBeTruthy();
+  });
+});
+
+describe("MonthCalendar - limite de eventos", () => {
+  it("does not show overflow when a day has at most four events", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(4)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    expect(container.querySelectorAll(".calendar-item")).toHaveLength(4);
+    expect(container.querySelector(".calendar-overflow")).toBeNull();
+  });
+
+  it("shows an overflow indicator when a day has more events than the limit", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
     expect(container.querySelectorAll(".calendar-item")).toHaveLength(4);
     const indicator = container.querySelector(".calendar-overflow");
     expect(indicator).not.toBeNull();
     expect(indicator?.textContent).toContain("1 mais");
   });
+
+  it("shows the correct overflow count for six or more events on one day", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(6)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    expect(container.querySelector(".calendar-overflow")?.textContent).toContain("2 mais");
+  });
+
+  it("calls onOverflowClick with the date key and not onDayClick when overflow is activated", () => {
+    const onDayClick = vi.fn();
+    const onOverflowClick = vi.fn();
+    renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={onOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const overflow = screen.getByRole("button", {
+      name: /ver todas as marcações de terça-feira, 15 de setembro/i,
+    });
+    fireEvent.click(overflow);
+    expect(onOverflowClick).toHaveBeenCalledWith("2026-09-15");
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+
+  it("still calls onDayClick when the future day number is clicked with overflow present", () => {
+    const onDayClick = vi.fn();
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const sep15Cell = Array.from(container.querySelectorAll(".calendar-day-cell")).find(
+      (cell) =>
+        cell.querySelector(".calendar-day-number")?.textContent === "15" &&
+        !cell.classList.contains("bg-light"),
+    );
+    expect(sep15Cell).toBeTruthy();
+    fireEvent.click(sep15Cell!);
+    expect(onDayClick).toHaveBeenCalledWith("2026-09-15");
+  });
+
+  it("activates onOverflowClick from the keyboard on the overflow control", () => {
+    const onOverflowClick = vi.fn();
+    renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(5)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={onOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+      />,
+    );
+
+    const overflow = screen.getByRole("button", {
+      name: /ver todas as marcações de terça-feira, 15 de setembro/i,
+    });
+    overflow.focus();
+    fireEvent.keyDown(overflow, { key: "Enter" });
+    expect(onOverflowClick).toHaveBeenCalledWith("2026-09-15");
+  });
+
+  it("allows overflow activation on a past day without calling onDayClick", () => {
+    const onDayClick = vi.fn();
+    const onOverflowClick = vi.fn();
+    const pastBusy = makeBusyDayAppointments(5, "2026-09-05");
+    renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={pastBusy}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={onOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const overflow = screen.getByRole("button", {
+      name: /ver todas as marcações de sábado, 5 de setembro/i,
+    });
+    fireEvent.click(overflow);
+    expect(onOverflowClick).toHaveBeenCalledWith("2026-09-05");
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
 });
 
-describe("CalendarToolbar - período sempre visível", () => {
+describe("MonthCalendar - layout compacto (mobile)", () => {
+  it("shows event counts instead of appointment cards", () => {
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={makeBusyDayAppointments(3)}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={noopOnDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={noopOnMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        layoutMode="compact"
+        todayKey="2026-09-10"
+      />,
+    );
+
+    expect(container.querySelectorAll(".calendar-item")).toHaveLength(0);
+    expect(container.querySelector(".calendar-day-event-count")).not.toBeNull();
+  });
+
+  it("calls onMonthDaySelect instead of onDayClick when a day cell is activated", () => {
+    const onDayClick = vi.fn();
+    const onMonthDaySelect = vi.fn();
+    const { container } = renderWithStore(
+      <MonthCalendar
+        year={2026}
+        month={9}
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        onDayClick={onDayClick}
+        onOverflowClick={noopOnOverflowClick}
+        onMonthDaySelect={onMonthDaySelect}
+        onAppointmentClick={noopOnAppointmentClick}
+        layoutMode="compact"
+        todayKey="2026-09-10"
+      />,
+    );
+
+    const sep15Cell = Array.from(container.querySelectorAll(".calendar-day-cell")).find(
+      (cell) =>
+        cell.querySelector(".calendar-day-number")?.textContent === "15" &&
+        !cell.classList.contains("bg-light"),
+    );
+    fireEvent.click(sep15Cell!);
+    expect(onMonthDaySelect).toHaveBeenCalledWith("2026-09-15");
+    expect(onDayClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("CalendarView - mobile week and day", () => {
+  it("renders week mobile agenda without time grid surface", () => {
+    const { container } = renderWithStore(
+      <CalendarView
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="week"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+        timeGrid={{ isMobileViewport: true, canCreate: true, onCreateForDay: vi.fn() }}
+      />,
+    );
+
+    expect(container.querySelector(".week-calendar-time-grid")).toBeNull();
+    expect(container.querySelector(".calendar-surface--time-grid")).toBeNull();
+    expect(container.querySelector('[data-testid="week-mobile-agenda"]')).not.toBeNull();
+  });
+
+  it("renders day mobile agenda without day calendar body", () => {
+    const { container } = renderWithStore(
+      <CalendarView
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="day"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+        timeGrid={{ isMobileViewport: true, canCreate: true }}
+      />,
+    );
+
+    expect(container.querySelector(".day-calendar-time-body")).toBeNull();
+    expect(container.querySelector(".calendar-surface--time-grid")).toBeNull();
+    expect(container.querySelector('[data-testid="day-mobile-agenda"]')).not.toBeNull();
+  });
+
+  it("keeps desktop week grid when timeGrid mobile is false", () => {
+    const { container } = renderWithStore(
+      <CalendarView
+        appointments={[]}
+        clientNames={names}
+        serviceNames={names}
+        viewType="week"
+        currentDateKey="2026-09-10"
+        onDayClick={noopOnDayClick}
+        onSlotClick={noopOnSlotClick}
+        onAppointmentClick={noopOnAppointmentClick}
+        todayKey="2026-09-10"
+        timeGrid={{ isMobileViewport: false }}
+      />,
+    );
+
+    expect(container.querySelector(".week-calendar-time-grid")).not.toBeNull();
+    expect(container.querySelector(".calendar-surface--time-grid")).not.toBeNull();
+  });
+});
+
+describe("AppointmentsViewSwitcher - período sempre visível", () => {
   it("keeps the period label visible at every width", () => {
     render(
-      <CalendarToolbar
-        currentDateKey="2026-09-10"
+      <AppointmentsViewSwitcher
         viewType="week"
         onViewTypeChange={noopViewChange}
         onPrev={noopOnDayClick}

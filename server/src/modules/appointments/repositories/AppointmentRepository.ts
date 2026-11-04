@@ -16,6 +16,7 @@ import { Types } from "mongoose";
 import Appointment, { AppointmentDocument } from "../models/Appointment.model";
 import { CreateAppointmentData, UpdateAppointmentData } from "../index";
 import { AppointmentStatus } from "../../../constants/appointment-status";
+import { RepositorySessionOptions } from "./appointment-repository.types";
 
 /**
  * Janela opcional de consulta por período. Quando informada, apenas os
@@ -44,11 +45,10 @@ export interface ReminderFields {
 }
 
 class AppointmentRepository {
-  /**
+/**
   
 * ==========================================================
 * Busca um agendamento pelo ID.
-* ==========================================================
   */
   public async findById(
     id: string | Types.ObjectId,
@@ -57,6 +57,31 @@ class AppointmentRepository {
       _id: id,
       deletedAt: null,
     });
+  }
+
+  /**
+  
+* ==========================================================
+* Busca um agendamento pelo HASH do token público.
+*
+* É o ÚNICO caminho de resolução de acesso público. Não
+* aceita `_id`, `clientId` nem e-mail: o token é a credencial.
+*
+* `deletedAt: null` está no próprio filtro, o que faz um
+* agendamento eliminado soft ser indistinguível de um token
+* inválido — ambos devolvem `null`.
+*
+* O campo tem `select: false` no schema, por isso é pedido
+* explicitamente; o hash devolvido serve para confirmar a
+* correspondência e para Diagnóstico, nunca para resposta HTTP.
+  */
+  public async findByPublicAccessTokenHash(
+    hash: string,
+  ): Promise<AppointmentDocument | null> {
+    return Appointment.findOne({
+      publicAccessTokenHash: hash,
+      deletedAt: null,
+    }).select("+publicAccessTokenHash");
   }
 
   /**
@@ -102,7 +127,15 @@ class AppointmentRepository {
   */
   public async create(
     data: CreateAppointmentData,
+    options?: RepositorySessionOptions,
   ): Promise<AppointmentDocument> {
+    if (options?.session) {
+      const [created] = await Appointment.create([data], {
+        session: options.session,
+      });
+      return created;
+    }
+
     return Appointment.create(data);
   }
 
@@ -115,10 +148,12 @@ class AppointmentRepository {
   public async update(
     id: string | Types.ObjectId,
     data: UpdateAppointmentData,
+    options?: RepositorySessionOptions,
   ): Promise<AppointmentDocument | null> {
     return Appointment.findOneAndUpdate({ _id: id, deletedAt: null }, data, {
       new: true,
       runValidators: true,
+      session: options?.session,
     });
   }
 
@@ -157,6 +192,7 @@ class AppointmentRepository {
     startAt: Date,
     endAt: Date,
     excludeAppointmentId?: string | Types.ObjectId,
+    options?: RepositorySessionOptions,
   ): Promise<boolean> {
     const query: Record<string, unknown> = {
       companyId,
@@ -179,9 +215,53 @@ class AppointmentRepository {
       };
     }
 
-    const appointment = await Appointment.findOne(query);
+    let queryBuilder = Appointment.findOne(query);
+
+    if (options?.session) {
+      queryBuilder = queryBuilder.session(options.session);
+    }
+
+    const appointment = await queryBuilder;
 
     return Boolean(appointment);
+  }
+
+  /**
+
+* ==========================================================
+* Lista os agendamentos que BLOQUEIAM o horário de um
+* profissional dentro de uma janela.
+*
+* É a mesma consulta de `hasEmployeeConflict`, devolvendo os
+* documentos em vez de um booleano. Existe para o catálogo
+* público de disponibilidade, que precisa de subtrair os
+* horários ocupados do período do dia.
+*
+* Reutiliza deliberadamente o mesmo bloco de filtro, para que
+* a lista de bloqueios e a verificação de conflito nunca
+* discordem sobre o que ocupa um horário.
+* ==========================================================
+  */
+  public async findBlockingForEmployee(
+    companyId: string | Types.ObjectId,
+    employeeId: string | Types.ObjectId,
+    windowStart: Date,
+    windowEnd: Date,
+  ): Promise<AppointmentDocument[]> {
+    return Appointment.find({
+      companyId,
+      employeeId,
+      deletedAt: null,
+      status: {
+        $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+      },
+      startAt: {
+        $lt: windowEnd,
+      },
+      endAt: {
+        $gt: windowStart,
+      },
+    });
   }
 
   /**
@@ -199,6 +279,7 @@ class AppointmentRepository {
     startAt: Date,
     endAt: Date,
     excludeAppointmentId?: string | Types.ObjectId,
+    options?: RepositorySessionOptions,
   ): Promise<boolean> {
     const query: Record<string, unknown> = {
       companyId,
@@ -221,7 +302,13 @@ class AppointmentRepository {
       };
     }
 
-    const appointment = await Appointment.findOne(query);
+    let queryBuilder = Appointment.findOne(query);
+
+    if (options?.session) {
+      queryBuilder = queryBuilder.session(options.session);
+    }
+
+    const appointment = await queryBuilder;
 
     return Boolean(appointment);
   }
@@ -254,7 +341,9 @@ class AppointmentRepository {
         $gt: now,
         $lte: new Date(now.getTime() + lookaheadMs),
       },
-    }).sort({ startAt: 1 });
+    })
+      .select("+publicAccessTokenCiphertext +publicAccessTokenHash")
+      .sort({ startAt: 1 });
   }
 
   /**

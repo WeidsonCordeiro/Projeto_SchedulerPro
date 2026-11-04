@@ -22,10 +22,13 @@ import { AppointmentStatus } from "../../constants/appointment-status";
 /**
 
 * ==========================================================
-* Dados necessários para criar um agendamento.
-*
-* companyId e endAt são definidos internamente pelo backend.
-* ==========================================================
+ * Dados necessários para criar um agendamento.
+ *
+ * companyId e endAt são definidos internamente pelo backend.
+ *
+ * `priceAtTime` é um snapshot do preço do serviço validado,
+ * determinado exclusivamente pelo backend.
+ * ==========================================================
   */
 export interface CreateAppointmentData {
   companyId: Types.ObjectId;
@@ -36,6 +39,9 @@ export interface CreateAppointmentData {
   endAt: Date;
   status: AppointmentStatus;
   notes?: string | null;
+  priceAtTime: number;
+  publicAccessTokenHash?: string | null;
+  publicAccessTokenCiphertext?: string | null;
 }
 
 /**
@@ -45,7 +51,16 @@ export interface CreateAppointmentData {
 * de um agendamento.
 *
 * endAt poderá ser recalculado pelo backend.
-* ==========================================================
+*
+ * `publicAccessTokenHash` NÃO entra aqui: a alteração de um
+ * agendamento (administrativa ou pública) nunca regenera nem
+ * apaga o token, para que o link já entregue continue válido.
+ *
+ * `priceAtTime` só é escrito quando o SERVIÇO do agendamento é
+ * efetivamente alterado; nesse caso recebe o preço atual do novo
+ * serviço. Nas restantes alterações o valor histórico é
+ * preservado (ver `AppointmentService`).
+ * ==========================================================
   */
 export interface UpdateAppointmentData {
   clientId?: Types.ObjectId;
@@ -54,4 +69,62 @@ export interface UpdateAppointmentData {
   startAt?: Date;
   endAt?: Date;
   notes?: string | null;
+  priceAtTime?: number | null;
+}
+
+/**
+
+* ==========================================================
+* Contrato de resposta do agendamento público.
+*
+* Mais estreito que `AppointmentMapper.toResponse`: expõe apenas o `companyId`
+* público necessário ao catálogo; não expõe `clientId`, `notes` ou timestamps.
+*
+* O `id` é o `_id` interno e serve apenas para identificar o
+* agendamento dentro da resposta. NÃO é credencial de acesso
+* público: o acesso é feito pelo token, que é opaco e não
+* deriva do id.
+* ==========================================================
+  */
+export interface PublicAppointmentResult {
+  id: string;
+  /** Identificador público da empresa, usado para voltar ao catálogo público. */
+  companyId: string;
+  startAt: Date;
+  endAt: Date;
+  /** IANA timezone da empresa, usado para apresentar o horário no link público. */
+  timezone: string;
+  status: AppointmentStatus;
+  clientName: string;
+  service: {
+    id: string;
+    name: string;
+  };
+  employee: {
+    id: string;
+    name: string;
+    /**
+     * Foto do profissional, ou `null`.
+     *
+     * Mantém a experiência pública consistente com o seletor de
+     * profissional da Stage 30. Exposta apenas como `url`: o
+     * `publicId` do storage nunca sai do backend.
+     */
+    avatarUrl: string | null;
+  };
+}
+
+/**
+
+* ==========================================================
+* Resposta da criação pública.
+*
+* O token puro é devolvido UMA vez, aqui, no pedido que o
+* cria. Não é recuperável depois: a base de dados guarda
+* apenas o hash.
+* ==========================================================
+  */
+export interface CreatePublicAppointmentResult {
+  appointment: PublicAppointmentResult;
+  publicAccessToken: string;
 }

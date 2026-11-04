@@ -52,6 +52,22 @@ export const companyApi = {
     );
     return data;
   },
+
+  /** PATCH /companies/:id/activate. Apenas OWNER (COMPANY_ACTIVATE). */
+  async activateCompany(id: string) {
+    const { data } = await apiClient.patch<ApiResponse<Company>>(
+      `/companies/${id}/activate`,
+    );
+    return data;
+  },
+
+  /** PATCH /companies/:id/deactivate. Apenas OWNER (COMPANY_DEACTIVATE). */
+  async deactivateCompany(id: string) {
+    const { data } = await apiClient.patch<ApiResponse<Company>>(
+      `/companies/${id}/deactivate`,
+    );
+    return data;
+  },
 };
 
 export default companyApi;

@@ -29,6 +29,9 @@ export interface AuthUser {
   avatar?: StoredImage | null;
   role: Role;
   companyId: string;
+  companyTimezone: string;
+  /** Nome da empresa do tenant (identificação; não substitui COMPANY_READ). */
+  companyName: string;
   isActive: boolean;
   clientId?: string;
 }

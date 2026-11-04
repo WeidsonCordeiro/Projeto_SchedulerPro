@@ -1,9 +1,9 @@
 import { apiClient } from "../apiClient";
 import type { ApiResponse } from "../../types/api";
+import type { ClientInviteEmission } from "../../types/clientInvite";
 import type {
   Client,
   CreateClientPayload,
-  SetClientCredentialsPayload,
   UpdateClientPayload,
 } from "../../types/client";
 
@@ -28,13 +28,13 @@ export const clientsApi = {
   },
 
   /**
-   * Define (ou atualiza) as credenciais de acesso do cliente ao portal.
-   * Cria um utilizador com role CLIENT vinculado ao cliente.
+   * POST /clients/:id/invite — emite um convite por e-mail para o
+   * cliente criar a própria conta de acesso (role CLIENT).
+   * A resposta devolve apenas a validade; o token fica no e-mail.
    */
-  async setClientCredentials(id: string, payload: SetClientCredentialsPayload) {
-    const { data } = await apiClient.post<ApiResponse<Client>>(
-      `/clients/${id}/credentials`,
-      payload,
+  async sendClientInvite(id: string) {
+    const { data } = await apiClient.post<ApiResponse<ClientInviteEmission>>(
+      `/clients/${id}/invite`,
     );
     return data;
   },

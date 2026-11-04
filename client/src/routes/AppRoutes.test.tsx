@@ -7,6 +7,8 @@ import AppRoutes from "./AppRoutes";
 import authReducer from "../store/slices/authSlice";
 import type { AuthState } from "../store/slices/authSlice";
 import { user } from "../test/fixtures";
+import clientInvitesApi from "../api/endpoints/clientInvites.api";
+import { httpError } from "../test/http";
 
 vi.mock("../api/endpoints/clients.api", () => ({
   default: {
@@ -75,6 +77,67 @@ vi.mock("../api/endpoints/appointments.api", () => ({
       message: "ok",
       data: [],
     }),
+  },
+}));
+
+vi.mock("../api/endpoints/publicAppointments.api", () => ({
+  default: {
+    getByToken: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: {
+        id: "apt1",
+        startAt: "2099-10-10T14:30:00.000Z",
+        endAt: "2099-10-10T15:00:00.000Z",
+        status: "scheduled",
+        clientName: "Maria Silva",
+        service: { id: "svc1", name: "Corte de cabelo" },
+        employee: { id: "emp1", name: "João Silva", avatarUrl: null },
+      },
+    }),
+    updateByToken: vi.fn(),
+    cancelByToken: vi.fn(),
+  },
+}));
+
+vi.mock("../api/endpoints/publicBooking.api", () => ({
+  default: {
+    // Devolve o payload JÁ desembrulhado, como o módulo real faz: o envelope
+    // `ApiResponse` é tratado dentro do módulo de API, não na página.
+    getServices: vi.fn().mockResolvedValue([
+      {
+        id: "svc1",
+        name: "Corte de cabelo",
+        description: null,
+        durationMinutes: 45,
+        price: 25,
+      },
+    ]),
+    getEmployees: vi.fn().mockResolvedValue([
+      { id: "emp1", name: "João Silva", avatarUrl: null },
+    ]),
+    getAvailability: vi.fn().mockResolvedValue({
+      date: "2099-10-10",
+      timezone: "Europe/Lisbon",
+      slots: [],
+    }),
+    createAppointment: vi.fn(),
+  },
+}));
+
+vi.mock("../api/endpoints/clientInvites.api", () => ({
+  default: {
+    inspect: vi.fn().mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: {
+        clientName: "Maria Silva",
+        companyName: "Studio Aurora",
+        email: "maria@email.com",
+        expiresAt: "2026-10-14T00:00:00.000Z",
+      },
+    }),
+    accept: vi.fn(),
   },
 }));
 
@@ -184,6 +247,17 @@ describe("AppRoutes", () => {
     expect(screen.queryByRole("heading", { name: /entrar/i })).not.toBeInTheDocument();
   });
 
+  it("shows loading on unknown paths while the session is being checked", () => {
+    renderAt("/unknown", {});
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByText("Carregando...")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /página não encontrada/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /ir para o início/i })).not.toBeInTheDocument();
+  });
+
   it("does not keep an authenticated user on /login", async () => {
     renderAt("/login", {
       user,
@@ -240,10 +314,49 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
   });
 
-  it("redirects unknown paths to the root behavior", () => {
+  it("shows a not-found page for unknown paths when unauthenticated", () => {
     renderAt("/unknown", { isInitializing: false });
 
-    expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /página não encontrada/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /entrar/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir para o início/i })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+  });
+
+  it("shows a not-found page for unknown paths when authenticated", () => {
+    renderAt("/unknown", {
+      user,
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /página não encontrada/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir para o painel/i })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  it("offers portal navigation on unknown paths for CLIENT users", () => {
+    renderAt("/unknown", {
+      user: { ...user, role: "CLIENT", clientId: "client1" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      screen.getByRole("heading", { name: /página não encontrada/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ir para o portal/i })).toHaveAttribute(
+      "href",
+      "/portal",
+    );
   });
 
   it.each([
@@ -432,5 +545,197 @@ describe("AppRoutes", () => {
     expect(
       screen.getByRole("link", { name: /esqueceu a senha/i }),
     ).toBeInTheDocument();
+  });
+
+  describe("rota pública /agendar/:token", () => {
+    it.each([
+      ["sem sessão", { isInitializing: false }],
+      [
+        "com sessão administrativa aberta",
+        { user, isAuthenticated: true, isInitializing: false },
+      ],
+    ])("abre %s sem redirecionar para o login", async (_case, auth) => {
+      renderAt("/agendar/qualquer-token", auth);
+
+      expect(
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /entrar/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+      renderAt("/agendar/qualquer-token", {});
+
+      expect(
+        screen.getByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
+    });
+
+    it("não usa o layout autenticado", async () => {
+      renderAt("/agendar/qualquer-token", { isInitializing: false });
+
+      await screen.findByRole("heading", { name: /seu agendamento/i });
+      expect(document.querySelector(".app-sidebar")).toBeNull();
+      expect(document.querySelector(".app-navbar")).toBeNull();
+    });
+
+    it("mostra o agendamento do token da rota", async () => {
+      renderAt("/agendar/qualquer-token", { isInitializing: false });
+
+      expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
+      expect(screen.getByText("João Silva")).toBeInTheDocument();
+    });
+
+    it("trata /agendar sem token como link inválido", async () => {
+      renderAt("/agendar", { isInitializing: false });
+
+      expect(
+        await screen.findByText("Link de agendamento inválido."),
+      ).toBeInTheDocument();
+    });
+
+    it("não rouba /agendar/:token quando existe o prefixo 'empresa'", async () => {
+      // `/agendar/empresa/...` é a nova rota de MARCAÇÃO. O token dinâmico
+      // continua a ser seu, e esta é a prova de que as duas não se confundem.
+      renderAt("/agendar/qualquer-token", { isInitializing: false });
+
+      expect(
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /marcar atendimento/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("trata /agendar/empresa sem companyId como token, não como marcação", async () => {
+      // `/agendar/empresa` sem `companyId` casa com `/agendar/:token` e é
+      // gerido como link de gestão — a prova de que a rota nova só entra com o
+      // segmento completo.
+      renderAt("/agendar/empresa", { isInitializing: false });
+
+      expect(
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /marcar atendimento/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("rota pública /convite/cliente/:token", () => {
+    it.each([
+      ["sem sessão", { isInitializing: false }],
+      [
+        "com sessão administrativa aberta",
+        { user, isAuthenticated: true, isInitializing: false },
+      ],
+    ])("abre %s sem redirecionar para o login", async (_case, auth) => {
+      renderAt("/convite/cliente/qualquer-token", auth);
+
+      expect(
+        await screen.findByRole(
+          "heading",
+          { name: /criar conta de cliente/i },
+          { timeout: 15000 },
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /entrar/i }),
+      ).not.toBeInTheDocument();
+    }, 15000);
+
+    it("não usa o layout autenticado", async () => {
+      renderAt("/convite/cliente/qualquer-token", { isInitializing: false });
+
+      await screen.findByRole("heading", { name: /criar conta de cliente/i });
+      expect(document.querySelector(".app-sidebar")).toBeNull();
+      expect(document.querySelector(".app-navbar")).toBeNull();
+    });
+
+    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+      renderAt("/convite/cliente/qualquer-token", {});
+
+      expect(
+        screen.getByRole("heading", { name: /criar conta de cliente/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
+    });
+
+    it("mostra o convite consultado pelo token da rota", async () => {
+      renderAt("/convite/cliente/qualquer-token", { isInitializing: false });
+
+      expect(await screen.findByText("Studio Aurora")).toBeInTheDocument();
+      expect(screen.getByText("maria@email.com")).toBeInTheDocument();
+      expect(clientInvitesApi.inspect).toHaveBeenCalledWith({
+        token: "qualquer-token",
+      });
+    });
+
+    it("mostra o estado inválido quando o convite expirou", async () => {
+      vi.mocked(clientInvitesApi.inspect).mockRejectedValueOnce(
+        httpError(404, {
+          success: false,
+          message:
+            "Este convite expirou. Solicite um novo convite ao responsável.",
+        }),
+      );
+
+      renderAt("/convite/cliente/token-expirado", { isInitializing: false });
+
+      expect(
+        await screen.findByText(
+          "Este convite expirou. Solicite um novo convite ao responsável.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("rota pública /agendar/empresa/:companyId", () => {
+    it.each([
+      ["sem sessão", { isInitializing: false }],
+      [
+        "com sessão administrativa aberta",
+        { user, isAuthenticated: true, isInitializing: false },
+      ],
+    ])("abre %s sem redirecionar para o login", async (_case, auth) => {
+      renderAt("/agendar/empresa/qualquer-empresa", auth);
+
+      expect(
+        await screen.findByRole("heading", { name: /marcar atendimento/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /entrar/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("não usa o layout autenticado", async () => {
+      renderAt("/agendar/empresa/qualquer-empresa", { isInitializing: false });
+
+      await screen.findByRole("heading", { name: /marcar atendimento/i });
+      expect(document.querySelector(".app-sidebar")).toBeNull();
+      expect(document.querySelector(".app-navbar")).toBeNull();
+    });
+
+    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+      renderAt("/agendar/empresa/qualquer-empresa", {});
+
+      expect(
+        screen.getByRole("heading", { name: /marcar atendimento/i }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
+    });
+
+    it("mostra o catálogo da empresa da rota", async () => {
+      renderAt("/agendar/empresa/qualquer-empresa", { isInitializing: false });
+
+      expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: /seu agendamento/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

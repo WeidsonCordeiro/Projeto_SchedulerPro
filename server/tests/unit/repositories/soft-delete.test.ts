@@ -68,7 +68,7 @@ describe("soft delete nos repositories", () => {
     mocks.user.findOne.mockReturnValue({ select });
     await expect(UserRepository.findByIdForAccessControl(id)).resolves.toBeNull();
     expect(mocks.user.findOne).toHaveBeenCalledWith(activeFilter);
-    expect(select).toHaveBeenCalledWith("_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified");
+    expect(select).toHaveBeenCalledWith("_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified companyDeactivationSuspended");
   });
 
   it("UserRepository.findByClientIdIncludingDeleted não filtra por deletedAt", async () => {
@@ -102,16 +102,6 @@ describe("soft delete nos repositories", () => {
     mocks.user.findOne.mockResolvedValue(null);
     await expect(UserRepository.findByEmailIncludingDeleted("test@example.com")).resolves.toBeNull();
     expect(mocks.user.findOne).toHaveBeenCalledWith({ email: "test@example.com" });
-  });
-
-  it("UserRepository.updateIncludingDeleted não filtra por deletedAt e restaura deletedAt", async () => {
-    mocks.user.findOneAndUpdate.mockResolvedValue(null);
-    await UserRepository.updateIncludingDeleted(id, { emailVerified: true, deletedAt: null });
-    expect(mocks.user.findOneAndUpdate).toHaveBeenCalledWith(
-      { _id: id },
-      { emailVerified: true, deletedAt: null },
-      { new: true, runValidators: true },
-    );
   });
 
   it("AppointmentRepository.updateStatus filtra agendamentos deletados", async () => {

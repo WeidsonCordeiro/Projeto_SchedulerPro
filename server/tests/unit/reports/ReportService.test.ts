@@ -85,6 +85,8 @@ describe("ReportService", () => {
         estimatedRevenue: 0,
         forecastCount: 0,
         forecastRevenue: 0,
+        completedWithoutPrice: 0,
+        forecastWithoutPrice: 0,
       });
     });
 
@@ -94,6 +96,8 @@ describe("ReportService", () => {
         estimatedRevenue: 120,
         forecastCount: 3,
         forecastRevenue: 75,
+        completedWithoutPrice: 2,
+        forecastWithoutPrice: 1,
       });
 
       const result = await ReportService.getRevenue(companyId, range);
@@ -103,8 +107,24 @@ describe("ReportService", () => {
         estimatedRevenue: 120,
         forecastCount: 3,
         forecastRevenue: 75,
+        completedWithoutPrice: 2,
+        forecastWithoutPrice: 1,
       });
       expect(reportRepository.findRevenue).toHaveBeenCalledWith(companyId, range);
+    });
+
+    it("trata a ausência dos contadores de preço desconhecido como zero", async () => {
+      reportRepository.findRevenue.mockResolvedValue({
+        completedCount: 1,
+        estimatedRevenue: 20,
+        forecastCount: 0,
+        forecastRevenue: 0,
+      });
+
+      const result = await ReportService.getRevenue(companyId, range);
+
+      expect(result.completedWithoutPrice).toBe(0);
+      expect(result.forecastWithoutPrice).toBe(0);
     });
   });
 
@@ -134,6 +154,7 @@ describe("ReportService", () => {
           count: 10,
           completedCount: 6,
           estimatedRevenue: 90,
+          completedWithoutPrice: 0,
         },
       ]);
     });
@@ -191,6 +212,7 @@ describe("ReportService", () => {
           completedCount: 5,
           cancelledCount: 2,
           estimatedRevenue: 100,
+          completedWithoutPrice: 0,
         },
       ]);
     });
@@ -242,6 +264,7 @@ describe("ReportService", () => {
           count: 4,
           completedCount: 3,
           estimatedRevenue: 60,
+          completedWithoutPrice: 0,
         },
       ]);
     });

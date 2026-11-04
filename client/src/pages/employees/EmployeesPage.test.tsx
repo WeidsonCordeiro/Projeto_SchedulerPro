@@ -61,6 +61,19 @@ function renderPage(store = makeStore()) {
   );
 }
 
+async function findDesktopTable() {
+  const desktop = await screen.findByTestId("employees-list-desktop");
+  return within(desktop).getByRole("table");
+}
+
+function employeesDesktop() {
+  return within(screen.getByTestId("employees-list-desktop"));
+}
+
+function employeesMobile() {
+  return within(screen.getByTestId("employees-list-mobile"));
+}
+
 describe("EmployeesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -92,7 +105,7 @@ describe("EmployeesPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
 
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(await findDesktopTable()).toBeInTheDocument();
     expect(employeesApi.getEmployees).toHaveBeenCalledTimes(2);
   });
 
@@ -128,7 +141,7 @@ describe("EmployeesPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(within(table).getByText("Ana Silva")).toBeInTheDocument();
     expect(within(table).getAllByText("ana@example.com").length).toBeGreaterThan(0);
     expect(within(table).getByText("Bruno Lima")).toBeInTheDocument();
@@ -149,7 +162,7 @@ describe("EmployeesPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(table.closest(".table-card")).not.toBeNull();
     expect(
       within(table).getByRole("columnheader", { name: "Status" }),
@@ -174,7 +187,7 @@ describe("EmployeesPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(within(table).getByText("Ana Silva")).toBeInTheDocument();
     expect(within(table).queryByText("Cliente Portal")).not.toBeInTheDocument();
     expect(within(table).queryByText("CLIENT")).not.toBeInTheDocument();
@@ -194,7 +207,7 @@ describe("EmployeesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
     fireEvent.click(screen.getByRole("button", { name: /novo funcionário/i }));
 
@@ -243,9 +256,9 @@ describe("EmployeesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /editar/i }));
+    fireEvent.click(employeesDesktop().getByRole("button", { name: /editar/i }));
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Nome")).toHaveValue("Ana Silva");
@@ -282,9 +295,9 @@ describe("EmployeesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /excluir/i })[0]);
+    fireEvent.click(employeesDesktop().getAllByRole("button", { name: /excluir/i })[0]);
 
     const dialog = screen.getByRole("dialog");
     expect(
@@ -308,9 +321,9 @@ describe("EmployeesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /excluir/i }));
+    fireEvent.click(employeesDesktop().getByRole("button", { name: /excluir/i }));
 
     const dialog = screen.getByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /cancelar/i }));
@@ -330,9 +343,9 @@ describe("EmployeesPage", () => {
     );
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /excluir/i }));
+    fireEvent.click(employeesDesktop().getByRole("button", { name: /excluir/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }),
     );
@@ -355,9 +368,9 @@ describe("EmployeesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /desativar/i }));
+    fireEvent.click(employeesDesktop().getByRole("button", { name: /desativar/i }));
 
     expect(
       await screen.findByText("Funcionário desativado com sucesso."),
@@ -379,10 +392,12 @@ describe("EmployeesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    expect(screen.queryByRole("button", { name: /desativar/i })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ativar" }));
+    expect(
+      employeesDesktop().queryByRole("button", { name: /desativar/i }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(employeesDesktop().getByRole("button", { name: "Ativar" }));
 
     expect(
       await screen.findByText("Funcionário ativado com sucesso."),
@@ -402,9 +417,9 @@ describe("EmployeesPage", () => {
     );
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /desativar/i }));
+    fireEvent.click(employeesDesktop().getByRole("button", { name: /desativar/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não autorizado.",
@@ -455,15 +470,21 @@ describe("EmployeesPage", () => {
 
     renderPage(makeStore("ADMIN"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(
       screen.getByRole("button", { name: /novo funcionário/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Ativar" })).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /excluir/i }),
+      employeesDesktop().getByRole("button", { name: /editar/i }),
+    ).toBeInTheDocument();
+    expect(
+      employeesDesktop().getByRole("button", { name: /desativar/i }),
+    ).toBeInTheDocument();
+    expect(
+      employeesDesktop().queryByRole("button", { name: "Ativar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      employeesDesktop().queryByRole("button", { name: /excluir/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -476,15 +497,21 @@ describe("EmployeesPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(
       screen.getByRole("button", { name: /novo funcionário/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Ativar" })).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /excluir/i }),
+      employeesDesktop().getByRole("button", { name: /editar/i }),
+    ).toBeInTheDocument();
+    expect(
+      employeesDesktop().getByRole("button", { name: /desativar/i }),
+    ).toBeInTheDocument();
+    expect(
+      employeesDesktop().queryByRole("button", { name: "Ativar" }),
+    ).not.toBeInTheDocument();
+    expect(
+      employeesDesktop().getByRole("button", { name: /excluir/i }),
     ).toBeInTheDocument();
   });
 
@@ -503,18 +530,20 @@ describe("EmployeesPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     const selfRow = within(table).getByText("Owner Teste").closest("tr");
     expect(selfRow?.textContent?.toLowerCase()).toContain("você");
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /desativar/i }),
+      employeesDesktop().getByRole("button", { name: /editar/i }),
+    ).toBeInTheDocument();
+    expect(
+      employeesDesktop().queryByRole("button", { name: /desativar/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /ativar/i }),
+      employeesDesktop().queryByRole("button", { name: /ativar/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /excluir/i }),
+      employeesDesktop().queryByRole("button", { name: /excluir/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -527,7 +556,7 @@ describe("EmployeesPage", () => {
 
     const store = makeStore();
     renderPage(store);
-    await screen.findByRole("table");
+    await findDesktopTable();
 
     const storageKeys = [
       ...Object.keys(window.localStorage),
@@ -535,5 +564,85 @@ describe("EmployeesPage", () => {
     ];
     expect(storageKeys).toEqual([]);
     expect(store.getState()).not.toHaveProperty("employees");
+  });
+
+  it("uses responsive wrappers for desktop table and mobile cards", async () => {
+    vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeEmployee()],
+    });
+
+    renderPage();
+    await findDesktopTable();
+
+    expect(screen.getByTestId("employees-list-desktop")).toHaveClass(
+      "d-none",
+      "d-md-block",
+    );
+    expect(screen.getByTestId("employees-list-mobile")).toHaveClass("d-md-none");
+  });
+
+  describe("mobile entity cards", () => {
+    it("renders employee details in mobile cards", async () => {
+      vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeEmployee()],
+      });
+
+      renderPage();
+      await findDesktopTable();
+
+      const mobile = employeesMobile();
+      expect(mobile.getByText("Ana Silva")).toBeInTheDocument();
+      expect(mobile.getByText("ana@example.com")).toBeInTheDocument();
+      expect(mobile.getByText("EMPLOYEE")).toBeInTheDocument();
+      expect(mobile.getByText("Ativo")).toBeInTheDocument();
+      expect(mobile.getByText(/Adicionado em/i)).toBeInTheDocument();
+    });
+
+    it("shows row actions on mobile for OWNER including delete", async () => {
+      vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeEmployee()],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      const mobile = employeesMobile();
+      expect(mobile.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+      expect(mobile.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
+      expect(mobile.getByRole("button", { name: /excluir/i })).toBeInTheDocument();
+    });
+
+    it("marks your own card and hides destructive mobile actions", async () => {
+      vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeEmployee({
+            id: "507f1f77bcf86cd799439011",
+            name: "Owner Teste",
+            role: "OWNER",
+          }),
+        ],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      const mobile = employeesMobile();
+      expect(mobile.getByText("Você")).toBeInTheDocument();
+      expect(mobile.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+      expect(
+        mobile.queryByRole("button", { name: /desativar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        mobile.queryByRole("button", { name: /excluir/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

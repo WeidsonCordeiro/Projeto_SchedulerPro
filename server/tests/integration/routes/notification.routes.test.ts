@@ -7,6 +7,7 @@ const {
   authUser,
   notificationRepository,
   userRepository,
+  companyRepository,
 } = vi.hoisted(() => {
   const ids = {
     companyA: "507f1f77bcf86cd799439011",
@@ -34,6 +35,7 @@ const {
       findById: vi.fn(),
       findByIdForAccessControl: vi.fn(),
     },
+    companyRepository: { findById: vi.fn() },
   };
 });
 
@@ -50,6 +52,9 @@ vi.mock("../../../src/modules/notifications/repositories/NotificationRepository"
 }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
+}));
+vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({
+  default: companyRepository,
 }));
 
 import app from "../../../src/app";
@@ -79,6 +84,8 @@ beforeEach(() => {
     companyId: ids.companyA,
     role: Role.OWNER,
   };
+
+  companyRepository.findById.mockResolvedValue({ isActive: true });
 
   userRepository.findById.mockResolvedValue({
     mustChangePassword: false,

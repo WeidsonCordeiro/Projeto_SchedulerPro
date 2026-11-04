@@ -76,4 +76,27 @@ describe("AvailabilityService.ensureEmployeeAvailable por timezone", () => {
       new Date("2026-10-25T01:00:00.000Z"),
     )).resolves.toBeUndefined();
   });
+
+  it.each([
+    ["ausente", null],
+    ["inválido", "Invalid/Zone"],
+  ])("resolve timezone %s para Europe/Lisbon em ensureEmployeeAvailable", async (_label, timezone) => {
+    companyRepository.findById.mockResolvedValue({ timezone });
+    availabilityRepository.findByEmployeeAndDay.mockResolvedValue(
+      availability({ dayOfWeek: 1, morningStart: "00:00", morningEnd: "02:00" }),
+    );
+    await expect(
+      AvailabilityService.ensureEmployeeAvailable(
+        companyId,
+        employeeId,
+        new Date("2026-08-30T23:30:00.000Z"),
+        new Date("2026-08-31T00:00:00.000Z"),
+      ),
+    ).resolves.toBeUndefined();
+    expect(availabilityRepository.findByEmployeeAndDay).toHaveBeenCalledWith(
+      companyId,
+      employeeId,
+      1,
+    );
+  });
 });

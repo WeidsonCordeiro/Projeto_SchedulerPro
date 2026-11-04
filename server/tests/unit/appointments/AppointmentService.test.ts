@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { appointmentRepository, clientRepository, serviceRepository, userRepository, availabilityService, notificationDispatcher } = vi.hoisted(() => ({ appointmentRepository: { findById: vi.fn(), create: vi.fn(), update: vi.fn(), updateStatus: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(), softDelete: vi.fn(), cancelOverdueScheduled: vi.fn(), findByCompanyId: vi.fn() }, clientRepository: { findById: vi.fn() }, serviceRepository: { findById: vi.fn() }, userRepository: { findById: vi.fn() }, availabilityService: { ensureEmployeeAvailable: vi.fn() }, notificationDispatcher: { dispatchAppointmentEvent: vi.fn() } }));
+const { appointmentRepository, clientRepository, serviceRepository, userRepository, availabilityService, notificationDispatcher } = vi.hoisted(() => ({ appointmentRepository: { findById: vi.fn(), create: vi.fn(), update: vi.fn(), updateStatus: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(), softDelete: vi.fn(), cancelOverdueScheduled: vi.fn(), findByCompanyId: vi.fn() }, clientRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) }, serviceRepository: { findById: vi.fn() }, userRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) }, availabilityService: { ensureEmployeeAvailable: vi.fn() }, notificationDispatcher: { dispatchAppointmentEvent: vi.fn() } }));
 vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({ default: appointmentRepository }));
 vi.mock("../../../src/modules/Clients/repositories/ClientRepository", () => ({ default: clientRepository }));
 vi.mock("../../../src/modules/services/repositories/ServiceRepository", () => ({ default: serviceRepository }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({ default: userRepository }));
 vi.mock("../../../src/modules/availability/services/AvailabilityService", () => ({ default: availabilityService }));
 vi.mock("../../../src/modules/notifications/services/NotificationDispatcher", () => ({ default: notificationDispatcher }));
+vi.mock("../../../src/modules/appointments/services/appointment-booking-transaction", () => ({
+  withBookingTransaction: async <T>(operation: (session: never) => Promise<T>) =>
+    operation(undefined as never),
+}));
 import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
 import { AppointmentStatus } from "../../../src/constants/appointment-status";
 import { AppError } from "../../../src/errors/AppError";
@@ -28,4 +32,42 @@ describe("AppointmentService", () => {
   it("repassa filtro de período ao repositório", async () => { const startAt = new Date("2026-08-01T00:00:00.000Z"); const endAt = new Date("2026-09-01T00:00:00.000Z"); const now = new Date("2026-07-01T00:00:00.000Z"); await AppointmentService.findAll(companyId, { startAt, endAt }, undefined, now); expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(companyId, { startAt, endAt }, undefined); });
   it("passa objeto vazio ao repositório quando nenhum filtro informado", async () => { const now = new Date("2026-07-01T00:00:00.000Z"); await AppointmentService.findAll(companyId, {}, undefined, now); expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(companyId, {}, undefined); });
   it("não cancela scheduled vencidos quando a consulta é escopada a um cliente", async () => { const now = new Date("2026-09-01T00:00:00.000Z"); await AppointmentService.findAll(companyId, {}, clientId, now); expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled(); expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(companyId, {}, clientId); });
+});
+
+describe("AppointmentService - agendamento administrativo sem link público", () => {
+  beforeEach(() => {
+    availabilityService.ensureEmployeeAvailable.mockResolvedValue(undefined);
+  });
+
+  it("grava publicAccessTokenHash: null", async () => {
+    await AppointmentService.create(
+      { clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") },
+      companyId,
+      new Date("2026-08-29T00:00:00.000Z"),
+    );
+
+    /**
+     * Agendamento criado pela empresa não tem link público. A
+     * escrita é explícita para nunca depender do valor por
+     * omissão do schema.
+     */
+    expect(appointmentRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ publicAccessTokenHash: null }),
+    );
+  });
+
+  it("não expõe o hash na resposta administrativa", async () => {
+    appointmentRepository.create.mockResolvedValue(
+      entity({ publicAccessTokenHash: "sha256:segredo" }),
+    );
+
+    const created = await AppointmentService.create(
+      { clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") },
+      companyId,
+      new Date("2026-08-29T00:00:00.000Z"),
+    );
+
+    expect(JSON.stringify(created)).not.toContain("publicAccessTokenHash");
+    expect(JSON.stringify(created)).not.toContain("sha256:segredo");
+  });
 });

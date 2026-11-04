@@ -20,6 +20,25 @@ import { AppError } from "../errors/AppError";
 import { ResponseHandler } from "../utils/response";
 import { logger } from "../config/logger";
 import { HttpStatus } from "../constants/http-status";
+import { HttpMessages } from "../constants/http-messages";
+import { redactPublicAppointmentToken } from "../utils/redact-public-appointment-token";
+
+/**
+ * ==========================================================
+ * Detecta JSON malformado.
+ *
+ * O `express.json()` encaminha a falha com
+ * `type: "entity.parse.failed"`. Sem este tratamento, um corpo
+ * inválido devolvia 500 — num endpoint público isso transformaria
+ * um erro do cliente numa falha do servidor.
+ * ==========================================================
+ */
+function isMalformedJson(error: unknown): boolean {
+  return (
+    error instanceof SyntaxError &&
+    (error as SyntaxError & { type?: string }).type === "entity.parse.failed"
+  );
+}
 
 export function errorMiddleware(
   error: Error,
@@ -31,11 +50,13 @@ export function errorMiddleware(
    * Log completo da requisição.
    */
   logger.error({
-    message: error.message,
+    message: redactPublicAppointmentToken(error.message),
     method: req.method,
-    url: req.originalUrl,
+    url: redactPublicAppointmentToken(req.originalUrl),
     ip: req.ip,
-    stack: error.stack,
+    stack: error.stack
+      ? redactPublicAppointmentToken(error.stack)
+      : undefined,
   });
 
   /**
@@ -48,6 +69,17 @@ export function errorMiddleware(
       error.statusCode,
       error.errors,
       error.code
+    );
+  }
+
+  /**
+   * Corpo JSON inválido: erro do cliente, não do servidor.
+   */
+  if (isMalformedJson(error)) {
+    return ResponseHandler.error(
+      res,
+      HttpMessages.VALIDATION_ERROR,
+      HttpStatus.BAD_REQUEST
     );
   }
 

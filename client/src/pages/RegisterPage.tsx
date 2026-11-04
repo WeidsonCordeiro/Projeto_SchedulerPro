@@ -6,7 +6,9 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { setCredentials, setLoading } from "../store/slices/authSlice";
 import authApi from "../api/endpoints/auth.api";
 import { getApiError, getFriendlyErrorMessage } from "../api/errors";
-import { getIanaTimezones, isValidIanaTimezone } from "../config/timezones";
+import { loadSessionCompany, reconcileCompanySliceWithSession } from "../app/loadSessionCompany";
+import { isValidIanaTimezone } from "../config/timezones";
+import TimezonePicker from "../components/common/TimezonePicker";
 
 interface FieldErrors {
   name?: string;
@@ -18,7 +20,6 @@ interface FieldErrors {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const TIMEZONES = getIanaTimezones();
 
 function getDefaultTimezone(): string {
   try {
@@ -128,6 +129,8 @@ export default function RegisterPage() {
         throw new Error("Resposta inválida do servidor.");
       }
       dispatch(setCredentials(session));
+      reconcileCompanySliceWithSession(dispatch, session);
+      await loadSessionCompany(dispatch, session);
       navigate("/", { replace: true });
     } catch (error) {
       const failure = getApiError(error);
@@ -242,30 +245,16 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mb-3">
-            <label htmlFor="register-company-timezone" className="form-label">
-              Fuso horário
-            </label>
-            <select
-              id="register-company-timezone"
-              className={`form-select ${
-                fieldErrors.companyTimezone ? "is-invalid" : ""
-              }`}
-              value={companyTimezone}
-              onChange={(event) => setCompanyTimezone(event.target.value)}
-            >
-              {TIMEZONES.map((zone) => (
-                <option key={zone} value={zone}>
-                  {zone}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.companyTimezone && (
-              <div className="invalid-feedback">
-                {fieldErrors.companyTimezone}
-              </div>
-            )}
-          </div>
+          <TimezonePicker
+            id="register-company-timezone"
+            label="Fuso horário"
+            value={companyTimezone}
+            onChange={setCompanyTimezone}
+            invalid={Boolean(fieldErrors.companyTimezone)}
+            errorMessage={fieldErrors.companyTimezone}
+            disabled={isLoading}
+          />
+
 
           <button
             type="submit"

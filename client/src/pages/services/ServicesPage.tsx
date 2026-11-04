@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import servicesApi from "../../api/endpoints/services.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import { getApiError, getFriendlyErrorMessage, getPageLoadErrorPresentation } from "../../api/errors";
 import ServiceForm from "../../components/services/ServiceForm";
 import DeleteServiceModal from "../../components/services/DeleteServiceModal";
 import { getServiceAbilities } from "../../config/servicePermissions";
 import { useAppSelector } from "../../store";
+import { selectCompany } from "../../store/slices/companySlice";
 import type { Service } from "../../types/service";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
+import DashboardCard from "../../components/common/DashboardCard";
 
 function formatPrice(price: number): string {
   return price.toLocaleString("pt-PT", {
@@ -18,13 +22,16 @@ function formatPrice(price: number): string {
 
 export default function ServicesPage() {
   const user = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const { canCreate, canUpdate, canDelete } = getServiceAbilities(
-    user?.role ?? null,
+    user?.role ?? null
   );
 
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -40,12 +47,16 @@ export default function ServicesPage() {
       const response = await servicesApi.getServices();
       setServices(response.data ?? []);
     } catch (error) {
-      const failure = getApiError(error);
-      setLoadError(getFriendlyErrorMessage(failure));
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      setLoadError(presentation.message);
+      setLoadErrorRetryable(presentation.retryable);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     void loadServices();
@@ -70,7 +81,7 @@ export default function ServicesPage() {
     setSuccessMessage(
       editingService
         ? "Serviço atualizado com sucesso."
-        : "Serviço criado com sucesso.",
+        : "Serviço criado com sucesso."
     );
     setFormOpen(false);
     setEditingService(null);
@@ -103,9 +114,70 @@ export default function ServicesPage() {
     }
   }
 
+  const serviceActionsVisible = canUpdate || canDelete;
+
+  function renderServiceRowActions(service: Service) {
+    return (
+      <div className="table-actions">
+        {canUpdate && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => openEdit(service)}
+            disabled={togglingId === service.id}
+          >
+            Editar
+          </button>
+        )}
+        {canUpdate && (
+          <button
+            type="button"
+            className={`btn btn-sm ${
+              service.isActive
+                ? "btn-outline-secondary"
+                : "btn-outline-success"
+            }`}
+            onClick={() => void handleToggleActive(service)}
+            disabled={togglingId === service.id}
+          >
+            {togglingId === service.id
+              ? "Aguarde..."
+              : service.isActive
+                ? "Desativar"
+                : "Ativar"}
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger"
+            onClick={() => setDeletingService(service)}
+            disabled={togglingId === service.id}
+          >
+            Excluir
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <section>
-      <PageHeader title="Serviços" description="Defina os serviços, durações e preços oferecidos pela empresa." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo serviço</button>} />
+      <PageHeader
+        title="Serviços"
+        description="Defina os serviços, durações e preços oferecidos pela empresa."
+        actions={
+          canCreate && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
+              Novo serviço
+            </button>
+          )
+        }
+      />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -120,113 +192,147 @@ export default function ServicesPage() {
       )}
 
       {!isLoading && !loadError && services.length > 0 && (
-        <div className="service-summary mb-3"><span><strong>{services.filter((service) => service.isActive).length}</strong> serviços ativos</span><span><strong>{services.length}</strong> no catálogo</span></div>
-      )}
-
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
+        // <div className="service-summary mb-3">
+        //   <span>
+        //     <strong>
+        //       {services.filter((service) => service.isActive).length}
+        //     </strong>{" "}
+        //     serviços ativos
+        //   </span>
+        //   <span>
+        //     <strong>{services.length}</strong> no catálogo
+        //   </span>
+        // </div>
+        <div className="row g-3 dashboard-kpis">
+          <div className="col-12 col-md-6">
+            <DashboardCard
+              title="Serviços ativos"
+              value={services.filter((service) => service.isActive).length}
+              icon="bi-calendar-check"
+            />
+          </div>
+          <div className="col-12 col-md-6">
+            <DashboardCard
+              title="No catálogo"
+              value={services.length}
+              icon="bi-calendar-check"
+            />
           </div>
         </div>
       )}
+
+      {isLoading && <LoadingState label="A carregar serviços…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadServices()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={
+            loadErrorRetryable ? () => void loadServices() : undefined
+          }
+        />
       )}
 
       {!isLoading && !loadError && services.length === 0 && (
-        <EmptyState title="Nenhum serviço cadastrado." description="Você ainda não possui serviços. Cadastre os serviços oferecidos para agilizar novos agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro serviço</button>} />
+        <EmptyState
+          title="Nenhum serviço cadastrado."
+          description="Você ainda não possui serviços. Cadastre os serviços oferecidos para agilizar novos agendamentos."
+          action={
+            canCreate && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
+              >
+                Cadastrar primeiro serviço
+              </button>
+            )
+          }
+        />
       )}
 
       {!isLoading && !loadError && services.length > 0 && (
-        <div className="card table-card">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th scope="col">Serviço</th>
-                  <th scope="col">Duração</th>
-                  <th scope="col">Preço</th>
-                  <th scope="col">Status</th>
-                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((service) => (
-                  <tr key={service.id}>
-                    <td>
-                      {service.name}
-                      {service.description && (
-                        <span className="table-subline">{service.description}</span>
-                      )}
-                    </td>
-                    <td>{service.duration} min</td>
-                    <td>{formatPrice(service.price)}</td>
-                    <td>
-                      {service.isActive ? (
-                        <span className="badge text-bg-success">Ativo</span>
-                      ) : (
-                        <span className="badge text-bg-secondary">Inativo</span>
-                      )}
-                    </td>
-                    {(canUpdate || canDelete) && (
-                      <td>
-                        <div className="table-actions">
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => openEdit(service)}
-                              disabled={togglingId === service.id}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className={`btn btn-sm ${service.isActive ? "btn-outline-secondary" : "btn-outline-success"}`}
-                              onClick={() => void handleToggleActive(service)}
-                              disabled={togglingId === service.id}
-                            >
-                              {togglingId === service.id
-                                ? "Aguarde..."
-                                : service.isActive
-                                  ? "Desativar"
-                                  : "Ativar"}
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingService(service)}
-                              disabled={togglingId === service.id}
-                            >
-                              Excluir
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    )}
+        <>
+          <div
+            className="card table-card mt-3 d-none d-md-block"
+            data-testid="services-list-desktop"
+          >
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">Serviço</th>
+                    <th scope="col">Duração</th>
+                    <th scope="col">Preço</th>
+                    <th scope="col">Status</th>
+                    {serviceActionsVisible && <th scope="col">Ações</th>}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {services.map((service) => (
+                    <tr key={service.id}>
+                      <td>
+                        {service.name}
+                        {service.description && (
+                          <span className="table-subline">
+                            {service.description}
+                          </span>
+                        )}
+                      </td>
+                      <td>{service.duration} min</td>
+                      <td>{formatPrice(service.price)}</td>
+                      <td>
+                        {service.isActive ? (
+                          <span className="badge text-bg-success">Ativo</span>
+                        ) : (
+                          <span className="badge text-bg-secondary">
+                            Inativo
+                          </span>
+                        )}
+                      </td>
+                      {serviceActionsVisible && (
+                        <td>{renderServiceRowActions(service)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div
+            className="entity-list-mobile d-md-none mt-3"
+            data-testid="services-list-mobile"
+          >
+            {services.map((service) => (
+              <div key={service.id} className="card">
+                <div className="card-body">
+                  <h3 className="h6 mb-1">{service.name}</h3>
+                  {service.description && (
+                    <p
+                      className="table-subline entity-card-description mb-2"
+                      title={service.description}
+                    >
+                      {service.description}
+                    </p>
+                  )}
+                  <p className="mb-2 small">
+                    {service.duration} min · {formatPrice(service.price)}
+                  </p>
+                  {service.isActive ? (
+                    <span className="badge text-bg-success">Ativo</span>
+                  ) : (
+                    <span className="badge text-bg-secondary">Inativo</span>
+                  )}
+                </div>
+                {serviceActionsVisible && (
+                  <div className="card-footer bg-transparent border-top-0 pt-0">
+                    {renderServiceRowActions(service)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {formOpen && (

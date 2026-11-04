@@ -59,6 +59,19 @@ function renderPage(store = makeStore()) {
   );
 }
 
+async function findDesktopTable() {
+  const desktop = await screen.findByTestId("services-list-desktop");
+  return within(desktop).getByRole("table");
+}
+
+function servicesDesktop() {
+  return within(screen.getByTestId("services-list-desktop"));
+}
+
+function servicesMobile() {
+  return within(screen.getByTestId("services-list-mobile"));
+}
+
 describe("ServicesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -90,7 +103,7 @@ describe("ServicesPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /tentar novamente/i }));
 
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(await findDesktopTable()).toBeInTheDocument();
     expect(servicesApi.getServices).toHaveBeenCalledTimes(2);
   });
 
@@ -142,7 +155,7 @@ describe("ServicesPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(within(table).getByText("Corte de cabelo")).toBeInTheDocument();
     expect(within(table).getByText("Barba")).toBeInTheDocument();
     expect(within(table).getByText("Barboterapia")).toBeInTheDocument();
@@ -150,8 +163,8 @@ describe("ServicesPage", () => {
     expect(within(table).getByText("20 min")).toBeInTheDocument();
     expect(within(table).getByText("15,50")).toBeInTheDocument();
     expect(within(table).getByText("12,00")).toBeInTheDocument();
-    expect(screen.getByText("Ativo")).toBeInTheDocument();
-    expect(screen.getByText("Inativo")).toBeInTheDocument();
+    expect(within(table).getByText("Ativo")).toBeInTheDocument();
+    expect(within(table).getByText("Inativo")).toBeInTheDocument();
   });
 
   it("uses the shared table surface, status column, subline and action row", async () => {
@@ -163,7 +176,7 @@ describe("ServicesPage", () => {
 
     renderPage();
 
-    const table = await screen.findByRole("table");
+    const table = await findDesktopTable();
     expect(table.closest(".table-card")).not.toBeNull();
     expect(
       within(table).getByRole("columnheader", { name: "Status" }),
@@ -194,7 +207,7 @@ describe("ServicesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
     fireEvent.click(screen.getByRole("button", { name: /novo serviço/i }));
 
@@ -237,9 +250,9 @@ describe("ServicesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /editar/i }));
+    fireEvent.click(servicesDesktop().getByRole("button", { name: /editar/i }));
 
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByLabelText("Nome")).toHaveValue("Corte de cabelo");
@@ -275,9 +288,9 @@ describe("ServicesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /excluir/i })[0]);
+    fireEvent.click(servicesDesktop().getAllByRole("button", { name: /excluir/i })[0]);
 
     const dialog = screen.getByRole("dialog");
     expect(
@@ -299,9 +312,9 @@ describe("ServicesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /excluir/i }));
+    fireEvent.click(servicesDesktop().getByRole("button", { name: /excluir/i }));
 
     const dialog = screen.getByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: /cancelar/i }));
@@ -321,9 +334,9 @@ describe("ServicesPage", () => {
     );
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /excluir/i }));
+    fireEvent.click(servicesDesktop().getByRole("button", { name: /excluir/i }));
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: "Excluir" }),
     );
@@ -346,9 +359,9 @@ describe("ServicesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /desativar/i }));
+    fireEvent.click(servicesDesktop().getByRole("button", { name: /desativar/i }));
 
     expect(await screen.findByText("Serviço desativado com sucesso.")).toBeInTheDocument();
     expect(servicesApi.deactivateService).toHaveBeenCalledWith("abc123");
@@ -368,9 +381,9 @@ describe("ServicesPage", () => {
     });
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /ativar/i }));
+    fireEvent.click(servicesDesktop().getByRole("button", { name: /ativar/i }));
 
     expect(await screen.findByText("Serviço ativado com sucesso.")).toBeInTheDocument();
     expect(servicesApi.activateService).toHaveBeenCalledWith("abc123");
@@ -388,9 +401,9 @@ describe("ServicesPage", () => {
     );
 
     renderPage();
-    await screen.findByRole("table");
+    await findDesktopTable();
 
-    fireEvent.click(screen.getByRole("button", { name: /desativar/i }));
+    fireEvent.click(servicesDesktop().getByRole("button", { name: /desativar/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Não autorizado.",
@@ -406,7 +419,7 @@ describe("ServicesPage", () => {
 
     renderPage(makeStore("EMPLOYEE"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(screen.queryByRole("button", { name: /novo serviço/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /editar/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /excluir/i })).not.toBeInTheDocument();
@@ -422,11 +435,17 @@ describe("ServicesPage", () => {
 
     renderPage(makeStore("ADMIN"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(screen.getByRole("button", { name: /novo serviço/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /excluir/i })).not.toBeInTheDocument();
+    expect(
+      servicesDesktop().getByRole("button", { name: /editar/i }),
+    ).toBeInTheDocument();
+    expect(
+      servicesDesktop().getByRole("button", { name: /desativar/i }),
+    ).toBeInTheDocument();
+    expect(
+      servicesDesktop().queryByRole("button", { name: /excluir/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows create/edit/toggle and delete for OWNER", async () => {
@@ -438,11 +457,17 @@ describe("ServicesPage", () => {
 
     renderPage(makeStore("OWNER"));
 
-    await screen.findByRole("table");
+    await findDesktopTable();
     expect(screen.getByRole("button", { name: /novo serviço/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /excluir/i })).toBeInTheDocument();
+    expect(
+      servicesDesktop().getByRole("button", { name: /editar/i }),
+    ).toBeInTheDocument();
+    expect(
+      servicesDesktop().getByRole("button", { name: /desativar/i }),
+    ).toBeInTheDocument();
+    expect(
+      servicesDesktop().getByRole("button", { name: /excluir/i }),
+    ).toBeInTheDocument();
   });
 
   it("never persists service tokens to storage", async () => {
@@ -454,7 +479,7 @@ describe("ServicesPage", () => {
 
     const store = makeStore();
     renderPage(store);
-    await screen.findByRole("table");
+    await findDesktopTable();
 
     const storageKeys = [
       ...Object.keys(window.localStorage),
@@ -462,5 +487,97 @@ describe("ServicesPage", () => {
     ];
     expect(storageKeys).toEqual([]);
     expect(store.getState()).not.toHaveProperty("services");
+  });
+
+  it("uses responsive wrappers for desktop table and mobile cards", async () => {
+    vi.mocked(servicesApi.getServices).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeService()],
+    });
+
+    renderPage();
+    await findDesktopTable();
+
+    expect(screen.getByTestId("services-list-desktop")).toHaveClass(
+      "d-none",
+      "d-md-block",
+    );
+    expect(screen.getByTestId("services-list-mobile")).toHaveClass("d-md-none");
+  });
+
+  describe("mobile entity cards", () => {
+    it("renders service details in mobile cards", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+
+      renderPage();
+      await findDesktopTable();
+
+      const mobile = servicesMobile();
+      expect(mobile.getByText("Corte de cabelo")).toBeInTheDocument();
+      expect(mobile.getByText("Corte simples")).toBeInTheDocument();
+      expect(mobile.getByText(/30 min/)).toBeInTheDocument();
+      expect(mobile.getByText(/15,50/)).toBeInTheDocument();
+      expect(mobile.getByText("Ativo")).toBeInTheDocument();
+    });
+
+    it("shows toggle actions on mobile for OWNER", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      const mobile = servicesMobile();
+      expect(mobile.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+      expect(mobile.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
+      expect(mobile.getByRole("button", { name: /excluir/i })).toBeInTheDocument();
+    });
+
+    it("shows Aguarde while toggle is pending on mobile", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+      vi.mocked(servicesApi.deactivateService).mockReturnValue(
+        new Promise(() => {}),
+      );
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      fireEvent.click(
+        servicesMobile().getByRole("button", { name: /desativar/i }),
+      );
+
+      expect(
+        servicesMobile().getByRole("button", { name: /aguarde/i }),
+      ).toBeDisabled();
+    });
+
+    it("hides mobile action footer for EMPLOYEE read-only", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+
+      renderPage(makeStore("EMPLOYEE"));
+      await findDesktopTable();
+
+      const mobile = servicesMobile();
+      expect(mobile.getByText("Corte de cabelo")).toBeInTheDocument();
+      expect(
+        mobile.queryByRole("button", { name: /editar/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -37,6 +37,23 @@ export interface AppointmentDocument extends Document {
   deletedAt?: Date | null;
 
   /**
+   * Preço do serviço no momento em que o agendamento foi acordado.
+   *
+   * É o snapshot que preserva o valor histórico: alterações
+   * posteriores ao preço do serviço NÃO reescrevem este campo.
+   *
+   * `null` significa "preço histórico desconhecido" (agendamentos
+   * anteriores à introdução deste campo). Nunca é preenchido com o
+   * preço atual só por estar ausente, para não inventar histórico.
+   */
+  priceAtTime?: number | null;
+
+  /** SHA-256 lookup hash. The raw token is never stored in plaintext. */
+  publicAccessTokenHash?: string | null;
+  /** AES-256-GCM envelope used only to reproduce links in later reminders. */
+  publicAccessTokenCiphertext?: string | null;
+
+  /**
    * Marcas de lembretes automáticos enviados ao cliente.
    *
    * O horário em que o lembrete foi enviado (ou `null` enquanto
@@ -124,6 +141,39 @@ const appointmentSchema = new Schema<AppointmentDocument>(
       default: null,
     },
 
+    /**
+     * Snapshot do preço do serviço no momento da reserva.
+     *
+     * `default: null` distingue "histórico desconhecido" de um
+     * serviço genuinamente gratuito (`0`). O preenchimento é da
+     * responsabilidade do backend, a partir do preço do serviço
+     * validado — nunca de um valor enviado pelo cliente.
+     */
+    priceAtTime: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+
+    /**
+     * Hash do token público.
+     *
+     * `select: false` para que o hash nunca entre numa
+     * consulta por omissão: obriga a pedir explicitamente,
+     * o que torna cada leitura do hash rastreável no código.
+     */
+    publicAccessTokenHash: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    publicAccessTokenCiphertext: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
     reminder24hSentAt: {
       type: Date,
       default: null,
@@ -160,17 +210,7 @@ const appointmentSchema = new Schema<AppointmentDocument>(
 
 /**
 
-* Utilizado para buscar agendamentos de um funcionário
-* em determinado período.
-  */
-appointmentSchema.index({
-  companyId: 1,
-  employeeId: 1,
-  startAt: 1,
-});
-
-/**
-
+* ==========================================================
 * Utilizado para consultas de agendamentos de clientes.
   */
 appointmentSchema.index({
@@ -178,5 +218,54 @@ appointmentSchema.index({
   clientId: 1,
   startAt: 1,
 });
+
+/**
+ * Consultas de conflito por funcionário (CANON-016). Não impede
+ * sobreposição; otimiza `hasEmployeeConflict`.
+ */
+appointmentSchema.index(
+  {
+    companyId: 1,
+    employeeId: 1,
+    status: 1,
+    startAt: 1,
+  },
+  {
+    partialFilterExpression: {
+      deletedAt: null,
+      status: { $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED] },
+    },
+  },
+);
+
+/**
+
+* ==========================================================
+* Lookup do agendamento pelo token público.
+*
+* É um índice PARCIAL e não `sparse`:
+*
+* • `sparse` ignora documentos em que o campo não existe, mas
+*   a maioria dos documentos deste schema tem o campo presente
+*   com o valor `null` (default). Com `sparse`, todos esses
+*   `null` seriam indexados e o índice UNIQUE recusaria a
+*   criação do segundo agendamento sem token.
+* • `partialFilterExpression` restringe o índice aos documentos
+*   em que o hash é uma string, ignorando completamente os
+*   `null`. Assim a unicidade só é imposta entre tokens reais.
+*
+* Consequência pretendida: dois agendamentos podem ter
+* `null`, mas dois agendamentos com o mesmo hash nunca
+* coexistem.
+  */
+appointmentSchema.index(
+  { publicAccessTokenHash: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      publicAccessTokenHash: { $type: "string" },
+    },
+  },
+);
 
 export default model<AppointmentDocument>("Appointment", appointmentSchema);

@@ -99,6 +99,8 @@ class ReportService {
       estimatedRevenue: row?.estimatedRevenue ?? 0,
       forecastCount: row?.forecastCount ?? 0,
       forecastRevenue: row?.forecastRevenue ?? 0,
+      completedWithoutPrice: row?.completedWithoutPrice ?? 0,
+      forecastWithoutPrice: row?.forecastWithoutPrice ?? 0,
     };
   }
 
@@ -124,6 +126,7 @@ class ReportService {
       count: row.count,
       completedCount: row.completedCount,
       estimatedRevenue: row.estimatedRevenue,
+      completedWithoutPrice: row.completedWithoutPrice ?? 0,
     }));
   }
 
@@ -151,6 +154,7 @@ class ReportService {
       completedCount: row.completedCount,
       cancelledCount: row.cancelledCount,
       estimatedRevenue: row.estimatedRevenue,
+      completedWithoutPrice: row.completedWithoutPrice ?? 0,
     }));
   }
 
@@ -179,6 +183,7 @@ class ReportService {
         count: row.count,
         completedCount: row.completedCount,
         estimatedRevenue: row.estimatedRevenue,
+        completedWithoutPrice: row.completedWithoutPrice ?? 0,
       })),
     };
   }

@@ -7,6 +7,14 @@ export function isValidIanaTimezone(timezone: string): boolean {
   return typeof timezone === "string" && IANAZone.isValidZone(timezone);
 }
 
+export function resolveCompanyTimezone(
+  companyTimezone: string | undefined | null,
+): string {
+  return isValidIanaTimezone(companyTimezone ?? "")
+    ? (companyTimezone as string)
+    : DEFAULT_TIMEZONE;
+}
+
 export function toCompanyDateTime(date: Date, timezone: string): DateTime {
   return DateTime.fromJSDate(date, { zone: timezone });
 }

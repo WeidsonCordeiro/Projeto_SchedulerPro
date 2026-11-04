@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { clientRepository, userRepository, passwordProvider, clientMapper } =
+const { clientRepository, userRepository, clientMapper } =
   vi.hoisted(() => ({
     clientRepository: {
       create: vi.fn(),
@@ -15,10 +15,8 @@ const { clientRepository, userRepository, passwordProvider, clientMapper } =
       findByClientIdIncludingDeleted: vi.fn(),
       findByClientIdsAndCompanyIncludingDeleted: vi.fn(),
       update: vi.fn(),
-      updateIncludingDeleted: vi.fn(),
       create: vi.fn(),
     },
-    passwordProvider: { hash: vi.fn() },
     clientMapper: {
       toResponse: vi.fn(
         (client: unknown, access?: unknown) => ({
@@ -34,9 +32,6 @@ vi.mock("../../../src/modules/Clients/repositories/ClientRepository", () => ({
 }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
-}));
-vi.mock("../../../src/providers/security/PasswordProvider", () => ({
-  default: passwordProvider,
 }));
 vi.mock("../../../src/modules/Clients/mappers/ClientMapper", () => ({
   default: clientMapper,
@@ -72,7 +67,6 @@ const existingUser = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  passwordProvider.hash.mockResolvedValue("hashed-password");
   userRepository.findByEmailIncludingDeleted.mockResolvedValue(null);
   userRepository.findByClientIdIncludingDeleted.mockResolvedValue(null);
   clientRepository.create.mockResolvedValue(createdClient);
@@ -162,7 +156,6 @@ describe("ClientService.create — validação de conflito de e-mail", () => {
     expect(clientRepository.create).not.toHaveBeenCalled();
     expect(userRepository.create).not.toHaveBeenCalled();
     expect(userRepository.update).not.toHaveBeenCalled();
-    expect(userRepository.updateIncludingDeleted).not.toHaveBeenCalled();
   });
 
   it("Caso 6 — 409 para User soft-deleted (índice unique reserva o e-mail)", async () => {

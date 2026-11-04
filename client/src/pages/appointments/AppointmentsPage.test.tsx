@@ -128,7 +128,11 @@ function makeEmployee(overrides: Partial<Employee> = {}): Employee {
   };
 }
 
-function makeStore(role: Role | null = "OWNER", timezone?: string) {
+function makeStore(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
   return configureStore({
     reducer: { auth: authReducer, company: companyReducer },
     preloadedState: {
@@ -145,7 +149,7 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
               id: "company1",
               name: "salao do centro",
               timezone,
-              isActive: true,
+              isActive: companyIsActive,
               createdAt: "2026-01-01T00:00:00.000Z",
               updatedAt: "2026-01-01T00:00:00.000Z",
             },
@@ -155,9 +159,13 @@ function makeStore(role: Role | null = "OWNER", timezone?: string) {
   });
 }
 
-function renderPage(role: Role | null = "OWNER", timezone?: string) {
+function renderPage(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
   return render(
-    <Provider store={makeStore(role, timezone)}>
+    <Provider store={makeStore(role, timezone, companyIsActive)}>
       <MemoryRouter>
         <AppointmentsPage />
       </MemoryRouter>
@@ -177,8 +185,12 @@ async function switchToListView() {
  * Renderiza a página e alterna para a visualização de Lista (tabela).
  * Útil para manter compatibilidade com testes existentes que esperam a tabela.
  */
-async function renderPageList(role: Role | null = "OWNER", timezone?: string) {
-  renderPage(role, timezone);
+async function renderPageList(
+  role: Role | null = "OWNER",
+  timezone?: string,
+  companyIsActive = true,
+) {
+  renderPage(role, timezone, companyIsActive);
   await switchToListView();
 }
 
@@ -217,8 +229,45 @@ function makeAvailability(dayOfWeek: number): Availability {
 
 const weekAvailability = [0, 1, 2, 3, 4, 5, 6].map(makeAvailability);
 
+function mockMobileCalendarViewport(mobile: boolean) {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: mobile && query.includes("767.98"),
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
+  });
+}
+
+async function clickWeekAppointmentBlock() {
+  fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+  await screen.findByRole("heading", { name: /07\/09/ });
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Agendamento Maria Silva/i }),
+  );
+}
+
+/** Futuro em relação ao relógio fixo (2026-09-10T12:00:00Z) em Europe/Lisbon. */
+function futureSameWeekAppointment(
+  overrides: Partial<Appointment> = {},
+): Appointment {
+  return makeAppointment({
+    startAt: "2026-09-10T14:00:00.000Z",
+    endAt: "2026-09-10T14:30:00.000Z",
+    ...overrides,
+  });
+}
+
 describe("AppointmentsPage", () => {
   beforeEach(() => {
+    mockMobileCalendarViewport(false);
     vi.clearAllMocks();
     mockRelatedData();
     vi.mocked(availabilityApi.getEmployeeAvailabilities).mockResolvedValue({
@@ -247,6 +296,17 @@ describe("AppointmentsPage", () => {
     renderPage();
 
     expect(screen.getByRole("status")).toBeInTheDocument();
+  });
+
+  it("does not render month appointments while the calendar is still loading", () => {
+    vi.mocked(appointmentsApi.getAppointments).mockReturnValue(
+      new Promise(() => {}),
+    );
+    renderPage();
+
+    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
+    expect(screen.queryByTitle(/Maria Silva/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Seg")).not.toBeInTheDocument();
   });
 
   it("shows a friendly error and a retry button when loading fails", async () => {
@@ -292,6 +352,31 @@ describe("AppointmentsPage", () => {
     expect(
       within(screen.getByRole("table")).getAllByText("—").length,
     ).toBeGreaterThan(0);
+  });
+
+  it("suppresses generic inactive-company related alerts when company is inactive", async () => {
+    const inactiveError = httpError(403, {
+      code: "COMPANY_INACTIVE_OPERATION",
+      message: "A empresa está desactivada. Esta operação não está disponível.",
+    });
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+    vi.mocked(clientsApi.getClients).mockRejectedValue(inactiveError);
+    vi.mocked(servicesApi.getServices).mockRejectedValue(inactiveError);
+    vi.mocked(employeesApi.getEmployees).mockRejectedValue(inactiveError);
+
+    await renderPageList("OWNER", "Europe/Lisbon", false);
+
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Reative a empresa/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Não foi possível carregar alguns nomes/i),
+    ).not.toBeInTheDocument();
   });
 
   it("uses the shared table surface, status column and action row", async () => {
@@ -388,7 +473,7 @@ describe("AppointmentsPage", () => {
     expect(within(table).getByText("Corte de cabelo")).toBeInTheDocument();
     expect(within(table).getByText("Ana Lima")).toBeInTheDocument();
     expect(within(table).getByText("Primeira visita")).toBeInTheDocument();
-    expect(screen.getByText("Agendado")).toBeInTheDocument();
+    expect(within(table).getByText("Agendado")).toBeInTheDocument();
   });
 
   it("renders appointment times in the company timezone from the session", async () => {
@@ -431,9 +516,7 @@ describe("AppointmentsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Serviço"), {
       target: { value: "service1" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Ana Lima" }));
     await screen.findByRole("button", { name: "2026-09-15" });
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "11:00" }));
@@ -478,9 +561,7 @@ describe("AppointmentsPage", () => {
     fireEvent.change(within(dialog).getByLabelText("Serviço"), {
       target: { value: "service1" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Funcionário"), {
-      target: { value: "employee1" },
-    });
+    fireEvent.click(within(dialog).getByRole("radio", { name: "Ana Lima" }));
     await screen.findByRole("button", { name: "2026-09-15" });
     fireEvent.click(within(dialog).getByRole("button", { name: "2026-09-15" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "11:00" }));
@@ -625,10 +706,14 @@ describe("AppointmentsPage", () => {
     ).toBeInTheDocument();
     expect(appointmentsApi.completeAppointment).toHaveBeenCalledWith("confirmed");
 
-    fireEvent.click(screen.getAllByRole("button", { name: /cancelar/i })[0]);
+    fireEvent.click(
+      within(table).getAllByRole("button", { name: /^cancelar$/i })[0],
+    );
     expect(appointmentsApi.cancelAppointment).toHaveBeenCalledWith("scheduled");
 
-    fireEvent.click(screen.getByRole("button", { name: "Não compareceu" }));
+    fireEvent.click(
+      within(table).getByRole("button", { name: "Não compareceu" }),
+    );
     expect(appointmentsApi.markAppointmentAsNoShow).toHaveBeenCalledWith(
       "confirmed",
     );
@@ -646,12 +731,20 @@ describe("AppointmentsPage", () => {
     });
 
     await renderPageList();
-    await screen.findByRole("table");
+    const table = await screen.findByRole("table");
 
-    expect(screen.queryByRole("button", { name: /confirmar/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /concluir/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /cancelar/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /não compareceu/i })).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /confirmar/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /concluir/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /^cancelar$/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(table).queryByRole("button", { name: /não compareceu/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a friendly error when the backend rejects a status transition", async () => {
@@ -857,6 +950,136 @@ describe("AppointmentsPage", () => {
     expect(screen.getByRole("heading", { name: "Novo agendamento" })).toBeInTheDocument();
   });
 
+  it("opens AppointmentForm when clicking a week appointment block on desktop", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureSameWeekAppointment()],
+    });
+
+    renderPage();
+    await screen.findByTitle(/Maria Silva/);
+    await clickWeekAppointmentBlock();
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Editar agendamento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens AppointmentForm when clicking a month appointment chip", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureSameWeekAppointment()],
+    });
+
+    renderPage();
+    fireEvent.click(await screen.findByTitle(/Maria Silva —/));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Editar agendamento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens AppointmentForm when clicking a day grid appointment on desktop", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureSameWeekAppointment()],
+    });
+
+    renderPage();
+    await screen.findByTitle(/Maria Silva/);
+    fireEvent.click(screen.getByRole("button", { name: "Dia" }));
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Agendamento Maria Silva/i }),
+    );
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Editar agendamento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens read-only AppointmentForm for past appointments on week grid", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        makeAppointment({
+          startAt: "2026-09-09T09:00:00.000Z",
+          endAt: "2026-09-09T09:30:00.000Z",
+        }),
+      ],
+    });
+
+    renderPage();
+    await screen.findByTitle(/Maria Silva/);
+    await clickWeekAppointmentBlock();
+
+    expect(
+      await screen.findByRole("heading", { name: "Detalhes do agendamento" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Editar agendamento" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes AppointmentForm from the modal header", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureSameWeekAppointment()],
+    });
+
+    renderPage();
+    await screen.findByTitle(/Maria Silva/);
+    await clickWeekAppointmentBlock();
+    await screen.findByRole("heading", { name: "Editar agendamento" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("opens AppointmentForm when clicking week mobile agenda cards", async () => {
+    mockMobileCalendarViewport(true);
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureSameWeekAppointment()],
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    await screen.findByTestId("week-mobile-agenda");
+    fireEvent.click(screen.getByRole("button", { name: /Maria Silva/i }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Editar agendamento" }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens AppointmentForm when clicking day mobile agenda cards", async () => {
+    mockMobileCalendarViewport(true);
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [futureSameWeekAppointment()],
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Dia" }));
+    await screen.findByTestId("day-mobile-agenda");
+    fireEvent.click(screen.getByRole("button", { name: /Maria Silva/i }));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Editar agendamento" }),
+    ).toBeInTheDocument();
+  });
+
   it("opens the create form prefilled when clicking a week time slot", async () => {
     vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
       success: true,
@@ -898,5 +1121,130 @@ describe("AppointmentsPage", () => {
     await waitFor(() =>
       expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(3),
     );
+  });
+
+  it("shows temporal navigation in list view", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [makeAppointment()],
+    });
+
+    await renderPageList();
+
+    expect(screen.getByRole("button", { name: "Hoje" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Anterior" })).toBeInTheDocument();
+    expect(screen.getByText("Lista de agendamentos")).toBeInTheDocument();
+  });
+
+  describe("appointment filters", () => {
+    it("filters list rows by status without extra API calls", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({ id: "a1", status: "scheduled" }),
+          makeAppointment({
+            id: "a2",
+            status: "cancelled",
+            startAt: "2026-09-16T10:00:00.000Z",
+            endAt: "2026-09-16T10:30:00.000Z",
+          }),
+        ],
+      });
+
+      await renderPageList();
+      const table = await screen.findByRole("table");
+      expect(within(table).getAllByText("Maria Silva")).toHaveLength(2);
+      const callsAfterLoad = vi.mocked(appointmentsApi.getAppointments).mock.calls
+        .length;
+      expect(within(table).getAllByRole("row")).toHaveLength(3);
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancelado" }));
+      expect(within(table).getAllByRole("row")).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+      expect(within(table).getAllByRole("row")).toHaveLength(3);
+      expect(appointmentsApi.getAppointments).toHaveBeenCalledTimes(
+        callsAfterLoad,
+      );
+    });
+
+    it("shows filter empty state when no appointments match", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeAppointment({ status: "scheduled" })],
+      });
+
+      await renderPageList();
+      const table = await screen.findByRole("table");
+      await within(table).findByText("Maria Silva");
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancelado" }));
+      expect(
+        screen.getByText(/corresponde aos filtros/i),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps filters when switching views", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({
+            status: "scheduled",
+            startAt: "2026-09-10T09:00:00.000Z",
+            endAt: "2026-09-10T09:30:00.000Z",
+          }),
+        ],
+      });
+
+      renderPage();
+      await screen.findByTitle(/Maria Silva/);
+      fireEvent.click(screen.getByRole("button", { name: "Cancelado" }));
+
+      fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+      expect(
+        screen.getByRole("button", { name: "Cancelado", pressed: true }),
+      ).toBeInTheDocument();
+    });
+
+    it("still opens AppointmentForm on week after filtering other statuses", async () => {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({
+            status: "scheduled",
+            startAt: "2026-09-10T14:00:00.000Z",
+            endAt: "2026-09-10T14:30:00.000Z",
+          }),
+          makeAppointment({
+            id: "appt2",
+            status: "cancelled",
+            startAt: "2026-09-10T10:00:00.000Z",
+            endAt: "2026-09-10T10:30:00.000Z",
+          }),
+        ],
+      });
+
+      renderPage();
+      await waitFor(() =>
+        expect(screen.getAllByTitle(/Maria Silva/)).not.toHaveLength(0),
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Agendado" }));
+      fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+      await screen.findByRole("heading", { name: /07\/09/ });
+
+      fireEvent.click(
+        await screen.findByRole("button", {
+          name: /Agendamento Maria Silva/i,
+        }),
+      );
+      expect(
+        await screen.findByRole("heading", { name: "Editar agendamento" }),
+      ).toBeInTheDocument();
+    });
   });
 });

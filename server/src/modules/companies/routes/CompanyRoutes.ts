@@ -20,6 +20,7 @@ import { validateObjectId } from "../../../middlewares/object-id.middleware";
 import { updateCompanyValidator } from "../validators/update-company.validator";
 import { validateRequest } from "../../../middlewares/validation.middleware";
 import { uploadSingleImage } from "../../../providers/images/imageUpload.middleware";
+import RequireOperationalCompanyMiddleware from "../../../middlewares/require-operational-company.middleware";
 
 const router = Router();
 
@@ -45,6 +46,7 @@ router.patch(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.COMPANY_UPDATE),
   updateCompanyValidator,
   validateRequest,
@@ -56,6 +58,7 @@ router.delete(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.COMPANY_DELETE),
   CompanyController.delete,
 );
@@ -74,6 +77,7 @@ router.patch(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.COMPANY_DEACTIVATE),
   CompanyController.deactivate,
 );
@@ -93,6 +97,7 @@ router.post(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.COMPANY_UPDATE),
   uploadSingleImage("logo"),
   CompanyController.uploadLogo,
@@ -111,6 +116,7 @@ router.delete(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
+  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.COMPANY_UPDATE),
   CompanyController.removeLogo,
 );

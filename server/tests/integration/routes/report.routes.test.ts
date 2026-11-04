@@ -9,7 +9,7 @@ const ids = {
   client: "507f1f77bcf86cd799439015",
 };
 
-const { authUser, reportRepository, userRepository } = vi.hoisted(() => ({
+const { authUser, reportRepository, userRepository, companyRepository } = vi.hoisted(() => ({
   authUser: {
     value: {
       userId: "actor",
@@ -28,6 +28,7 @@ const { authUser, reportRepository, userRepository } = vi.hoisted(() => ({
     findById: vi.fn(),
     findByIdForAccessControl: vi.fn(),
   },
+  companyRepository: { findById: vi.fn() },
 }));
 
 vi.mock("../../../src/middlewares/auth.middleware", () => ({
@@ -43,6 +44,9 @@ vi.mock("../../../src/modules/reports/repositories/ReportRepository", () => ({
 }));
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
+}));
+vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({
+  default: companyRepository,
 }));
 
 import app from "../../../src/app";
@@ -84,6 +88,8 @@ const client = {
 beforeEach(() => {
   vi.clearAllMocks();
   authUser.value = { userId: "actor", companyId: ids.companyA, role: Role.OWNER };
+
+  companyRepository.findById.mockResolvedValue({ isActive: true });
 
   userRepository.findById.mockResolvedValue({ mustChangePassword: false, isActive: true, lockUntil: null });
   userRepository.findByIdForAccessControl.mockResolvedValue({ mustChangePassword: false, isActive: true, lockUntil: null });
@@ -183,6 +189,15 @@ describe("Relatórios HTTP integration", () => {
 
   it("rejeita data inicial inválida", async () => {
     const response = await request(app).get("/api/reports/overview?startAt=nao-e-data");
+
+    expect(response.status).toBe(400);
+    expect(reportRepository.findStatusCounts).not.toHaveBeenCalled();
+  });
+
+  it("rejeita startAt sem offset explícito", async () => {
+    const response = await request(app).get(
+      "/api/reports/overview?startAt=2026-09-01T00:00:00&endAt=2026-10-01T00:00:00.000Z",
+    );
 
     expect(response.status).toBe(400);
     expect(reportRepository.findStatusCounts).not.toHaveBeenCalled();

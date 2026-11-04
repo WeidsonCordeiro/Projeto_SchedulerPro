@@ -136,6 +136,26 @@ describe("AvailabilityExceptionService.create", () => {
       new Date("2026-08-30T23:00:00.000Z"),
     );
   });
+
+  it.each([
+    ["ausente", null],
+    ["inválido", "Invalid/Zone"],
+  ])(
+    "resolve timezone %s para Europe/Lisbon na conversão local→UTC",
+    async (_label, timezone) => {
+      companyRepository.findById.mockResolvedValue({ timezone });
+      await AvailabilityExceptionService.create(
+        { ...partial, date: "2026-08-30", startTime: "10:00", endTime: "11:00" },
+        companyId,
+      );
+      expect(appointmentRepository.hasEmployeeConflict).toHaveBeenCalledWith(
+        companyId,
+        employeeId,
+        new Date("2026-08-30T09:00:00.000Z"),
+        new Date("2026-08-30T10:00:00.000Z"),
+      );
+    },
+  );
 });
 
 describe("AvailabilityExceptionService.findAll/findById", () => {

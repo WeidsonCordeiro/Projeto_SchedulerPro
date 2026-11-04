@@ -6,6 +6,7 @@ import {
   DEFAULT_SESSION_EXPIRY_MESSAGE,
   getApiError,
   getSessionExpiryMessage,
+  STAFF_COMPANY_SUSPENSION_ERROR_CODES,
 } from "./errors";
 import { store } from "../store";
 import { clearCompany, setCompany } from "../store/slices/companySlice";
@@ -70,6 +71,11 @@ function useAdapter(
   handler: (config: InternalAxiosRequestConfig) => Promise<AxiosResponse>,
 ) {
   apiClient.defaults.adapter = async (config) => handler(config);
+}
+
+function isCompaniesRequest(url?: string): boolean {
+  const path = String(url ?? "").split("?")[0];
+  return path === "/companies" || path.endsWith("/companies");
 }
 
 function seedAuthenticated(s: AuthSession = session) {
@@ -278,6 +284,40 @@ describe("apiClient session interceptor", () => {
     expect(store.getState().auth.isAuthenticated).toBe(true);
   });
 
+  it("Caso 6b - sets staffCompanyAccessSuspended on company deactivation code without logout", async () => {
+    seedAuthenticated();
+    let refreshCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        refreshCalls += 1;
+        return ok(config, { success: true, message: "ok", data: session });
+      }
+      if (config.url === "/dashboard/summary") {
+        return ko(
+          config,
+          403,
+          "suspended",
+          STAFF_COMPANY_SUSPENSION_ERROR_CODES.USER_SUSPENDED_BY_COMPANY_DEACTIVATION,
+        );
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await expect(apiClient.get("/dashboard/summary")).rejects.toMatchObject({
+      response: { status: 403 },
+    });
+
+    expect(refreshCalls).toBe(0);
+    expect(store.getState().auth.isAuthenticated).toBe(true);
+    expect(store.getState().auth.staffCompanyAccessSuspended).toBe(true);
+
+    await expect(apiClient.get("/dashboard/summary")).rejects.toMatchObject({
+      response: { status: 403 },
+    });
+    expect(store.getState().auth.staffCompanyAccessSuspended).toBe(true);
+  });
+
   it("Caso 7 - does not refresh or log out on expected errors from public endpoints", async () => {
     seedAuthenticated();
     let refreshCalls = 0;
@@ -484,6 +524,109 @@ describe("apiClient session interceptor", () => {
 
     expect(store.getState().auth.user?.name).toBe("Owner Renovado");
     expect(store.getState().auth.isAuthenticated).toBe(true);
+  });
+
+  it("loads company into Redux on refresh when the slice is empty", async () => {
+    seedAuthenticated();
+    expect(store.getState().company.company).toBeNull();
+    let appointmentsCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ok(config, { success: true, message: "ok", data: session });
+      }
+      if (isCompaniesRequest(config.url)) {
+        return ok(config, {
+          success: true,
+          message: "ok",
+          data: [
+            {
+              id: "507f1f77bcf86cd799439012",
+              name: "salao do centro",
+              timezone: "Europe/Lisbon",
+              isActive: true,
+              createdAt: "2026-01-01T00:00:00.000Z",
+              updatedAt: "2026-01-01T00:00:00.000Z",
+            },
+          ],
+        });
+      }
+      if (config.url === "/appointments") {
+        appointmentsCalls += 1;
+        return appointmentsCalls === 1
+          ? ko(config, 401)
+          : ok(config, { success: true, message: "ok", data: [] });
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await apiClient.get("/appointments");
+
+    expect(store.getState().company.company?.name).toBe("salao do centro");
+    expect(store.getState().auth.isAuthenticated).toBe(true);
+  });
+
+  it("keeps company slice data after token refresh", async () => {
+    seedAuthenticated();
+    seedCompany();
+    let appointmentsCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ok(config, {
+          success: true,
+          message: "ok",
+          data: { ...session, name: "Owner Renovado" },
+        });
+      }
+      if (config.url === "/appointments") {
+        appointmentsCalls += 1;
+        return appointmentsCalls === 1
+          ? ko(config, 401)
+          : ok(config, { success: true, message: "ok", data: [] });
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await apiClient.get("/appointments");
+
+    expect(store.getState().company.company?.name).toBe("salao do centro");
+    expect(store.getState().auth.user?.name).toBe("Owner Renovado");
+  });
+
+  it("syncs company slice name from session on refresh without refetching", async () => {
+    seedAuthenticated();
+    seedCompany();
+    let appointmentsCalls = 0;
+
+    useAdapter(async (config) => {
+      if (config.url === "/auth/refresh") {
+        return ok(config, {
+          success: true,
+          message: "ok",
+          data: {
+            ...session,
+            companyName: "Nome vindo do refresh",
+          },
+        });
+      }
+      if (isCompaniesRequest(config.url)) {
+        throw new Error("GET /companies should not run when slice is populated");
+      }
+      if (config.url === "/appointments") {
+        appointmentsCalls += 1;
+        return appointmentsCalls === 1
+          ? ko(config, 401)
+          : ok(config, { success: true, message: "ok", data: [] });
+      }
+      return ok(config, { success: true, message: "ok", data: null });
+    });
+
+    await apiClient.get("/appointments");
+
+    expect(store.getState().company.company?.name).toBe("Nome vindo do refresh");
+    expect(store.getState().company.company?.timezone).toBe("Europe/Lisbon");
+    expect(store.getState().auth.user?.companyName).toBe("Nome vindo do refresh");
   });
 
   it("Caso 11 - SESSION_IDLE_TIMEOUT on refresh clears the session", async () => {

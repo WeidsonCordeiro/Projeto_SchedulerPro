@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import ClientsPage from "../pages/clients/ClientsPage";
@@ -17,6 +17,10 @@ import VerifyEmailPage from "../pages/VerifyEmailPage";
 import PortalHomePage from "../pages/portal/PortalHomePage";
 import PortalAppointmentsPage from "../pages/portal/PortalAppointmentsPage";
 import PortalProfilePage from "../pages/portal/PortalProfilePage";
+import PublicAppointmentPage from "../pages/public/PublicAppointmentPage";
+import PublicBookingPage from "../pages/public/PublicBookingPage";
+import ClientInvitePage from "../pages/public/ClientInvitePage";
+import NotFoundPage from "../pages/NotFoundPage";
 import ProtectedRoute from "./ProtectedRoute";
 import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
@@ -24,6 +28,26 @@ import ChangePasswordRoute from "./ChangePasswordRoute";
 export default function AppRoutes() {
   return (
     <Routes>
+      {/**
+        Link público do agendamento, entregue a quem não tem conta.
+        `/agendar/` sem token é o mesmo 404 da rota com token inválido.
+       */}
+      {/**
+        MARCAÇÃO (nova): `/agendar/empresa/:companyId`.
+
+        Declarada ANTES de `/agendar/:token` por legibilidade, não por
+        necessidade — o react-router pontua segmentos estáticos acima de dinâmicos
+        e escolheria esta rota para `/agendar/empresa/x` de qualquer maneira.
+        Escrever por ordem inversa faria o token dinâmico parecer o dono do
+        prefixo, e alguém acabaria por "acertar" a ordem por tentativa e erro.
+      */}
+      <Route
+        path="/agendar/empresa/:companyId"
+        element={<PublicBookingPage />}
+      />
+      <Route path="/agendar/:token" element={<PublicAppointmentPage />} />
+      <Route path="/agendar" element={<PublicAppointmentPage />} />
+
       <Route element={<GuestRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -32,6 +56,19 @@ export default function AppRoutes() {
 
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+      {/**
+        Convite de conta CLIENT: `/convite/cliente/:token`.
+
+        Declarada FORA de GuestRoute/ProtectedRoute/AppLayout — quem
+        abre o link não tem conta (é ela que o convite vai criar) e uma
+        sessão administrativa aberta não pode redirecionar o convite
+        para o login. Colocada antes do `*` para nunca cair no catch-all.
+      */}
+      <Route
+        path="/convite/cliente/:token"
+        element={<ClientInvitePage />}
+      />
 
       <Route element={<ChangePasswordRoute />}>
         <Route path="/change-password" element={<ChangePasswordPage />} />
@@ -53,7 +90,7 @@ export default function AppRoutes() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

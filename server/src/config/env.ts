@@ -82,14 +82,18 @@ export const env = {
      */
     MONGO_URI: process.env.MONGO_URI!, //! = Possível garantir que a variável está definida, pois validateEnv() já validou.
   },
+  security: {
+    PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS:
+      process.env.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_KEYS!,
+    PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION:
+      process.env.PUBLIC_APPOINTMENT_TOKEN_ENCRYPTION_ACTIVE_VERSION!,
+  },
   cloudinary: {
     /**
      * Cloudinary
      */
     CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
-
     CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
-
     CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
   },
   redis: {
@@ -97,9 +101,7 @@ export const env = {
      * Redis
      */
     REDIS_HOST: process.env.REDIS_HOST || "localhost",
-
     REDIS_PORT: Number(process.env.REDIS_PORT) || 6379,
-
     REDIS_PASSWORD: process.env.REDIS_PASSWORD || "",
   },
   email: {

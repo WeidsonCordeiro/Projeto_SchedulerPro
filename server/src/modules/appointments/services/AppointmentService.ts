@@ -11,15 +11,25 @@
 * ==========================================================
   */
 
-import { Types } from "mongoose";
+import { Types, ClientSession } from "mongoose";
 
 import AppointmentRepository from "../repositories/AppointmentRepository";
+import { withBookingTransaction } from "./appointment-booking-transaction";
 import AppointmentMapper from "../mappers/AppointmentMapper";
+import PublicAppointmentMapper from "../mappers/PublicAppointmentMapper";
 
 import { CreateAppointmentDto } from "../dto/CreateAppointment.dto";
 import { UpdateAppointmentDto } from "../dto/UpdateAppointment.dto";
+import { CreatePublicAppointmentDto } from "../dto/CreatePublicAppointment.dto";
+import { UpdatePublicAppointmentDto } from "../dto/UpdatePublicAppointment.dto";
+import {
+  CreatePublicAppointmentResult,
+  PublicAppointmentResult,
+} from "../index";
 
 import ClientRepository from "../../Clients/repositories/ClientRepository";
+import { ClientDocument } from "../../Clients/models/Client.model";
+import CompanyRepository from "../../companies/repositories/CompanyRepository";
 import ServiceRepository from "../../services/repositories/ServiceRepository";
 import UserRepository from "../../users/repositories/UserRepository";
 
@@ -30,9 +40,12 @@ import Logger from "../../../providers/logger/Logger";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
 import AvailabilityService from "../../availability/services/AvailabilityService";
+import PublicBookingEligibility from "../../public-booking/services/PublicBookingEligibility";
 import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
+import PublicAppointmentTokenProvider from "../../../providers/security/PublicAppointmentTokenProvider";
 import { NotificationType } from "../../notifications";
 import { AppointmentDocument } from "../models/Appointment.model";
+import { resolveCompanyTimezone } from "../../../utils/timezone";
 
 /**
  * Janela opcional de consulta por período. Repassada ao repositório para
@@ -43,11 +56,364 @@ export interface AppointmentListFilter {
   endAt?: Date;
 }
 
+/**
+ * ==========================================================
+ * Dados já validados, prontos a persistir.
+ *
+ * Reúne as regras comuns à criação administrativa e à criação
+ * pública: cálculo de `endAt`, regra de passado, disponibilidade
+ * (e exceções), conflito de funcionário e de cliente, status
+ * inicial e notificações.
+ *
+ * `endAt` NUNCA entra aqui: é sempre derivado de
+ * `durationMinutes`, que por sua vez vem do `Service`.
+ *
+ * `resolveClientId` é uma função (e não um id) para que o
+ * cliente público só seja criado depois de as regras de agenda
+ * terem passado — um pedido rejeitado não pode deixar um
+ * cadastro de cliente órfão na base de dados.
+ * ==========================================================
+ */
+interface ScheduleAppointmentInput {
+  companyId: string;
+  resolveClientId: (
+    session: ClientSession,
+  ) => Types.ObjectId | Promise<Types.ObjectId>;
+  serviceId: Types.ObjectId;
+  employeeId: Types.ObjectId;
+  durationMinutes: number;
+  /**
+   * Preço do serviço validado, no momento da reserva.
+   *
+   * É sempre o `price` do `Service` do tenant, nunca um valor
+   * recebido do cliente. Fica gravado como snapshot histórico.
+   */
+  priceAtTime: number;
+  startAt: Date;
+  notes?: string | null;
+  now: Date;
+  /**
+   * Hash do token público.
+   *
+   * Só é enviado na criação pública e é gravado na MESMA escrita
+   * do agendamento: ou os dois existem, ou nenhum. Com uma segunda
+   * escrita, um agendamento podia ficar sem token (link
+   * inacessível) ou com um token que o cliente nunca recebeu.
+   */
+  publicAccessTokenHash?: string;
+  publicAccessTokenCiphertext?: string;
+  /**
+   * Token público PURO, apenas para compor o link do e-mail.
+   *
+   * É o valor que o cliente recebe. Nunca é persistido em texto
+   * claro: a base guarda hash e ciphertext autenticado.
+   *
+   * É opcional e só é enviado na criação pública. Sem ele, o
+   * e-mail de confirmação é enviado sem link de gestão.
+   */
+  publicManageToken?: string;
+}
+
 class AppointmentService {
   private readonly appointmentRepository = AppointmentRepository;
   private readonly clientRepository = ClientRepository;
   private readonly serviceRepository = ServiceRepository;
   private readonly userRepository = UserRepository;
+  private readonly publicTokenProvider = PublicAppointmentTokenProvider;
+
+  /**
+   * ==========================================================
+   * Exige um cliente existente, da empresa e ativo.
+   * ==========================================================
+   */
+  private async requireActiveClient(clientId: string, companyId: string) {
+    const client = await this.clientRepository.findById(clientId);
+
+    if (!client || client.companyId.toString() !== companyId) {
+      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!client.isActive) {
+      throw new AppError(
+        "Cliente encontra-se inativo.",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    return client;
+  }
+
+  /**
+   * ==========================================================
+   * Regras de agenda partilhadas.
+   *
+   * A criação (`schedule`), a alteração administrativa (`update`)
+   * e a alteração pelo link público (`updatePublicByToken`) têm
+   * de recusar EXATAMENTE o mesmo conjunto de horários. Por isso
+   * as regras vivem aqui e não são reescritas em cada fluxo: uma
+   * exceção de disponibilidade ou um conflito de funcionário têm
+   * de devolver a mesma mensagem e o mesmo status em qualquer
+   * porta de entrada.
+   * ==========================================================
+   */
+
+  /**
+   * Disponibilidade semanal e exceções — fora de transacções de
+   * reserva (fail-fast antes do protocolo transacional).
+   */
+  private async ensureEmployeeAvailabilityOnly(input: {
+    companyId: string;
+    employeeId: Types.ObjectId;
+    startAt: Date;
+    endAt: Date;
+  }): Promise<void> {
+    await AvailabilityService.ensureEmployeeAvailable(
+      input.companyId,
+      input.employeeId,
+      input.startAt,
+      input.endAt,
+    );
+  }
+
+  private async persistReschedule(input: {
+    companyId: string;
+    appointmentId: string | Types.ObjectId;
+    clientId: Types.ObjectId;
+    employeeId: Types.ObjectId;
+    startAt: Date;
+    endAt: Date;
+    updateData: {
+      clientId?: Types.ObjectId;
+      serviceId: Types.ObjectId;
+      employeeId: Types.ObjectId;
+      startAt: Date;
+      endAt: Date;
+      notes: string | null;
+      priceAtTime: number | null;
+    };
+    notFoundError?: () => AppError;
+  }): Promise<AppointmentDocument> {
+    return withBookingTransaction(async (session) => {
+      await this.userRepository.touchBookingSerialization(
+        input.employeeId,
+        input.companyId,
+        session,
+      );
+
+      const hasEmployeeConflict = session
+        ? await this.appointmentRepository.hasEmployeeConflict(
+            input.companyId,
+            input.employeeId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+            { session },
+          )
+        : await this.appointmentRepository.hasEmployeeConflict(
+            input.companyId,
+            input.employeeId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+          );
+
+      if (hasEmployeeConflict) {
+        throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      await this.clientRepository.touchBookingSerialization(
+        input.clientId,
+        input.companyId,
+        session,
+      );
+
+      const hasClientConflict = session
+        ? await this.appointmentRepository.hasClientConflict(
+            input.companyId,
+            input.clientId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+            { session },
+          )
+        : await this.appointmentRepository.hasClientConflict(
+            input.companyId,
+            input.clientId,
+            input.startAt,
+            input.endAt,
+            input.appointmentId,
+          );
+
+      if (hasClientConflict) {
+        throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      const updated = session
+        ? await this.appointmentRepository.update(
+            input.appointmentId,
+            input.updateData,
+            { session },
+          )
+        : await this.appointmentRepository.update(
+            input.appointmentId,
+            input.updateData,
+          );
+
+      if (!updated) {
+        throw (
+          input.notFoundError?.() ??
+          new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND)
+        );
+      }
+
+      return updated;
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Aplica TODAS as regras de agenda e persiste o agendamento.
+   *
+   * Único caminho de escrita da criação: o fluxo administrativo e
+   * o fluxo público partilham exatamente estas regras — passado,
+   * disponibilidade semanal, exceções (férias/bloqueios),
+   * conflito de funcionário, conflito de cliente, status inicial
+   * e notificações.
+   * ==========================================================
+   */
+  private async schedule(input: ScheduleAppointmentInput) {
+    const {
+      companyId,
+      resolveClientId,
+      serviceId,
+      employeeId,
+      durationMinutes,
+      priceAtTime,
+      startAt,
+      notes,
+      now,
+      publicAccessTokenHash,
+      publicAccessTokenCiphertext,
+    } = input;
+
+    /**
+     * ----------------------------------------------------------
+     * Calcula o horário de término a partir do serviço.
+     * ----------------------------------------------------------
+     */
+    const endAt = new Date(
+      startAt.getTime() + durationMinutes * 60 * 1000,
+    );
+
+    /**
+     * ----------------------------------------------------------
+     * Não permite criar agendamentos no passado.
+     * ----------------------------------------------------------
+     */
+    if (startAt.getTime() <= now.getTime()) {
+      throw new AppError(
+        HttpMessages.APPOINTMENT_START_IN_PAST,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.ensureEmployeeAvailabilityOnly({
+      companyId,
+      employeeId,
+      startAt,
+      endAt,
+    });
+
+    const appointment = await withBookingTransaction(async (session) => {
+      await this.userRepository.touchBookingSerialization(
+        employeeId,
+        companyId,
+        session,
+      );
+
+      const hasEmployeeConflict = session
+        ? await this.appointmentRepository.hasEmployeeConflict(
+            companyId,
+            employeeId,
+            startAt,
+            endAt,
+            undefined,
+            { session },
+          )
+        : await this.appointmentRepository.hasEmployeeConflict(
+            companyId,
+            employeeId,
+            startAt,
+            endAt,
+            undefined,
+          );
+
+      if (hasEmployeeConflict) {
+        throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      const clientId = await resolveClientId(session);
+
+      await this.clientRepository.touchBookingSerialization(
+        clientId,
+        companyId,
+        session,
+      );
+
+      const hasClientConflict = session
+        ? await this.appointmentRepository.hasClientConflict(
+            companyId,
+            clientId,
+            startAt,
+            endAt,
+            undefined,
+            { session },
+          )
+        : await this.appointmentRepository.hasClientConflict(
+            companyId,
+            clientId,
+            startAt,
+            endAt,
+            undefined,
+          );
+
+      if (hasClientConflict) {
+        throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
+      }
+
+      const createPayload = {
+        companyId: new Types.ObjectId(companyId),
+        clientId,
+        serviceId,
+        employeeId,
+        startAt,
+        endAt,
+        status: AppointmentStatus.SCHEDULED,
+        notes: notes ?? null,
+        priceAtTime,
+        ...(publicAccessTokenHash
+          ? { publicAccessTokenHash }
+          : { publicAccessTokenHash: null }),
+        ...(publicAccessTokenCiphertext
+          ? { publicAccessTokenCiphertext }
+          : { publicAccessTokenCiphertext: null }),
+      };
+
+      if (session) {
+        return this.appointmentRepository.create(createPayload, { session });
+      }
+
+      return this.appointmentRepository.create(createPayload);
+    });
+
+    await this.dispatchAppointmentNotification(
+      appointment,
+      NotificationType.APPOINTMENT_CREATED,
+      input.publicManageToken,
+    );
+
+    return appointment;
+  }
 
   /**
    * ==========================================================
@@ -56,11 +422,16 @@ class AppointmentService {
    * As notificações (e-mail ao cliente + notificações internas)
    * são "best effort": falhas são registadas e NUNCA alteram o
    * resultado do agendamento já persistido.
+   *
+   * `publicManageToken` é o token puro, disponível apenas nos
+   * fluxos que o possuem em memória. Nunca é registado: nem no
+   * `meta` de sucesso, nem no de erro.
    * ==========================================================
    */
   private async dispatchAppointmentNotification(
     appointment: AppointmentDocument,
     type: NotificationType,
+    publicManageToken?: string,
   ): Promise<void> {
     try {
       await NotificationDispatcher.dispatchAppointmentEvent({
@@ -72,6 +443,9 @@ class AppointmentService {
         employeeId: appointment.employeeId.toString(),
         startAt: appointment.startAt,
         notes: appointment.notes,
+        ...(publicManageToken
+          ? { publicAccessToken: publicManageToken }
+          : {}),
       });
     } catch (error) {
       Logger.error("Falha ao disparar notificações de agendamento", {
@@ -95,140 +469,229 @@ class AppointmentService {
     now: Date = new Date(),
   ) {
     /**
-
-  * ---
-  * Valida o cliente.
-  * ---
-
-  */
-    const client = await this.clientRepository.findById(dto.clientId);
-
-    if (!client || client.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!client.isActive) {
-      throw new AppError(
-        "Cliente encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+   * ---
+   * Valida o cliente.
+   * ---
+   */
+    await this.requireActiveClient(dto.clientId, companyId);
 
     /**
      * ----------------------------------------------------------
      * Valida o serviço.
      * ----------------------------------------------------------
      */
-    const service = await this.serviceRepository.findById(dto.serviceId);
-
-    if (!service || service.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.SERVICE_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!service.isActive) {
-      throw new AppError(
-        "Serviço encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
+    const service = await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId);
 
     /**
      * ----------------------------------------------------------
      * Valida o funcionário.
      * ----------------------------------------------------------
      */
-    const employee = await this.userRepository.findById(dto.employeeId);
+    await PublicBookingEligibility.requireActiveEmployee(dto.employeeId, companyId);
 
-    if (!employee || employee.companyId.toString() !== companyId) {
-      throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-    }
-
-    if (!employee.isActive) {
-      throw new AppError(
-        "Funcionário encontra-se inativo.",
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Calcula o horário de término.
-     * ----------------------------------------------------------
-     */
-    const startAt = new Date(dto.startAt);
-
-    const endAt = new Date(startAt.getTime() + service.duration * 60 * 1000);
-
-    /**
-     * ----------------------------------------------------------
-     * Não permite criar agendamentos no passado.
-     * ----------------------------------------------------------
-     */
-    if (startAt.getTime() <= now.getTime()) {
-      throw new AppError(
-        HttpMessages.APPOINTMENT_START_IN_PAST,
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    await AvailabilityService.ensureEmployeeAvailable(companyId, dto.employeeId, startAt, endAt);
-
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do funcionário.
-     * ----------------------------------------------------------
-     */
-    const hasEmployeeConflict =
-      await this.appointmentRepository.hasEmployeeConflict(
-        companyId,
-        dto.employeeId,
-        startAt,
-        endAt,
-      );
-
-    if (hasEmployeeConflict) {
-      throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do cliente.
-     * ----------------------------------------------------------
-     */
-    const hasClientConflict =
-      await this.appointmentRepository.hasClientConflict(
-        companyId,
-        dto.clientId,
-        startAt,
-        endAt,
-      );
-
-    if (hasClientConflict) {
-      throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Cria o agendamento.
-     * ----------------------------------------------------------
-     */
-    const appointment = await this.appointmentRepository.create({
-      companyId: new Types.ObjectId(companyId),
-      clientId: new Types.ObjectId(dto.clientId),
+    const appointment = await this.schedule({
+      companyId,
+      resolveClientId: (_session) => new Types.ObjectId(dto.clientId),
       serviceId: new Types.ObjectId(dto.serviceId),
       employeeId: new Types.ObjectId(dto.employeeId),
-      startAt,
-      endAt,
-      status: AppointmentStatus.SCHEDULED,
+      durationMinutes: service.duration,
+      priceAtTime: service.price,
+      startAt: new Date(dto.startAt),
       notes: dto.notes ?? null,
+      now,
     });
 
-    await this.dispatchAppointmentNotification(
-      appointment,
-      NotificationType.APPOINTMENT_CREATED,
+    return AppointmentMapper.toResponse(appointment);
+  }
+
+  /**
+   * ==========================================================
+   * Resolve o `Client` de um agendamento público.
+   *
+   * Se já existir um cliente com o mesmo e-mail NA MESMA empresa,
+   * ele é reutilizado — o que evita duplicar o cadastro a cada
+   * agendamento e faz a regra de conflito de cliente valer para
+   * quem agenda repetidamente.
+   *
+   * Um cliente desativado pela empresa bloqueia o agendamento: um
+   * link público não pode contornar um bloqueio existente.
+   *
+   * O e-mail NÃO é verificado contra a coleção `User`. O pedido
+   * não cria conta de acesso e recusar o agendamento por existir
+   * uma conta com o mesmo e-mail noutra empresa revelaria
+   * informação de outro tenant.
+   * ==========================================================
+   */
+  private async resolvePublicClient(
+    companyId: string,
+    email: string,
+    name: string,
+    phone: string | null,
+    session: ClientSession,
+  ): Promise<ClientDocument> {
+    const existing = session
+      ? await this.clientRepository.findByEmailAndCompany(email, companyId, {
+          session,
+        })
+      : await this.clientRepository.findByEmailAndCompany(email, companyId);
+
+    if (existing) {
+      if (!existing.isActive) {
+        throw new AppError(
+          "Cliente encontra-se inativo.",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      return existing;
+    }
+
+    const createPayload = {
+      companyId: new Types.ObjectId(companyId),
+      name,
+      email,
+      phone,
+    };
+
+    if (session) {
+      return this.clientRepository.create(createPayload, { session });
+    }
+
+    return this.clientRepository.create(createPayload);
+  }
+
+  /**
+   * ==========================================================
+   * Cria um agendamento a partir do link público da empresa.
+   *
+   * O `companyId` vem EXCLUSIVAMENTE da URL
+   * (`/api/public/companies/:companyId/appointments`), nunca do
+   * corpo do pedido. Serviço, profissional, duração, término,
+   * status e cliente são determinados pelo backend.
+   *
+   * Nenhum `User` é criado: o agendamento fica associado a um
+   * `Client`, reutilizando o cadastro existente na empresa quando
+   * o e-mail já existe.
+   * ==========================================================
+   */
+  public async createPublic(
+    dto: CreatePublicAppointmentDto,
+    companyId: string,
+    now: Date = new Date(),
+  ) {
+    /**
+     * ----------------------------------------------------------
+     * Valida a empresa (tenant do link público).
+     *
+     * Empresa eliminada devolve 404 porque o repositório já
+     * filtra `deletedAt`; empresa inativa devolve 400 porque
+     * existe mas não aceita agendamentos.
+     * ----------------------------------------------------------
+     */
+    const company = await PublicBookingEligibility.requireActiveCompany(companyId);
+
+    /**
+     * ----------------------------------------------------------
+     * Valida serviço e profissional contra o MESMO tenant.
+     *
+     * `requireBookableEmployee` exclui a conta de acesso
+     * (role CLIENT): o link público nunca agenda para ela.
+     * ----------------------------------------------------------
+     */
+    const service = await PublicBookingEligibility.requireActiveService(
+      dto.serviceId,
+      companyId,
     );
 
-    return AppointmentMapper.toResponse(appointment);
+    const employee = await PublicBookingEligibility.requireBookableEmployee(
+      dto.employeeId,
+      companyId,
+    );
+
+    /**
+     * ----------------------------------------------------------
+     * Resolve o cliente público.
+     * ----------------------------------------------------------
+     */
+    const clientName = dto.clientName.trim();
+    const clientEmail = dto.clientEmail.trim().toLowerCase();
+    const clientPhone = dto.clientPhone?.trim() || null;
+
+    /**
+     * ----------------------------------------------------------
+     * Gera o token público ANTES da persistência.
+     *
+     * Se `schedule()` falhar, o token é descartado sem nunca
+     * ter existido do lado do cliente: a resposta de erro não
+     * transporta nenhuma credencial. O valor puro só regressa
+     * ao servidor se o agendamento for efetivamente criado.
+     *
+     * A empresa e o cliente não entram no token: é aleatório,
+     * o que impede adivinhar tokens de outras empresas a
+     * partir de um token conhecido.
+     * ----------------------------------------------------------
+     */
+    const publicAccessToken = this.publicTokenProvider.generate();
+    const publicAccessTokenHash =
+      this.publicTokenProvider.hash(publicAccessToken);
+
+    /**
+     * ----------------------------------------------------------
+     * Regras de agenda idênticas ao fluxo administrativo.
+     *
+     * O cliente só é criado dentro de `resolveClientId`, ou seja,
+     * depois de passado, disponibilidade e conflito de funcionário
+     * terem sido aceites.
+     * ----------------------------------------------------------
+     */
+    const appointment = await this.schedule({
+      companyId,
+      resolveClientId: async (session) =>
+        (
+          await this.resolvePublicClient(
+            companyId,
+            clientEmail,
+            clientName,
+            clientPhone,
+            session,
+          )
+        )._id,
+      serviceId: service._id,
+      employeeId: employee._id,
+      durationMinutes: service.duration,
+      priceAtTime: service.price,
+      startAt: new Date(dto.startAt),
+      notes: dto.notes?.trim() || null,
+      now,
+      /**
+       * Só o HASH entra na base de dados, na mesma escrita do
+       * agendamento. O token puro existe apenas nesta resposta —
+       * é a única cópia que alguma vez sai do servidor.
+       */
+      publicAccessTokenHash,
+      publicAccessTokenCiphertext:
+        this.publicTokenProvider.encrypt(publicAccessToken, publicAccessTokenHash),
+      /**
+       * O token PURO segue apenas para a composição do link do
+       * e-mail. Não entra em nenhuma escrita: a base de dados
+       * recebe só o hash, acima.
+       */
+      publicManageToken: publicAccessToken,
+    });
+
+    return {
+      appointment: PublicAppointmentMapper.toResponse(appointment, {
+        clientName,
+        timezone: resolveCompanyTimezone(company.timezone),
+        service: { id: service._id.toString(), name: service.name },
+        employee: {
+          id: employee._id.toString(),
+          name: employee.name,
+          avatarUrl: employee.avatar?.url ?? null,
+        },
+      }),
+      publicAccessToken,
+    } satisfies CreatePublicAppointmentResult;
   }
 
   /**
@@ -373,22 +836,23 @@ class AppointmentService {
 
     /**
      * ----------------------------------------------------------
+     * Preço histórico.
+     *
+     * Por omissão o snapshot é PRESERVADO: alterar estado, notas,
+     * cliente, colaborador ou horário nunca reescreve o valor
+     * acordado. Só uma alteração efetiva de serviço o recalcula
+     * (abaixo), com o preço atual do novo serviço.
+     * ----------------------------------------------------------
+     */
+    let priceAtTime = appointment.priceAtTime ?? null;
+
+    /**
+     * ----------------------------------------------------------
      * Atualiza e valida o cliente.
      * ----------------------------------------------------------
      */
     if (dto.clientId) {
-      const client = await this.clientRepository.findById(dto.clientId);
-
-      if (!client || client.companyId.toString() !== companyId) {
-        throw new AppError(HttpMessages.CLIENT_NOT_FOUND, HttpStatus.NOT_FOUND);
-      }
-
-      if (!client.isActive) {
-        throw new AppError(
-          "Cliente encontra-se inativo.",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      await this.requireActiveClient(dto.clientId, companyId);
 
       clientId = new Types.ObjectId(dto.clientId);
     }
@@ -401,29 +865,22 @@ class AppointmentService {
     let service = await this.serviceRepository.findById(serviceId);
 
     if (dto.serviceId) {
-      const updatedService = await this.serviceRepository.findById(
-        dto.serviceId,
-      );
+      service = await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId);
 
-      if (
-        !updatedService ||
-        updatedService.companyId.toString() !== companyId
-      ) {
-        throw new AppError(
-          HttpMessages.SERVICE_NOT_FOUND,
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      if (!updatedService.isActive) {
-        throw new AppError(
-          "Serviço encontra-se inativo.",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      service = updatedService;
       serviceId = new Types.ObjectId(dto.serviceId);
+
+      /**
+       * ----------------------------------------------------------
+       * Regra de alteração de serviço: só quando o serviço muda de
+       * facto é que o preço histórico é recalculado para o preço
+       * atual do novo serviço. Reenviar o MESMO `serviceId` é
+       * tratado como não-alteração, pelo que o snapshot original
+       * permanece.
+       * ----------------------------------------------------------
+       */
+      if (serviceId.toString() !== appointment.serviceId.toString()) {
+        priceAtTime = service.price;
+      }
     }
 
     /**
@@ -432,18 +889,7 @@ class AppointmentService {
      * ----------------------------------------------------------
      */
     if (dto.employeeId) {
-      const employee = await this.userRepository.findById(dto.employeeId);
-
-      if (!employee || employee.companyId.toString() !== companyId) {
-        throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
-      }
-
-      if (!employee.isActive) {
-        throw new AppError(
-          "Funcionário encontra-se inativo.",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+      await PublicBookingEligibility.requireActiveEmployee(dto.employeeId, companyId);
 
       employeeId = new Types.ObjectId(dto.employeeId);
     }
@@ -485,60 +931,29 @@ class AppointmentService {
      */
     const endAt = new Date(startAt.getTime() + service!.duration * 60 * 1000);
 
-    await AvailabilityService.ensureEmployeeAvailable(companyId, employeeId, startAt, endAt);
-
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do funcionário.
-     *
-     * O próprio agendamento é ignorado na verificação.
-     * ----------------------------------------------------------
-     */
-    const hasEmployeeConflict =
-      await this.appointmentRepository.hasEmployeeConflict(
-        companyId,
-        employeeId,
-        startAt,
-        endAt,
-        appointment._id,
-      );
-
-    if (hasEmployeeConflict) {
-      throw new AppError(HttpMessages.EMPLOYEE_CONFLICT, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Verifica conflito de horário do cliente.
-     *
-     * O próprio agendamento é ignorado na verificação.
-     * ----------------------------------------------------------
-     */
-    const hasClientConflict =
-      await this.appointmentRepository.hasClientConflict(
-        companyId,
-        clientId,
-        startAt,
-        endAt,
-        appointment._id,
-      );
-
-    if (hasClientConflict) {
-      throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Atualiza o agendamento.
-     * ----------------------------------------------------------
-     */
-    const updatedAppointment = await this.appointmentRepository.update(id, {
-      clientId,
-      serviceId,
+    await this.ensureEmployeeAvailabilityOnly({
+      companyId,
       employeeId,
       startAt,
       endAt,
-      notes,
+    });
+
+    const updatedAppointment = await this.persistReschedule({
+      companyId,
+      appointmentId: id,
+      clientId,
+      employeeId,
+      startAt,
+      endAt,
+      updateData: {
+        clientId,
+        serviceId,
+        employeeId,
+        startAt,
+        endAt,
+        notes: notes ?? null,
+        priceAtTime,
+      },
     });
 
     await this.dispatchAppointmentNotification(
@@ -551,10 +966,413 @@ class AppointmentService {
 
   /**
    * ==========================================================
+   * Resolve um agendamento através do token público.
+   *
+   * O token é a credencial. NÃO são aceites `_id`, `clientId`
+   * nem e-mail como alternativa.
+   *
+   * Todas as falhas devolvem o MESMO `404` com a MESMA
+   * mensagem: token malformado, token inexistente e
+   * agendamento eliminado soft são indistinguíveis para quem
+   * chama. Sem isso, a rota confirmaria a existência de um
+   * agendamento a quem está a adivinhar tokens.
+   * ==========================================================
+   */
+  private async resolveByPublicToken(token: unknown) {
+    if (!this.publicTokenProvider.hasValidFormat(token)) {
+      throw this.publicAppointmentNotFound();
+    }
+
+    const hash = this.publicTokenProvider.hash(token);
+
+    const appointment =
+      await this.appointmentRepository.findByPublicAccessTokenHash(hash);
+
+    if (!appointment) {
+      throw this.publicAppointmentNotFound();
+    }
+
+    /**
+     * Registado apenas como prefixo do hash: identifica o link
+     * em caso de diagnóstico sem que o registo seja ele próprio
+     * uma credencial.
+     */
+    Logger.info("Acesso público a agendamento", {
+      appointmentId: appointment._id.toString(),
+      tokenHint: this.publicTokenProvider.toDiagnosticHint(hash),
+    });
+
+    return appointment;
+  }
+
+  /**
+   * ==========================================================
+   * Token puro para compor o link de gestão do e-mail, ou
+   * `undefined` se não for utilizável.
+   *
+   * Só é chamado DEPOIS de `resolveByPublicToken` ter devolvido um
+   * agendamento, o que implica que o token passou
+   * `hasValidFormat`. A guarda repete o FORMATO (43 caracteres
+   * base64url), não o segredo: serve para narrowing de `unknown`
+   * para `string` e para deixar o invariante explícito no ponto
+   * onde o link é montado.
+   *
+   * Se um dia a resolução passar a aceitar outro formato, o
+   * e-mail é enviado SEM link em vez de receber um link inválido.
+   * ==========================================================
+   */
+  private publicManageToken(token: unknown): string | undefined {
+    return this.publicTokenProvider.hasValidFormat(token) ? token : undefined;
+  }
+
+  /**
+   * ==========================================================
+   * Erro único para qualquer falha de token.
+   * ==========================================================
+   */
+  private publicAppointmentNotFound() {
+    return new AppError(
+      HttpMessages.PUBLIC_APPOINTMENT_NOT_FOUND,
+      HttpStatus.NOT_FOUND,
+    );
+  }
+
+  /**
+   * ==========================================================
+   * Monta a resposta pública a partir do agendamento.
+   *
+   * Vai buscar `Client`, `Service` e `User` porque, ao contrário
+   * da criação, aqui não existe documento já validado à mão.
+   *
+   * O `publicAccessTokenHash` nunca entra na resposta: o
+   * mapper público não o conhece.
+   * ==========================================================
+   */
+  private async toPublicResult(
+    appointment: AppointmentDocument,
+  ): Promise<PublicAppointmentResult> {
+    const [client, service, employee, company] = await Promise.all([
+      this.clientRepository.findById(appointment.clientId),
+      this.serviceRepository.findById(appointment.serviceId),
+      this.userRepository.findById(appointment.employeeId),
+      CompanyRepository.findById(appointment.companyId),
+    ]);
+
+    return PublicAppointmentMapper.toResponse(appointment, {
+      clientName: client?.name ?? "",
+      timezone: resolveCompanyTimezone(company?.timezone),
+      service: {
+        id: appointment.serviceId.toString(),
+        name: service?.name ?? "",
+      },
+      employee: {
+        id: appointment.employeeId.toString(),
+        name: employee?.name ?? "",
+        /**
+         * Apenas a URL: o `publicId` do storage nunca sai do
+         * backend.
+         */
+        avatarUrl: employee?.avatar?.url ?? null,
+      },
+    });
+  }
+
+  /**
+   * ==========================================================
+   * Regra de estado para o link público.
+   *
+   * Um agendamento é modificável apenas enquanto está ativo e
+   * ainda vai acontecer:
+   *
+   * • `cancelled`, `completed` e `no-show` são estados finais.
+   *   Alterar ou cancelar de novo não é permitido e, em caso
+   *   algum, reativar.
+   * • Um agendamento já iniciado (ou no passado) é histórico:
+   *   o frontend e o backoffice mostram-no, mas já não é
+   *   alterável. Esta é a regra de "histórico é somente
+   *   leitura" do SchedulerPro, aplicada sem criar um caminho
+   *   alternativo.
+   * ==========================================================
+   */
+  private assertPublicAppointmentIsEditable(
+    appointment: AppointmentDocument,
+    now: Date,
+  ): void {
+    const editableStatuses = [
+      AppointmentStatus.SCHEDULED,
+      AppointmentStatus.CONFIRMED,
+    ];
+
+    if (!editableStatuses.includes(appointment.status)) {
+      throw new AppError(
+        HttpMessages.PUBLIC_APPOINTMENT_NOT_EDITABLE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (appointment.startAt.getTime() <= now.getTime()) {
+      throw new AppError(
+        HttpMessages.PUBLIC_APPOINTMENT_NOT_EDITABLE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  /**
+   * ==========================================================
+   * Consulta o agendamento através do link público.
+   *
+   * Um agendamento cancelado, concluído ou no passado continua
+   * a ser consultável: quem recebeu o link precisa de ver o
+   * que aconteceu. É apenas a escrita que é bloqueada.
+   * ==========================================================
+   */
+  public async findPublicByToken(token: unknown) {
+    const appointment = await this.resolveByPublicToken(token);
+
+    return this.toPublicResult(appointment);
+  }
+
+  /**
+   * ==========================================================
+   * Altera o agendamento através do link público.
+   *
+   * Reutiliza as MESMAS regras do fluxo administrativo:
+   * serviço e profissional validados contra a empresa do
+   * agendamento, `endAt` recalculado a partir da duração,
+   * `startAt` no futuro, disponibilidade (e exceções) e
+   * conflitos de funcionário e de cliente — sempre
+   * excluindo o próprio agendamento da verificação.
+   *
+   * O que NÃO é alterável aqui, e porquê:
+   *
+   * • `clientId` — o cliente é o titular do agendamento e não
+   *   é substituível por quem tem o link.
+   * • dados pessoais (`clientName`, `clientEmail`,
+   *   `clientPhone`) — o `Client` é um cadastro partilhado
+   *   pela empresa, potencialmente com outros agendamentos e
+   *   conta associada. Um link público não pode reescrever a
+   *   identidade de um cliente que a empresa gere.
+   * • `status`, `endAt`, `duration`, `price`,
+   *   `publicAccessTokenHash` — sempre do servidor.
+   *
+   * O token não é regenerado: o link já entregue continua
+   * válido depois da alteração.
+   * ==========================================================
+   */
+  public async updatePublicByToken(
+    token: unknown,
+    dto: UpdatePublicAppointmentDto,
+    now: Date = new Date(),
+  ) {
+    const appointment = await this.resolveByPublicToken(token);
+
+    this.assertPublicAppointmentIsEditable(appointment, now);
+
+    const companyId = appointment.companyId.toString();
+
+    /**
+     * ----------------------------------------------------------
+     * Serviço: recalcula a duração (e portanto o `endAt`).
+     *
+     * O serviço EFETIVO é sempre revalidado, mesmo que o cliente
+     * não o tenha enviado: um serviço entretanto desativado ou
+     * removido tem de invalidar a alteração, caso contrário o
+     * agendamento ficaria preso a um serviço que já não existe.
+     * ----------------------------------------------------------
+     */
+    const service = dto.serviceId
+      ? await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId)
+      : await PublicBookingEligibility.requireActiveService(
+          appointment.serviceId.toString(),
+          companyId,
+        );
+
+    const serviceId = dto.serviceId
+      ? new Types.ObjectId(dto.serviceId)
+      : appointment.serviceId;
+
+    /**
+     * ----------------------------------------------------------
+     * Preço histórico: preservado por omissão. Tal como no fluxo
+     * administrativo, só uma alteração efetiva de serviço o
+     * recalcula — nunca o preço atual de um serviço inalterado.
+     * ----------------------------------------------------------
+     */
+    let priceAtTime = appointment.priceAtTime ?? null;
+
+    if (serviceId.toString() !== appointment.serviceId.toString()) {
+      priceAtTime = service.price;
+    }
+
+    /**
+     * ----------------------------------------------------------
+     * Profissional: mesma empresa, ativo e nunca um `CLIENT`.
+     *
+     * Igual ao serviço, o profissional efetivo é sempre
+     * revalidado.
+     * ----------------------------------------------------------
+     */
+    const effectiveEmployeeId = dto.employeeId ?? appointment.employeeId.toString();
+
+    await PublicBookingEligibility.requireBookableEmployee(
+      effectiveEmployeeId,
+      companyId,
+    );
+
+    const employeeId = new Types.ObjectId(effectiveEmployeeId);
+
+    /**
+     * ----------------------------------------------------------
+     * Data/hora: sempre futura.
+     * ----------------------------------------------------------
+     */
+    let startAt = appointment.startAt;
+
+    if (dto.startAt) {
+      startAt = new Date(dto.startAt);
+
+      if (startAt.getTime() <= now.getTime()) {
+        throw new AppError(
+          HttpMessages.APPOINTMENT_START_IN_PAST,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
+    const notes = dto.notes === undefined ? appointment.notes : dto.notes;
+
+    /**
+     * ----------------------------------------------------------
+     * `endAt` é SEMPRE recalculado a partir da duração do
+     * serviço. Nunca vem do cliente.
+     * ----------------------------------------------------------
+     */
+    const endAt = new Date(
+      startAt.getTime() + service.duration * 60 * 1000,
+    );
+
+    /**
+     * ----------------------------------------------------------
+     * Mesmas regras de agenda da criação e da alteração
+     * administrativa, excluindo o próprio agendamento da
+     * verificação de conflitos.
+     * ----------------------------------------------------------
+     */
+    await this.ensureEmployeeAvailabilityOnly({
+      companyId,
+      employeeId,
+      startAt,
+      endAt,
+    });
+
+    const updated = await this.persistReschedule({
+      companyId,
+      appointmentId: appointment._id,
+      clientId: appointment.clientId,
+      employeeId,
+      startAt,
+      endAt,
+      updateData: {
+        serviceId,
+        employeeId,
+        startAt,
+        endAt,
+        notes: notes ?? null,
+        priceAtTime,
+      },
+      notFoundError: () => this.publicAppointmentNotFound(),
+    });
+
+    await this.dispatchAppointmentNotification(
+      updated,
+      NotificationType.APPOINTMENT_UPDATED,
+      /**
+       * O cliente acabou de apresentar o token puro na URL (e
+       * `resolveByPublicToken` já o validou). É a única forma
+       * segura de voltar a ter o valor: a base de dados só
+       * guarda o hash.
+       */
+      this.publicManageToken(token),
+    );
+
+    return this.toPublicResult(updated);
+  }
+
+  /**
+   * ==========================================================
+   * Cancela o agendamento através do link público.
+   *
+   * Reutiliza a transição administrativa `cancel()`
+   * (scheduled/confirmed -> cancelled), que dispara as mesmas
+   * notificações. Não há remoção física nem caminho alternativo
+   * de cancelamento.
+   *
+   * Idempotente: cancelar um agendamento já cancelado devolve
+   * o estado atual com `200`, sem nova notificação e sem
+   * alterar `updatedAt`. Rejeitar com erro seria mais
+   * correcto semanticamente, mas num link público obriga o
+   * cliente final a distinguir "cancelado" de "erro" e favorece
+   * retries cegos. Em nenhum dos casos é possível reativar.
+   * ==========================================================
+   */
+  public async cancelPublicByToken(token: unknown) {
+    const appointment = await this.resolveByPublicToken(token);
+
+    /**
+     * Já cancelado: resposta idempotente.
+     */
+    if (appointment.status === AppointmentStatus.CANCELLED) {
+      return this.toPublicResult(appointment);
+    }
+
+    /**
+     * Concluído ou no-show: estados finais, não alteráveis.
+     */
+    if (
+      appointment.status === AppointmentStatus.COMPLETED ||
+      appointment.status === AppointmentStatus.NO_SHOW
+    ) {
+      throw new AppError(
+        HttpMessages.PUBLIC_APPOINTMENT_NOT_EDITABLE,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    /**
+     * Agendamento scheduled/confirmed já no passado: o próprio
+     * sistema o cancela automaticamente
+     * (`cancelOverdueScheduled`). Cancelar aqui é coerente com
+     * essa regra e evita depender de uma job ter corrido.
+     */
+
+    await this.cancel(
+      appointment._id.toString(),
+      appointment.companyId.toString(),
+      /**
+       * Token puro apresentado na URL, para o e-mail de
+       * cancelamento poder repetir o link de gestão.
+       */
+      this.publicManageToken(token),
+    );
+
+    const cancelled =
+      (await this.appointmentRepository.findById(appointment._id)) ??
+      appointment;
+
+    return this.toPublicResult(cancelled);
+  }
+
+  /**
+   * ==========================================================
    * Atualiza o status de um agendamento.
    *
    * Valida se o agendamento pertence à empresa e se
    * a transição de status é permitida.
+   *
+   * `publicManageToken` atravessa a transição para que o
+   * e-mail de cancelamento do fluxo público inclua o link de
+   * gestão. É omitido em todas as transições administrativas.
    * ==========================================================
    */
   private async changeStatus(
@@ -562,6 +1380,7 @@ class AppointmentService {
     companyId: string,
     allowedCurrentStatuses: AppointmentStatus[],
     newStatus: AppointmentStatus,
+    publicManageToken?: string,
   ) {
     const appointment = await this.appointmentRepository.findById(id);
 
@@ -595,6 +1414,7 @@ class AppointmentService {
       await this.dispatchAppointmentNotification(
         updatedAppointment,
         NotificationType.APPOINTMENT_CANCELLED,
+        publicManageToken,
       );
     }
 
@@ -632,14 +1452,25 @@ class AppointmentService {
   /**
    * ==========================================================
    * Cancela um agendamento.
+   *
+   * `publicManageToken` é opcional e só é enviado pelo cancelamento
+   * público (ver `cancelPublicByToken`). Na rota administrativa é
+   * omitido: o cancelamento feito por um utilizador autenticado
+   * gera um e-mail sem link público, porque esse agendamento não
+   * tem token público.
    * ==========================================================
    */
-  public async cancel(id: string, companyId: string) {
+  public async cancel(
+    id: string,
+    companyId: string,
+    publicManageToken?: string,
+  ) {
     return this.changeStatus(
       id,
       companyId,
       [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
       AppointmentStatus.CANCELLED,
+      publicManageToken,
     );
   }
 

@@ -7,11 +7,9 @@ import { DateTime } from "luxon";
  * server/src/utils/timezone.ts (Luxon) para interpretar startAt/endAt e validar
  * a disponibilidade do funcionário contra períodos locais "HH:mm".
  *
- * O frontend, neste Stage, não possui fonte autenticada de company.timezone
- * (AuthUser e as listas de Users/Clients/Services não a expõem e apenas
- * OWNER/ADMIN possuem COMPANY_READ). Por isso usamos o mesmo valor padrão do
- * backend (DEFAULT_TIMEZONE = "Europe/Lisbon"), que é aplicado a toda empresa
- * que não informou timezone próprio no cadastro.
+ * O timezone efetivo da empresa no frontend vem de `selectCompanyTimezone`
+ * (registo da empresa quando carregado, senão `auth.user.companyTimezone` da
+ * sessão, senão este fallback — alinhado ao backend `Europe/Lisbon`).
  *
  * Contrato seguido: o payload envia startAt como instante ISO 8601 em UTC
  * (ex.: "2026-08-30T09:00:00.000Z"), conforme docs/api-contract.md, e a tela

@@ -1,0 +1,830 @@
+/* =============================================================================
+   Calendário e agendamentos (admin) — extraído de index.css (Stage 49.6)
+   ============================================================================= */
+
+/* --- Shell e painel --- */
+.calendar-surface {
+  --calendar-event-padding-block: 0.15rem;
+  --calendar-event-padding-inline: 0.25rem;
+  --calendar-event-stack-gap: 0.15rem;
+  --calendar-event-cell-inset: 0.35rem;
+  --calendar-event-radius: 0.35rem;
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  box-shadow: var(--sp-shadow);
+  padding: 1rem;
+}
+
+.appointments-calendar-panel {
+  margin-bottom: 1rem;
+  min-width: 0;
+}
+
+/* --- Toolbar (AppointmentsViewSwitcher) --- */
+.calendar-toolbar {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-btn-action-gap);
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+}
+.calendar-toolbar-nav {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+}
+.calendar-toolbar-views {
+  flex: 0 0 auto;
+}
+.calendar-toolbar .btn,
+.calendar-toolbar-filters .btn {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  min-height: var(--sp-btn-sm-min-height);
+  padding-inline: var(--sp-btn-sm-padding-x);
+}
+/* O período é a informação que orienta a leitura da agenda, portanto fica
+   sempre visível (todas as vistas, todas as larguras) e encolhe antes das ações. */
+.calendar-toolbar-label,
+.calendar-toolbar-period {
+  flex: 1 1 auto;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.appointments-schedule-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 1rem;
+}
+
+.appointments-schedule-toolbar .calendar-toolbar {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.calendar-toolbar-filters {
+  align-items: flex-end;
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-top: none;
+  border-radius: 0 0 var(--sp-radius) var(--sp-radius);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-btn-action-gap) 1rem;
+  padding: 0.75rem;
+}
+
+.calendar-toolbar-filters-status {
+  border: none;
+  flex: 1 1 280px;
+  margin: 0;
+  min-width: 0;
+  padding: 0;
+}
+
+.calendar-toolbar-filters-legend {
+  float: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  width: 100%;
+}
+
+.calendar-toolbar-filters-status-group {
+  width: 100%;
+}
+
+.calendar-toolbar-filters-status-group.btn-group {
+  gap: var(--sp-btn-action-gap);
+}
+
+.calendar-toolbar-filters-employee {
+  flex: 0 1 200px;
+  min-width: 10rem;
+}
+
+.calendar-toolbar-filters-employee .form-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+
+.calendar-toolbar-filters-employee .form-select {
+  min-height: var(--sp-btn-sm-min-height);
+}
+
+.calendar-toolbar-filters-clear {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/* --- Itens e estados partilhados (mês, semana, dia) --- */
+.calendar-item {
+  border-radius: 0.35rem !important;
+  min-height: 3.45rem;
+  overflow: hidden;
+}
+.calendar-item.calendar-week-event {
+  min-height: 0;
+  text-align: start;
+}
+.calendar-item-time {
+  font-size: 0.65rem;
+  font-weight: 750;
+  opacity: 0.82;
+}
+.calendar-item-client {
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.15;
+}
+.calendar-item-service {
+  font-size: 0.62rem;
+  opacity: 0.82;
+}
+.calendar-item-status {
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1.1;
+  opacity: 0.9;
+}
+.status-scheduled {
+  background: #526bd8 !important;
+  color: #fff !important;
+}
+.status-confirmed {
+  background: #168c72 !important;
+  color: #fff !important;
+}
+.status-completed {
+  background: #667085 !important;
+  color: #fff !important;
+}
+.status-cancelled {
+  background: #d95368 !important;
+  color: #fff !important;
+}
+.status-no-show {
+  background: #d18b20 !important;
+  color: #fff !important;
+}
+.status-default {
+  background: #94a3b8 !important;
+  color: #fff !important;
+}
+
+.calendar-event--muted {
+  opacity: 0.88;
+}
+
+.appointment-service-swatch-cell {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.appointment-service-swatch {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 2px;
+  flex-shrink: 0;
+  height: 0.65rem;
+  width: 0.65rem;
+}
+
+/* Fundo e texto = serviço (inline via getServiceCalendarStyle). */
+.calendar-week-event {
+  border-radius: var(--calendar-event-radius, 0.35rem);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  font-size: 0.72rem;
+  gap: 0.05rem;
+  justify-content: flex-start;
+  line-height: 1.12;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--calendar-event-padding-block)
+    var(--calendar-event-padding-inline);
+}
+.calendar-event-time {
+  flex: 0 0 auto;
+  font-size: 0.64rem;
+  font-weight: 700;
+  min-width: 0;
+  opacity: 0.85;
+}
+.calendar-event-client {
+  flex: 1 1 auto;
+  font-size: 0.7rem;
+  font-weight: 750;
+  min-height: 0;
+  min-width: 0;
+}
+.calendar-event-service {
+  flex: 0 0 auto;
+  font-size: 0.64rem;
+  font-weight: 600;
+  min-width: 0;
+  opacity: 0.88;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-event-status {
+  flex: 0 0 auto;
+  font-size: 0.58rem;
+  font-weight: 650;
+  line-height: 1.1;
+  min-width: 0;
+  opacity: 0.92;
+}
+.calendar-week-event--minimal {
+  gap: 0;
+  line-height: 1.08;
+  padding: 0.1rem 0.2rem;
+}
+.calendar-week-event--minimal .calendar-event-time {
+  font-size: 0.6rem;
+}
+.calendar-week-event--minimal .calendar-event-client {
+  font-size: 0.62rem;
+  line-height: 1.05;
+}
+.calendar-week-event--compact .calendar-event-time {
+  font-size: 0.62rem;
+}
+.calendar-week-event--compact .calendar-event-client {
+  font-size: 0.68rem;
+}
+.calendar-week-event--comfortable .calendar-event-client {
+  font-size: 0.72rem;
+}
+.calendar-week-event--expanded .calendar-event-service {
+  font-size: 0.66rem;
+}
+.calendar-now-line {
+  border-top: 2px solid #e03131;
+  box-shadow: 0 0 0 1px rgba(224, 49, 49, 0.25);
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
+  z-index: 15;
+}
+.calendar-now-line::before {
+  background: #e03131;
+  border-radius: 50%;
+  content: "";
+  height: 8px;
+  left: -4px;
+  position: absolute;
+  top: -5px;
+  width: 8px;
+}
+
+/* --- Vista mensal (MonthCalendar, MonthView, MonthDayAgendaList) --- */
+.month-calendar__weekdays,
+.month-calendar__weeks {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.month-calendar__weekday {
+  border-inline-end: 1px solid #edf0f5;
+  min-width: 0;
+}
+.month-calendar__weekday:last-child {
+  border-inline-end: 0;
+}
+
+.month-calendar .calendar-day-cell {
+  background: #fff;
+  border-color: #edf0f5 !important;
+  min-width: 0;
+  padding: var(--calendar-event-cell-inset) !important;
+}
+
+.month-calendar .calendar-day-cell.bg-light {
+  background: #fafbfc !important;
+}
+.month-calendar .calendar-day-cell-past {
+  opacity: 0.7;
+}
+.month-calendar .calendar-day-cell:focus-visible,
+.week-slot:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: -2px;
+}
+/* Pills do mês: tier comfortable partilhado com a grelha horária (51.6). */
+.month-calendar .calendar-item.calendar-week-event {
+  margin-bottom: var(--calendar-event-stack-gap);
+  min-height: 0;
+  padding: var(--calendar-event-padding-block)
+    var(--calendar-event-padding-inline) !important;
+}
+.month-calendar .calendar-day-number {
+  align-items: center;
+  display: inline-flex;
+  height: 1.5rem;
+  justify-content: center;
+  margin-bottom: 0.1rem;
+  min-width: 1.5rem;
+}
+.month-calendar .calendar-day-cell.today .calendar-day-number {
+  background: var(--sp-primary);
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 750;
+}
+/* "+N mais": abre a vista Dia; clique na célula (fora do botão) continua a criar. */
+.month-calendar .calendar-overflow {
+  background: transparent;
+  border: 0;
+  border-radius: 0.35rem;
+  color: var(--sp-muted);
+  cursor: pointer;
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.45rem;
+  text-align: inherit;
+  width: 100%;
+}
+.month-calendar .calendar-overflow:hover,
+.month-calendar .calendar-overflow:focus-visible {
+  background: #eef2ff;
+  color: var(--sp-primary);
+  outline: none;
+}
+
+.month-calendar .calendar-day-cell-selected {
+  box-shadow: inset 0 0 0 2px var(--sp-primary);
+  z-index: 1;
+}
+.month-calendar .calendar-day-event-count {
+  align-items: center;
+  background: #eef2ff;
+  border-radius: 999px;
+  color: var(--sp-primary);
+  display: inline-flex;
+  font-size: 0.65rem;
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1;
+  margin-top: 0.15rem;
+  min-height: 1.35rem;
+  min-width: 1.35rem;
+  padding: 0.1rem 0.35rem;
+}
+.month-day-agenda-list {
+  border-top: 1px solid var(--sp-border);
+  margin-top: 0.75rem;
+  padding-top: 0.85rem;
+}
+.month-day-agenda-list-header {
+  margin-bottom: 0.65rem;
+}
+.month-day-agenda-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.month-day-agenda-list .calendar-item.calendar-week-event {
+  min-height: 4.25rem;
+  padding: 0.55rem 0.65rem !important;
+}
+.month-day-agenda-list .calendar-event-time {
+  font-size: 0.8rem;
+}
+.month-day-agenda-list .calendar-event-client {
+  font-size: 0.88rem;
+}
+.month-day-agenda-list .calendar-event-service {
+  font-size: 0.78rem;
+}
+.month-day-agenda-list .calendar-event-status {
+  display: block;
+  font-size: 0.72rem;
+}
+
+/* --- Vistas semana e dia (base) --- */
+.week-calendar,
+.day-calendar {
+  min-height: 200px;
+}
+
+.calendar-surface--time-grid {
+  --calendar-time-gutter-width: 56px;
+}
+.calendar-time-gutter {
+  flex: 0 0 var(--calendar-time-gutter-width);
+  width: var(--calendar-time-gutter-width);
+}
+.week-calendar-time-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.week-calendar-day-headers {
+  background: var(--sp-surface, #fff);
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+.week-calendar-time-body {
+  min-width: 0;
+}
+.week-calendar-day-headers,
+.week-calendar-time-body {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: var(--calendar-time-gutter-width) repeat(7, minmax(0, 1fr));
+  width: 100%;
+}
+.week-calendar .calendar-time-gutter {
+  flex: unset;
+  min-width: 0;
+  width: auto;
+}
+.calendar-week-day-header,
+.week-calendar .calendar-week-day-column {
+  min-width: 0;
+}
+.calendar-day-header-row {
+  background: var(--sp-surface, #fff);
+}
+.calendar-day-header-slot {
+  min-width: 0;
+}
+
+.week-calendar .calendar-time-grid-event-anchor,
+.day-calendar .calendar-time-grid-event-anchor {
+  border: 0;
+  box-sizing: border-box;
+  /* Inset vertical = stack-gap (topo e base do slot); laterais = cell-inset (como célula do mês). */
+  padding: var(--calendar-event-stack-gap) var(--calendar-event-cell-inset);
+}
+
+.week-calendar .calendar-time-grid-event-anchor .calendar-item,
+.day-calendar .calendar-time-grid-event-anchor .calendar-item {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  padding: var(--calendar-event-padding-block)
+    var(--calendar-event-padding-inline) !important;
+}
+
+/* Evita que flex: 1 1 auto no cliente encolha a zero em slots baixos (hora→nome→serviço). */
+.week-calendar
+  .calendar-time-grid-event-anchor
+  .calendar-week-event
+  .calendar-event-time,
+.week-calendar
+  .calendar-time-grid-event-anchor
+  .calendar-week-event
+  .calendar-event-client,
+.week-calendar
+  .calendar-time-grid-event-anchor
+  .calendar-week-event
+  .calendar-event-service,
+.day-calendar
+  .calendar-time-grid-event-anchor
+  .calendar-week-event
+  .calendar-event-time,
+.day-calendar
+  .calendar-time-grid-event-anchor
+  .calendar-week-event
+  .calendar-event-client,
+.day-calendar
+  .calendar-time-grid-event-anchor
+  .calendar-week-event
+  .calendar-event-service {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.week-calendar .calendar-time-grid-event-anchor:focus-visible,
+.day-calendar .calendar-time-grid-event-anchor:focus-visible {
+  outline: 2px solid var(--sp-primary);
+  outline-offset: 1px;
+  z-index: 11;
+}
+
+/* --- Grelha do formulário (AppointmentCalendar.tsx) --- */
+/* Seletor de data do formulário de agendamento. As classes existem no
+   AppointmentCalendar.tsx; sem estas regras o mês era desenhado apenas com o
+   Bootstrap base e ficava sem a identidade visual do calendário principal. */
+.calendar-grid {
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-radius: var(--sp-radius);
+  padding: 0.5rem;
+}
+.calendar-grid .col {
+  min-width: 0;
+}
+.calendar-grid .calendar-day {
+  font-weight: 650;
+  margin-inline: 0.1rem;
+  min-height: 2.1rem;
+  padding: 0.15rem 0.1rem;
+  width: calc(100% - 0.2rem);
+}
+.calendar-grid .calendar-day.btn-primary {
+  box-shadow: inset 0 0 0 2px var(--sp-primary);
+  font-weight: 750;
+}
+.calendar-grid .calendar-day.btn-outline-success {
+  color: #12806a;
+}
+.calendar-grid .calendar-day.btn-outline-secondary {
+  background: #f7f9fc;
+}
+.calendar-grid .calendar-day:disabled {
+  opacity: 0.55;
+}
+.calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  justify-content: center;
+  margin-top: 0.65rem;
+  padding: 0 0.35rem;
+}
+.calendar-legend > span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+/* --- Media queries (ordem de cascata preservada) --- */
+
+@media (min-width: 992px) {
+  .calendar-surface--time-grid {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 15rem);
+  }
+  .calendar-surface--time-grid .week-calendar,
+  .calendar-surface--time-grid .day-calendar {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .calendar-surface--time-grid .week-calendar.d-flex.flex-column {
+    min-height: 0;
+  }
+  .calendar-surface--time-grid .week-calendar-time-scroll {
+    flex: 1 1 auto;
+    min-height: 12rem;
+  }
+  .calendar-surface--time-grid .day-calendar-time-body {
+    flex: 1 1 auto;
+    min-height: 12rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .calendar-toolbar {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+  .calendar-toolbar-label,
+  .calendar-toolbar-period {
+    flex: 1 1 0;
+    order: 0;
+  }
+  .calendar-toolbar-nav {
+    order: -1;
+  }
+  .calendar-toolbar-views {
+    order: 1;
+  }
+
+  .calendar-surface {
+    --calendar-event-stack-gap: 0.22rem;
+  }
+
+  .month-calendar .calendar-item.calendar-week-event {
+    padding: 0.2rem 0.35rem !important;
+  }
+  .month-calendar .calendar-overflow {
+    background: #f8faff;
+    border: 1px solid #dbe4ff;
+    color: var(--sp-primary);
+    font-size: 0.78rem;
+  }
+}
+
+.month-calendar .calendar-day-cell {
+  transition: background-color 0.12s ease;
+}
+
+.month-calendar .calendar-day-cell:hover {
+  background-color: rgba(13, 110, 253, 0.04);
+}
+
+@media (max-width: 991.98px) {
+  /* Abaixo do breakpoint da sidebar as grelhas do calendário mantêm largura
+     mínima legível; o deslocamento fica dentro da superfície do calendário. */
+  .week-calendar,
+  .day-calendar {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .week-calendar-time-grid,
+  .day-calendar .calendar-day-header-row,
+  .day-calendar .day-calendar-time-body {
+    min-width: 620px;
+  }
+
+  .week-calendar .btn-group {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .calendar-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: wrap;
+  }
+  .calendar-toolbar-nav,
+  .calendar-toolbar-views,
+  .calendar-toolbar > * {
+    justify-content: center;
+  }
+  .calendar-toolbar-label,
+  .calendar-toolbar-period {
+    flex: 1 1 100%;
+    text-align: center;
+  }
+  .calendar-toolbar .btn-group,
+  .calendar-toolbar-views {
+    width: 100%;
+  }
+  .calendar-toolbar .btn-group .btn,
+  .calendar-toolbar-views .btn {
+    flex: 1;
+  }
+
+  .month-calendar .calendar-day-cell {
+    min-height: 64px !important;
+  }
+  /* O "+N mais" passa a ocupar a linha inteira do dia em ecrãs estreitos,
+     para não ficar espremido ao lado dos eventos. */
+  .month-calendar .calendar-overflow {
+    flex-shrink: 0;
+    text-align: center;
+    width: 100%;
+  }
+  .month-calendar--with-day-list .calendar-item {
+    display: none;
+  }
+  .month-calendar--with-day-list .calendar-day-cell {
+    min-height: 3.25rem !important;
+    padding: 0.25rem !important;
+  }
+  .month-calendar--with-day-list .calendar-day-number {
+    font-size: 0.72rem;
+    height: 1.35rem;
+    min-width: 1.35rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .calendar-surface {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    margin-inline: -0.5rem;
+    padding: 0.5rem;
+  }
+  .month-calendar,
+  .week-calendar,
+  .day-calendar {
+    font-size: 0.82rem;
+  }
+}
+
+/* Zebra sutil em linhas de hora (alternância) */
+.week-calendar .border-bottom:nth-child(even),
+.day-calendar .border-bottom:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.015);
+}
+
+/* Hover unificado: mês (botão) e semana/dia (cartão no anchor) */
+.month-calendar .calendar-item.calendar-week-event:hover,
+.week-calendar
+  .calendar-time-grid-event-anchor:hover
+  .calendar-item.calendar-week-event,
+.day-calendar
+  .calendar-time-grid-event-anchor:hover
+  .calendar-item.calendar-week-event {
+  filter: brightness(1.08);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.16);
+}
+.month-calendar .calendar-item.calendar-week-event.btn:hover {
+  color: inherit;
+}
+
+/* --- Agendas mobile Semana / Dia (Etapa 6.2) --- */
+.week-mobile-agenda {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 100%;
+  width: 100%;
+}
+.week-mobile-agenda-day {
+  border-top: 1px solid var(--sp-border);
+  box-sizing: border-box;
+  max-width: 100%;
+  padding-top: 0.85rem;
+  width: 100%;
+}
+.week-mobile-agenda-day:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.week-mobile-agenda-day--today .week-mobile-agenda-day-header {
+  background: var(--bs-primary-bg-subtle, #cfe2ff);
+  border-radius: 0.375rem;
+  padding: 0.35rem 0.5rem;
+}
+.week-mobile-agenda-day-header {
+  margin-bottom: 0.65rem;
+}
+.week-mobile-agenda-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.week-mobile-agenda-day-items .calendar-item.calendar-week-event {
+  min-height: 4.25rem;
+  padding: 0.55rem 0.65rem !important;
+}
+
+.day-mobile-agenda {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 100%;
+  width: 100%;
+}
+.day-mobile-agenda-header {
+  margin-bottom: 0.25rem;
+}
+.day-mobile-agenda-appointments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.day-mobile-agenda-appointments .calendar-item.calendar-week-event {
+  min-height: 4.25rem;
+  padding: 0.55rem 0.65rem !important;
+}
+.day-mobile-agenda-hours {
+  border-top: 1px solid var(--sp-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.85rem;
+}
+.day-mobile-agenda-hours-title {
+  color: var(--bs-secondary-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+}
+.day-mobile-hour-slot {
+  box-sizing: border-box;
+  max-width: 100%;
+  text-align: start;
+  width: 100%;
+}

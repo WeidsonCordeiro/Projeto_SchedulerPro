@@ -1,3 +1,4 @@
+import { type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import authApi from "../../api/endpoints/auth.api";
 import { useAppDispatch, useAppSelector } from "../../store";
@@ -13,9 +14,11 @@ import ImageAvatar from "../common/ImageAvatar";
 export default function Navbar({
   onToggleSidebar,
   isSidebarOpen = false,
+  menuToggleRef,
 }: {
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
+  menuToggleRef?: RefObject<HTMLButtonElement | null>;
 }) {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -35,31 +38,45 @@ export default function Navbar({
     }
   }
 
+  const menuToggleLabel = isSidebarOpen ? "Fechar menu" : "Abrir menu";
+
   return (
     <nav className="navbar navbar-dark navbar-expand app-navbar">
       <div className="container-fluid min-w-0">
         <div className="d-flex align-items-center flex-shrink-0 gap-2">
           {onToggleSidebar && (
             <button
+              ref={menuToggleRef}
               type="button"
               className="btn btn-outline-light btn-sm d-lg-none flex-shrink-0"
-              aria-label="Abrir menu"
+              aria-label={menuToggleLabel}
               aria-expanded={isSidebarOpen}
+              aria-controls="app-sidebar"
               onClick={onToggleSidebar}
             >
-              <span aria-hidden="true">☰</span><span className="visually-hidden">Abrir menu</span>
+              <span aria-hidden="true">☰</span>
+              <span className="visually-hidden">{menuToggleLabel}</span>
             </button>
           )}
           <span className="navbar-brand mb-0 h1">SchedulerPro</span>
         </div>
         {user && (
-          <div className="d-flex align-items-center gap-2 gap-md-3 ms-auto min-w-0">
+          <div className="navbar-actions">
             <NotificationBell />
-            <ImageAvatar image={user.avatar} name={user.name} size="sm" shape="circle" alt="" className="navbar-user-avatar flex-shrink-0" />
-            <div className="text-end user-summary">
-              <div className="navbar-text user-name m-0">{user.name}</div>
-              <div className="navbar-text user-role text-uppercase small m-0">
-                {user.role}
+            <div className="navbar-user-cluster">
+              <ImageAvatar
+                image={user.avatar}
+                name={user.name}
+                size="sm"
+                shape="circle"
+                alt=""
+                className="navbar-user-avatar flex-shrink-0"
+              />
+              <div className="text-end user-summary">
+                <div className="navbar-text user-name m-0">{user.name}</div>
+                <div className="navbar-text user-role text-uppercase small m-0">
+                  {user.role}
+                </div>
               </div>
             </div>
             <button

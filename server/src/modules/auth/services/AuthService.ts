@@ -64,10 +64,16 @@ import ResendProvider from "../../../providers/mail/ResendProvider";
 import { resetPasswordTemplate } from "../../../providers/mail/templates/reset-password.template";
 import { welcomeTemplate } from "../../../providers/mail/templates/welcome.template";
 import { env } from "../../../config/env";
-import mongoose, { ClientSession } from "mongoose";
-import { DEFAULT_TIMEZONE, isValidIanaTimezone } from "../../../utils/timezone";
+import mongoose, { ClientSession, Types } from "mongoose";
+import {
+  DEFAULT_TIMEZONE,
+  isValidIanaTimezone,
+  resolveCompanyTimezone,
+} from "../../../utils/timezone";
 import SessionService from "./SessionService";
 import { ErrorCode } from "../../../constants/error-codes";
+import { assertUserMayAuthenticateAgainstCompany } from "../utils/assert-company-active-for-auth";
+import { assertUserIsActiveForAccess } from "../utils/assert-user-access-active";
 
 class AuthService {
   private readonly userRepository = UserRepository;
@@ -136,6 +142,8 @@ class AuthService {
 
     this.validateUserStatus(user);
 
+    await this.assertCompanyAllowsAuthentication(user);
+
     return this.authenticateWithSession(user);
   }
 
@@ -155,10 +163,23 @@ class AuthService {
 
     await this.updateLoginInfo(user);
 
+    const { companyTimezone, companyName } =
+      await this.resolveCompanyAuthContext(user.companyId);
+
     return {
-      user: AuthMapper.toAuthUser(user),
+      user: AuthMapper.toAuthUser(user, companyTimezone, companyName),
       tokens,
       mustChangePassword: user.mustChangePassword,
+    };
+  }
+
+  private async resolveCompanyAuthContext(
+    companyId: string | Types.ObjectId,
+  ): Promise<{ companyTimezone: string; companyName: string }> {
+    const company = await this.companyRepository.findById(companyId);
+    return {
+      companyTimezone: resolveCompanyTimezone(company?.timezone),
+      companyName: company?.name ?? "",
     };
   }
 
@@ -233,6 +254,8 @@ class AuthService {
     });
 
     this.validateUserStatus(user);
+
+    await this.assertCompanyAllowsAuthentication(user);
 
     return this.authenticateWithSession(user, payload.sessionId);
   }
@@ -323,9 +346,7 @@ class AuthService {
    */
 
   private validateUserStatus(user: UserDocument): void {
-    if (!user.isActive) {
-      throw new AppError(HttpMessages.USER_DISABLED, HttpStatus.FORBIDDEN);
-    }
+    assertUserIsActiveForAccess(user);
 
     const locked =
       user.lockUntil != null && user.lockUntil.getTime() > Date.now();
@@ -337,6 +358,13 @@ class AuthService {
     if (!user.emailVerified) {
       throw new AppError(HttpMessages.EMAIL_NOT_VERIFIED, HttpStatus.FORBIDDEN);
     }
+  }
+
+  private async assertCompanyAllowsAuthentication(
+    user: UserDocument,
+  ): Promise<void> {
+    const company = await this.companyRepository.findById(user.companyId);
+    assertUserMayAuthenticateAgainstCompany(user, company);
   }
 
   /**
@@ -354,16 +382,12 @@ class AuthService {
       throw new AppError(HttpMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
+    const { companyTimezone, companyName } =
+      await this.resolveCompanyAuthContext(user.companyId);
+
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      avatar: user.avatar,
-      role: user.role,
-      companyId: user.companyId.toString(),
-      isActive: user.isActive,
+      ...AuthMapper.toAuthUser(user, companyTimezone, companyName),
       mustChangePassword: user.mustChangePassword,
-      ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };
   }
 

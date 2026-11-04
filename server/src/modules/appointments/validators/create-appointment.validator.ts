@@ -8,10 +8,15 @@
 * Validar os dados recebidos para criação
 * de um novo agendamento.
 *
+* `startAt` deve ser um instante ISO 8601 com `Z` ou offset
+* explícito (não hora local ambígua do servidor).
+*
 * ==========================================================
   */
 
 import { body } from "express-validator";
+
+import { withIsoInstantRules } from "../../../utils/iso-instant";
 
 export const createAppointmentValidator = [
   body("clientId")
@@ -32,11 +37,13 @@ export const createAppointmentValidator = [
     .isMongoId()
     .withMessage("ID do funcionário inválido."),
 
-  body("startAt")
-    .notEmpty()
-    .withMessage("A data e hora do agendamento são obrigatórias.")
-    .isISO8601()
-    .withMessage("A data e hora do agendamento são inválidas."),
+  withIsoInstantRules(
+    body("startAt")
+      .notEmpty()
+      .withMessage("A data e hora do agendamento são obrigatórias.")
+      .isISO8601()
+      .withMessage("A data e hora do agendamento são inválidas."),
+  ),
 
   body("notes")
     .optional({ nullable: true })

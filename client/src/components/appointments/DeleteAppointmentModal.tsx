@@ -5,6 +5,9 @@ import {
   formatAppointmentDate,
   formatAppointmentTime,
 } from "../../config/appointmentTime";
+import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import DestructiveConfirmModal from "../common/DestructiveConfirmModal";
 import type { Appointment } from "../../types/appointment";
 
 interface DeleteAppointmentModalProps {
@@ -22,6 +25,7 @@ export default function DeleteAppointmentModal({
   onClose,
   onDeleted,
 }: DeleteAppointmentModalProps) {
+  const timezone = useAppSelector(selectCompanyTimezone);
   const [isDeleting, setIsDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -48,64 +52,25 @@ export default function DeleteAppointmentModal({
 
   const summary = [
     clientName?.trim() || null,
-    formatAppointmentDate(appointment.startAt),
-    formatAppointmentTime(appointment.startAt),
+    formatAppointmentDate(appointment.startAt, timezone),
+    formatAppointmentTime(appointment.startAt, timezone),
   ]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <div className="modal show d-block" role="dialog" aria-modal="true">
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h2 className="modal-title h5">Excluir agendamento</h2>
-            <button
-              type="button"
-              className="btn-close"
-              aria-label="Fechar"
-              onClick={onClose}
-              disabled={isDeleting}
-            />
-          </div>
-
-          <div className="modal-body">
-            <p>Tem certeza que deseja excluir este agendamento?</p>
-            <p className="fw-semibold mb-0">{summary}</p>
-
-            {errorMessage && (
-              <div className="alert alert-danger mt-3" role="alert">
-                {errorMessage}
-              </div>
-            )}
-          </div>
-
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={isDeleting}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={() => void handleConfirm()}
-              disabled={isDeleting}
-            >
-              {isDeleting && (
-                <span
-                  className="spinner-border spinner-border-sm me-1"
-                  aria-hidden="true"
-                />
-              )}
-              {isDeleting ? "Excluindo..." : "Excluir"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <DestructiveConfirmModal
+      isOpen={isOpen}
+      title="Excluir agendamento"
+      onClose={onClose}
+      onConfirm={() => void handleConfirm()}
+      isSubmitting={isDeleting}
+      errorMessage={errorMessage}
+      confirmLabel="Excluir"
+      submittingLabel="Excluindo..."
+    >
+      <p>Tem certeza que deseja excluir este agendamento?</p>
+      <p className="fw-semibold mb-0">{summary}</p>
+    </DestructiveConfirmModal>
   );
 }

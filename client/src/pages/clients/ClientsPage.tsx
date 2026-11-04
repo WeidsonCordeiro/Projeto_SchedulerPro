@@ -1,53 +1,38 @@
 import { useCallback, useEffect, useState } from "react";
 import clientsApi from "../../api/endpoints/clients.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import { getApiError, getPageLoadErrorPresentation } from "../../api/errors";
 import ClientForm from "../../components/clients/ClientForm";
 import DeleteClientModal from "../../components/clients/DeleteClientModal";
-import SetClientCredentialsModal from "../../components/clients/SetClientCredentialsModal";
+import SendClientInviteModal from "../../components/clients/SendClientInviteModal";
 import { getClientAbilities } from "../../config/clientPermissions";
 import { useAppSelector } from "../../store";
-import type { Client, ClientPortalAccess } from "../../types/client";
+import { selectCompany } from "../../store/slices/companySlice";
+import type { Client } from "../../types/client";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 import ImageAvatar from "../../components/common/ImageAvatar";
-
-function getAccessButtonLabel(portalAccess: ClientPortalAccess): string {
-  if (!portalAccess.exists) {
-    return "Dar acesso";
-  }
-
-  return portalAccess.isActive ? "Gerenciar acesso" : "Reativar acesso";
-}
-
-function getAccessButtonTitle(
-  client: Client,
-): string {
-  if (!client.email) {
-    return "O cliente precisa de um email para acessar o portal";
-  }
-
-  if (!client.portalAccess.exists) {
-    return "Definir o acesso do cliente ao portal";
-  }
-
-  return client.portalAccess.isActive
-    ? "Gerenciar o acesso do cliente ao portal"
-    : "Reativar o acesso do cliente ao portal";
-}
+import DashboardCard from "../../components/common/DashboardCard";
 
 export default function ClientsPage() {
   const user = useAppSelector((state) => state.auth.user);
-  const { canCreate, canUpdate, canDelete } = getClientAbilities(user?.role ?? null);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
+  const { canCreate, canUpdate, canDelete, canInvite } = getClientAbilities(
+    user?.role ?? null
+  );
 
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
-  const [credentialingClient, setCredentialingClient] = useState<Client | null>(null);
+  const [invitingClient, setInvitingClient] = useState<Client | null>(null);
 
   const loadClients = useCallback(async () => {
     setIsLoading(true);
@@ -56,12 +41,16 @@ export default function ClientsPage() {
       const response = await clientsApi.getClients();
       setClients(response.data ?? []);
     } catch (error) {
-      const failure = getApiError(error);
-      setLoadError(getFriendlyErrorMessage(failure));
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      setLoadError(presentation.message);
+      setLoadErrorRetryable(presentation.retryable);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     void loadClients();
@@ -86,7 +75,7 @@ export default function ClientsPage() {
     setSuccessMessage(
       editingClient
         ? "Cliente atualizado com sucesso."
-        : "Cliente criado com sucesso.",
+        : "Cliente criado com sucesso."
     );
     setFormOpen(false);
     setEditingClient(null);
@@ -99,11 +88,13 @@ export default function ClientsPage() {
     void loadClients();
   }
 
-  function handleCredentialsSaved(client: Client) {
+  function handleInviteSent(email: string) {
     setSuccessMessage(
-      `Credenciais de acesso definidas para ${client.name}.`,
+      email
+        ? `Convite enviado para ${email}.`
+        : "Convite enviado para o cliente."
     );
-    setCredentialingClient(null);
+    setInvitingClient(null);
     void loadClients();
   }
 
@@ -112,14 +103,64 @@ export default function ClientsPage() {
       prev.map((client) =>
         client.id === updated.id
           ? { ...client, avatar: updated.avatar ?? null }
-          : client,
-      ),
+          : client
+      )
+    );
+  }
+
+  const clientActionsVisible = canUpdate || canDelete;
+
+  function renderClientRowActions(client: Client) {
+    return (
+      <div className="table-actions">
+        {canUpdate && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => openEdit(client)}
+          >
+            Editar
+          </button>
+        )}
+        {canInvite && client.email && !client.portalAccess.exists && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={() => setInvitingClient(client)}
+          >
+            Convidar
+          </button>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-danger"
+            onClick={() => setDeletingClient(client)}
+          >
+            Excluir
+          </button>
+        )}
+      </div>
     );
   }
 
   return (
     <section>
-      <PageHeader title="Clientes" description="Gerencie os clientes e o acesso ao portal." actions={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Novo cliente</button>} />
+      <PageHeader
+        title="Clientes"
+        description="Gerencie os clientes e o acesso ao portal."
+        actions={
+          canCreate && (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={openCreate}
+            >
+              Novo cliente
+            </button>
+          )
+        }
+      />
 
       {successMessage && (
         <div className="alert alert-success" role="alert">
@@ -128,103 +169,137 @@ export default function ClientsPage() {
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="list-intro mb-3"><span className="list-intro-number">{clients.length}</span><span>clientes na sua base</span></div>
-      )}
-
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
+        <div className="row g-3 dashboard-kpis">
+          <div className="col-12">
+            <DashboardCard
+              title="Clientes na sua base"
+              value={clients.length}
+              icon="bi-calendar-check"
+            />
           </div>
         </div>
       )}
+
+      {isLoading && <LoadingState label="A carregar clientes…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadClients()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={loadErrorRetryable ? () => void loadClients() : undefined}
+        />
       )}
 
       {!isLoading && !loadError && clients.length === 0 && (
-        <EmptyState title="Nenhum cliente cadastrado." description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos." action={canCreate && <button type="button" className="btn btn-primary" onClick={openCreate}>Cadastrar primeiro cliente</button>} />
+        <EmptyState
+          title="Nenhum cliente cadastrado."
+          description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos."
+          action={
+            canCreate && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={openCreate}
+              >
+                Cadastrar primeiro cliente
+              </button>
+            )
+          }
+        />
       )}
 
       {!isLoading && !loadError && clients.length > 0 && (
-        <div className="card table-card">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle">
-              <thead>
-                <tr>
-                  <th scope="col">Cliente</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Telefone</th>
-                  <th scope="col">Status</th>
-                  {(canUpdate || canDelete) && <th scope="col">Ações</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td><div className="person-cell"><ImageAvatar image={client.avatar} name={client.name} size="sm" shape="rounded" alt="" /><span><strong className="d-block">{client.name}</strong></span></div></td>
-                    <td>{client.email ?? "—"}</td>
-                    <td>{client.phone}</td>
-                    <td>
-                      {client.isActive ? (
-                        <span className="badge text-bg-success">Ativo</span>
-                      ) : (
-                        <span className="badge text-bg-secondary">Inativo</span>
-                      )}
-                    </td>
-                    {(canUpdate || canDelete) && (
+        <>
+          <div
+            className="card table-card mt-3 d-none d-md-block"
+            data-testid="clients-list-desktop"
+          >
+            <div className="table-responsive">
+              <table className="table table-hover align-middle">
+                <thead>
+                  <tr>
+                    <th scope="col">Cliente</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Telefone</th>
+                    <th scope="col">Status</th>
+                    {clientActionsVisible && <th scope="col">Ações</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {clients.map((client) => (
+                    <tr key={client.id}>
                       <td>
-                        <div className="table-actions">
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-primary"
-                              onClick={() => openEdit(client)}
-                            >
-                              Editar
-                            </button>
-                          )}
-                          {canUpdate && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-success"
-                              onClick={() => setCredentialingClient(client)}
-                              disabled={!client.email}
-                              title={getAccessButtonTitle(client)}
-                            >
-                              {getAccessButtonLabel(client.portalAccess)}
-                            </button>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() => setDeletingClient(client)}
-                            >
-                              Excluir
-                            </button>
-                          )}
+                        <div className="person-cell">
+                          <ImageAvatar
+                            image={client.avatar}
+                            name={client.name}
+                            size="sm"
+                            shape="rounded"
+                            alt=""
+                          />
+                          <span>
+                            <strong className="d-block">{client.name}</strong>
+                          </span>
                         </div>
                       </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <td className="text-nowrap">{client.email ?? "—"}</td>
+                      <td>{client.phone}</td>
+                      <td>
+                        {client.isActive ? (
+                          <span className="badge text-bg-success">Ativo</span>
+                        ) : (
+                          <span className="badge text-bg-secondary">
+                            Inativo
+                          </span>
+                        )}
+                      </td>
+                      {clientActionsVisible && (
+                        <td>{renderClientRowActions(client)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          <div
+            className="entity-list-mobile d-md-none mt-3"
+            data-testid="clients-list-mobile"
+          >
+            {clients.map((client) => (
+              <div key={client.id} className="card">
+                <div className="card-body">
+                  <div className="person-cell mb-2">
+                    <ImageAvatar
+                      image={client.avatar}
+                      name={client.name}
+                      size="sm"
+                      shape="rounded"
+                      alt=""
+                    />
+                    <span>
+                      <strong className="d-block">{client.name}</strong>
+                    </span>
+                  </div>
+                  <p className="mb-2 small text-muted entity-card-email">
+                    {client.email ?? "—"}
+                  </p>
+                  <p className="mb-2 small">{client.phone}</p>
+                  {client.isActive ? (
+                    <span className="badge text-bg-success">Ativo</span>
+                  ) : (
+                    <span className="badge text-bg-secondary">Inativo</span>
+                  )}
+                </div>
+                {clientActionsVisible && (
+                  <div className="card-footer bg-transparent border-top-0 pt-0">
+                    {renderClientRowActions(client)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {formOpen && (
@@ -246,12 +321,12 @@ export default function ClientsPage() {
         />
       )}
 
-      {credentialingClient && (
-        <SetClientCredentialsModal
+      {invitingClient && (
+        <SendClientInviteModal
           isOpen
-          client={credentialingClient}
-          onClose={() => setCredentialingClient(null)}
-          onSaved={handleCredentialsSaved}
+          client={invitingClient}
+          onClose={() => setInvitingClient(null)}
+          onSent={handleInviteSent}
         />
       )}
     </section>

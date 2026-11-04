@@ -22,7 +22,11 @@ class AuthMapper {
    * Converte um UserDocument em AuthUser.
    * ==========================================================
    */
-  public static toAuthUser(user: UserDocument): AuthUser {
+  public static toAuthUser(
+    user: UserDocument,
+    companyTimezone: string,
+    companyName: string,
+  ): AuthUser {
     return {
       id: user.id,
       name: user.name,
@@ -30,6 +34,8 @@ class AuthMapper {
       avatar: user.avatar,
       role: user.role,
       companyId: user.companyId.toString(),
+      companyTimezone,
+      companyName,
       isActive: user.isActive,
       ...(user.clientId ? { clientId: user.clientId.toString() } : {}),
     };

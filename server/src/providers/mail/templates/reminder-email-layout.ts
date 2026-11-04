@@ -18,6 +18,7 @@ export interface ReminderEmailData {
   dateLabel: string;
   timeLabel: string;
   endTimeLabel: string;
+  publicManageUrl?: string | null;
 }
 
 interface ReminderEmailLayoutProps {
@@ -81,6 +82,8 @@ export function reminderEmailLayout({
     <strong>Profissional:</strong> ${data.employeeName ?? "-"}
   </p>
 </div>
+
+${data.publicManageUrl ? `<p style="margin: 24px 0;"><a href="${data.publicManageUrl}" style="display: inline-block; padding: 12px 18px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;">Gerenciar meu agendamento</a></p>` : ""}
 
 <p>
   Obrigado por escolher

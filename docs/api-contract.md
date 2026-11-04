@@ -37,6 +37,12 @@ Dates are serialized as ISO 8601 strings. Resource IDs are exposed as id
 strings by the mappers. Company context comes from the authenticated user;
 the frontend must not send companyId to select the active tenant.
 
+Appointment instants (`startAt`, list/report range filters) must use ISO 8601
+with an explicit timezone: suffix `Z` (UTC) or a numeric offset such as
+`+01:00` or `-03:00`. Strings without an offset (for example
+`2026-10-20T09:00:00`) are rejected with 400. Calendar dates for availability
+and exceptions use separate `AAAA-MM-DD` / local `HH:mm` contracts.
+
 ## 2. Authentication and cookies
 
 Cookies:
@@ -54,6 +60,13 @@ token uses a separate secret. There is no JWT blacklist or immediate token
 revocation mechanism.
 
 Roles: OWNER, ADMIN, MANAGER, EMPLOYEE, CLIENT.
+
+Authenticated user object (login, register, refresh and GET /auth/me) includes
+companyTimezone: the effective IANA timezone of the user's company. Available
+for all authenticated roles (not only OWNER/ADMIN). If the company is missing
+or the stored timezone is absent or invalid, the API returns Europe/Lisbon.
+This field is additive; it does not grant COMPANY_READ or expose other company
+fields (name, address, settings, etc.).
 
 Appointment statuses: scheduled, confirmed, completed, cancelled, no-show.
 
@@ -85,7 +98,7 @@ POST /api/auth/register
 - Backend creates company, OWNER user, IDs, password hash, status fields,
   timestamps and authentication cookies.
 - Success: 201.
-- Data: authenticated user plus mustChangePassword.
+- Data: authenticated user (including companyTimezone) plus mustChangePassword.
 - Errors: 400 validation/timezone/password mismatch; 409 duplicate email or
   company.
 
@@ -107,7 +120,8 @@ POST /api/auth/login
 - Auth: none.
 - Body: email and password.
 - Success: 200.
-- Data: authenticated user plus mustChangePassword; both cookies are set.
+- Data: authenticated user (including companyTimezone) plus mustChangePassword;
+  both cookies are set.
 - Errors: 400 invalid body; 401 invalid credentials; 403 inactive, blocked or
   unverified user.
 
@@ -116,7 +130,8 @@ POST /api/auth/refresh
 - Auth middleware: none; refreshToken cookie required.
 - Body: none.
 - Success: 200.
-- Data: authenticated user plus mustChangePassword; both cookies are replaced.
+- Data: authenticated user (including companyTimezone) plus mustChangePassword;
+  both cookies are replaced.
 - Errors: 401 missing, invalid or expired token; 403 inactive/blocked user;
   404 user not found.
 
@@ -124,8 +139,8 @@ GET /api/auth/me
 
 - Auth: accessToken cookie.
 - Success: 200.
-- Data: id, name, email, avatar, role, companyId, isActive and
-  mustChangePassword.
+- Data: id, name, email, avatar, role, companyId, companyTimezone, isActive,
+  optional clientId, and mustChangePassword.
 - Errors: 401 invalid/missing token; 403 inactive/blocked; 404 user missing.
 
 POST /api/auth/logout
@@ -365,7 +380,8 @@ DELETE /api/availability/:id
 
 POST /api/appointments
 - Permission: APPOINTMENT_CREATE.
-- Body: clientId, serviceId, employeeId, startAt ISO 8601, optional notes.
+- Body: clientId, serviceId, employeeId, startAt ISO 8601 with explicit
+  offset (`Z` or `+HH:MM`/`-HH:MM`), optional notes.
 - endAt is calculated from service duration.
 - status starts as scheduled.
 - Success: 201, appointment object.
@@ -384,6 +400,9 @@ Example:
 
 GET /api/appointments
 - Permission: APPOINTMENT_READ.
+- Optional query: startAt, endAt — ISO 8601 instants with explicit offset
+  (same rule as POST `startAt`); when both are sent, startAt must be before
+  endAt.
 - Success: 200, array sorted by startAt.
 
 GET /api/appointments/:id
@@ -394,7 +413,8 @@ GET /api/appointments/:id
 
 PATCH /api/appointments/:id
 - Permission: APPOINTMENT_UPDATE.
-- Body: optional clientId, serviceId, employeeId, startAt and notes.
+- Body: optional clientId, serviceId, employeeId, startAt (ISO 8601 with
+  explicit offset when present) and notes.
 - endAt and status are not general update fields.
 - Success: 200, updated appointment; endAt is recalculated.
 
@@ -423,6 +443,133 @@ DELETE /api/appointments/:id
 - Success: 200 with data null.
 - Soft delete.
 
+### Public appointment booking
+
+POST /api/public/companies/:companyId/appointments
+- No authentication and no permission required.
+- Rate limited: 20 requests per 15 minutes per IP. Exceeding returns 429.
+- companyId comes from the URL only. Sending it in the body is a 400.
+- Body: serviceId, employeeId, startAt ISO 8601 with explicit offset,
+  clientName, clientEmail, optional clientPhone, optional notes.
+- Unknown fields are rejected with 400 rather than ignored.
+- endAt is calculated from the service duration; status starts as
+  scheduled. Neither is accepted from the client.
+- The client is matched by email inside companyId. A new client is
+  created when none matches; an inactive client is a 400. No user
+  account is created or linked.
+- Success: 201 with `{ appointment, publicAccessToken }`. The token is
+  returned once and never again.
+- Errors: 400 validation, inactive company/service/employee/client, or
+  past startAt; 404 unknown or cross-company service/employee, missing
+  company; 409 availability or appointment conflict; 429 rate limit.
+
+Example:
+
+    {
+      "serviceId": "ObjectId",
+      "employeeId": "ObjectId",
+      "startAt": "2026-08-30T09:00:00.000Z",
+      "clientName": "Ana Silva",
+      "clientEmail": "ana@example.com",
+      "clientPhone": "+351912345678",
+      "notes": "optional"
+    }
+
+    {
+      "success": true,
+      "data": {
+        "appointment": {
+          "id": "ObjectId",
+          "startAt": "2026-08-30T09:00:00.000Z",
+          "endAt": "2026-08-30T09:30:00.000Z",
+          "timezone": "Europe/Lisbon",
+          "status": "scheduled",
+          "clientName": "Ana Silva",
+          "service": { "id": "ObjectId", "name": "Corte" },
+          "employee": {
+            "id": "ObjectId",
+            "name": "Carlos",
+            "avatarUrl": null
+          }
+        },
+        "publicAccessToken": "43-char base64url token"
+      }
+    }
+
+### Public appointment link (token)
+
+Three routes share one credential: `publicAccessToken`. The token is a
+bearer secret; there is no authentication, permission or account, and the
+company is taken from the appointment itself, never from the URL or body.
+
+GET /api/public/appointments/:token
+- Rate limited: 60 requests per 15 minutes per IP. Exceeding returns 429.
+- Resolves the appointment by the SHA-256 hash of the token only.
+  `_id`, clientId and e-mail are not accepted as alternatives.
+- A malformed, unknown or soft-deleted token is indistinguishable: all
+  return 404 with the same message.
+- Any status is readable, including cancelled, completed, no-show and
+  past appointments.
+- Success: 200 with the same narrowed public representation used at
+  creation, including the company's IANA `timezone` so the public manage
+  page can display the appointment in the same zone as the booking flow.
+- Errors: 404 invalid or unknown token; 429 rate limit.
+
+PATCH /api/public/appointments/:token
+- Rate limited: 10 requests per 15 minutes per IP. Exceeding returns 429.
+- Body: optional serviceId, employeeId, startAt (ISO 8601 with explicit
+  offset) and notes (max 500 chars, null clears). An empty body is a no-op
+  that returns the current state.
+- Unknown fields are rejected with 400. In particular rejected:
+  status, endAt, companyId, clientId, clientName, clientEmail,
+  clientPhone, price, duration, deletedAt, reminder24hSentAt,
+  publicAccessTokenHash.
+- The client is fixed: the appointment belongs to a company-wide client
+  record, which a public link cannot re-identify.
+- endAt is always recalculated from the service duration; status is never
+  changed here; publicAccessTokenHash is never touched, so the link the
+  client already has keeps working.
+- The effective service and employee are revalidated even when not sent:
+  missing or cross-company is 404, inactive is 400, a CLIENT account as
+  employee is 404.
+- Only scheduled/confirmed appointments that have not started are
+  editable. Cancelled, completed, no-show and past appointments are 400.
+- Success: 200 with the narrowed public representation.
+- Errors: 400 validation, non-editable state, past startAt, inactive
+  service/employee; 404 invalid token, unknown or cross-company
+  service/employee; 409 availability or conflict; 429 rate limit.
+
+Example:
+
+    { "startAt": "2026-09-06T09:00:00.000Z", "notes": "Chego 10 min depois" }
+
+DELETE /api/public/appointments/:token
+- Rate limited: 10 requests per 15 minutes per IP, with its own bucket, so
+  a client cannot spend the reschedule budget or vice versa.
+- Body must be empty. Any field, including `status`, is a 400. The state
+  transition is decided by the server from the current status.
+- Reuses the administrative cancel transition: scheduled and confirmed
+  become cancelled, including when they already started.
+- Idempotent: an already cancelled appointment returns 200 without a
+  write and can never be reactivated. Completed and no-show are 400.
+- Never deletes: there is no soft delete and no physical removal.
+- Success: 200 with the cancelled public representation.
+- Errors: 400 non-empty body, completed or no-show; 404 invalid or
+  unknown token; 429 rate limit.
+
+Token handling
+- 32 CSPRNG bytes, base64url, 43 characters; enterprise and client data
+  are not part of it.
+- Only the SHA-256 hash (`sha256:<hex>`) is stored, written together with
+  the appointment in a single insert, in a field with `select: false` and a
+  unique partial index over string values.
+- Appointments created by the company keep `publicAccessTokenHash: null`
+  and are not reachable by link.
+- The token does not expire in this version, and there is no revoke or
+  regenerate endpoint.
+- Token lookups are rate limited per IP and route, so tokens attempted at
+  error consume the same budget.
+
 ## 4. Resource fields
 
 Company:
@@ -435,6 +582,7 @@ passwordHash is never returned.
 
 Client:
 id, name, email, phone, companyId, notes, isActive, createdAt, updatedAt.
+phone is null when the client was created through public booking.
 
 Service:
 id, companyId, name, description, duration, price, isActive, createdAt,
@@ -448,7 +596,9 @@ Appointment:
 id, companyId, clientId, serviceId, employeeId, startAt, endAt, status,
 notes, createdAt, updatedAt.
 
-deletedAt is not returned by resource mappers.
+publicAccessTokenHash exists in the schema but is never returned by any
+mapper, including the administrative one. deletedAt is not returned by
+resource mappers.
 
 ## 5. Permissions by role
 
@@ -473,6 +623,8 @@ The route middleware is authoritative; frontend visibility is only UX.
 | API-05 | LOW | Cross-tenant status | Most foreign resources return 404; service findById currently returns 403. | Documented; behavior preserved. |
 | API-06 | INFO | Lists | No pagination, filters or query ordering parameters exist. | Documented; no functionality added. |
 | API-07 | INFO | JWT | Logout clears cookies but does not revoke already-issued JWTs. | Existing future architectural improvement; not implemented. |
+| API-08 | INFO | Public link | The public link token never expires and cannot be revoked or regenerated from the API. | Documented as a known limitation of this stage. |
+| API-09 | LOW | Appointment index | The compound index `{ companyId, clientId, startAt }` is declared twice in the schema. | Pre-existing; left untouched because it is harmless and out of scope. |
 
 ## 7. Scope
 
@@ -487,6 +639,15 @@ Only minimal contract corrections were made:
 - register and user creation return 201;
 - register and refresh include mustChangePassword;
 - me includes mustChangePassword.
+
+Public booking and public link additions, all behind the token:
+- the creation response wraps the appointment with `publicAccessToken`;
+- the public representation exposes `employee.avatarUrl`;
+- `GET`, `PATCH` and `DELETE /api/public/appointments/:token`;
+- `publicAccessTokenHash` on the appointment, stored only as a hash.
+
+No frontend, no email or WhatsApp delivery of the link, no portal and no
+user-facing page consume these routes yet.
 
 All other observed behavior remains as implemented.
 

@@ -8,10 +8,12 @@ import {
   isSlotHourInPast,
   WEEKDAYS_SHORT,
 } from "../../config/appointmentCalendar";
-import { formatAppointmentTime } from "../../config/appointmentTime";
-import { APPOINTMENT_STATUS_CALENDAR_CLASS } from "../../config/appointmentStatus";
+import { computeNowLineTopPx } from "../../config/calendarNowLine";
 import { useAppSelector } from "../../store";
 import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import { useTimeGridHourHeightPx } from "../../config/calendarTimeGridLayout";
+import CalendarNowLine from "./CalendarNowLine";
+import CalendarTimeGridEvent from "./CalendarTimeGridEvent";
 import type { Appointment } from "../../types/appointment";
 
 /**
@@ -21,24 +23,25 @@ interface WeekCalendarProps {
   currentDateKey: string;
   appointments: Appointment[];
   clientNames: Map<string, string>;
+  serviceNames: Map<string, string>;
   onDayClick: (dateKey: string) => void;
-  onAppointmentClick: (appointment: Appointment) => void;
+  onAppointmentClick: (appointment: Appointment, anchor: HTMLElement) => void;
   onSlotClick: (dateKey: string, hour: number) => void;
   /** Data de hoje no calendário local da empresa ("AAAA-MM-DD"). */
   todayKey?: string;
 }
 
-const HOUR_HEIGHT = 48;
-
 export default function WeekCalendar({
   currentDateKey,
   appointments,
   clientNames,
+  serviceNames,
   onDayClick,
   onAppointmentClick,
   onSlotClick,
   todayKey,
 }: WeekCalendarProps) {
+  const hourHeight = useTimeGridHourHeightPx();
   const timezone = useAppSelector(selectCompanyTimezone);
   const todayKeyInternal = useMemo(
     () => todayKey ?? (DateTime.now().setZone(timezone).toISODate() ?? ""),
@@ -86,16 +89,17 @@ export default function WeekCalendar({
 
   return (
     <div className="week-calendar d-flex flex-column" style={{ position: "relative" }}>
-      {/* Header: day labels */}
-      <div className="d-flex border-bottom">
-        <div style={{ width: 56, flexShrink: 0 }} />
+      <div className="week-calendar-time-scroll flex-grow-1">
+        <div className="week-calendar-time-grid">
+          <div className="week-calendar-day-headers border-bottom">
+            <div className="calendar-time-gutter" aria-hidden="true" />
         {dayKeys.map((dk, idx) => {
           const dt = DateTime.fromISO(dk, { zone: timezone });
           const isToday = dk === todayKeyInternal;
           return (
             <div
               key={dk}
-              className={`flex-fill text-center py-2 border-start ${isToday ? "bg-primary-subtle fw-bold" : ""}`}
+              className={`text-center py-2 border-start calendar-week-day-header ${isToday ? "calendar-week-day-header-today bg-primary-subtle fw-bold" : ""}`}
               style={{ cursor: "pointer" }}
               onClick={() => onDayClick(dk)}
             >
@@ -106,32 +110,38 @@ export default function WeekCalendar({
             </div>
           );
         })}
-      </div>
+          </div>
 
-      {/* Body: time axis + columns */}
-      <div className="d-flex flex-grow-1 overflow-auto" style={{ position: "relative" }}>
-        {/* Time axis */}
-        <div style={{ width: 56, flexShrink: 0 }}>
+          <div className="week-calendar-time-body">
+            <div className="calendar-time-gutter">
           {hours.map((h) => (
             <div
               key={h}
               className="text-end pe-2 text-muted small"
-              style={{ height: HOUR_HEIGHT }}
+              style={{ height: hourHeight }}
             >
               {String(h).padStart(2, "0")}:00
             </div>
           ))}
         </div>
 
-        {/* Day columns */}
-        {dayKeys.map((dk, dayIdx) => {
+            {dayKeys.map((dk, dayIdx) => {
           const layout = layoutPerDay[dayIdx];
           const isToday = dk === todayKeyInternal;
+          const nowLineTop =
+            isToday
+              ? computeNowLineTopPx(
+                  timezone,
+                  hourRange.startHour,
+                  hourRange.endHour,
+                  hourHeight,
+                )
+              : null;
 
           return (
             <div
               key={dk}
-              className={`flex-fill border-start ${isToday ? "bg-primary-subtle" : ""}`}
+              className={`border-start calendar-week-day-column ${isToday ? "calendar-week-day-column-today" : ""}`}
               style={{ position: "relative" }}
             >
               {/* Hour grid lines */}
@@ -140,7 +150,7 @@ export default function WeekCalendar({
                   key={h}
                   className="border-bottom week-slot"
                   style={{
-                    height: HOUR_HEIGHT,
+                    height: hourHeight,
                     cursor: isSlotHourInPast(dk, h, timezone)
                       ? "default"
                       : "pointer",
@@ -156,20 +166,22 @@ export default function WeekCalendar({
                 />
               ))}
 
+              {nowLineTop != null && <CalendarNowLine topPx={nowLineTop} />}
+
               {/* Appointment blocks */}
               {layout.map((item) => {
                 const colWidth = 100 / item.totalColumns;
                 const left = item.column * colWidth;
-                const topPx = (item.topPercent / 100) * (hours.length * HOUR_HEIGHT);
+                const topPx = (item.topPercent / 100) * (hours.length * hourHeight);
                 const heightPx = Math.max(
-                  (item.heightPercent / 100) * (hours.length * HOUR_HEIGHT),
+                  (item.heightPercent / 100) * (hours.length * hourHeight),
                   24,
                 );
 
                 return (
                   <div
                     key={item.appointment.id}
-                    className="position-absolute rounded border"
+                    className="position-absolute calendar-time-grid-event-anchor"
                     style={{
                       top: topPx,
                       left: `${left}%`,
@@ -179,25 +191,42 @@ export default function WeekCalendar({
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onAppointmentClick(item.appointment);
+                      onAppointmentClick(
+                        item.appointment,
+                        e.currentTarget as HTMLElement,
+                      );
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onAppointmentClick(
+                          item.appointment,
+                          e.currentTarget as HTMLElement,
+                        );
+                      }
                     }}
                     role="button"
+                    tabIndex={0}
+                    aria-label={`Agendamento ${clientNames.get(item.appointment.clientId) ?? "Cliente"}`}
                   >
-                    <div className={`calendar-week-event h-100 overflow-hidden p-1 rounded ${APPOINTMENT_STATUS_CALENDAR_CLASS[item.appointment.status]}`}>
-                      <div className="calendar-event-time">
-                        {formatAppointmentTime(item.appointment.startAt, timezone)} –{" "}
-                        {formatAppointmentTime(item.appointment.endAt, timezone)}
-                      </div>
-                      <div className="calendar-event-client text-truncate">
-                        {clientNames.get(item.appointment.clientId) ?? "Cliente"}
-                      </div>
-                    </div>
+                    <CalendarTimeGridEvent
+                      appointment={item.appointment}
+                      clientName={
+                        clientNames.get(item.appointment.clientId) ?? "Cliente"
+                      }
+                      serviceName={serviceNames.get(item.appointment.serviceId)}
+                      timezone={timezone}
+                      heightPx={heightPx}
+                    />
                   </div>
                 );
               })}
             </div>
           );
         })}
+          </div>
+        </div>
       </div>
     </div>
   );

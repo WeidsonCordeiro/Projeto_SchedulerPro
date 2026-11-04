@@ -32,8 +32,14 @@ beforeEach(() => {
 
 describe("AppointmentRepository — lembretes", () => {
   it("busca apenas agendamentos futuros, ativos e sem soft delete", async () => {
+    const queryChain = {
+      select: vi.fn(),
+      sort: vi.fn(),
+    };
+    queryChain.select.mockReturnValue(queryChain);
+    queryChain.sort.mockResolvedValueOnce([{ _id: appointmentId }]);
     appointment.find.mockReturnValueOnce({
-      sort: vi.fn().mockResolvedValueOnce([{ _id: appointmentId }]),
+      ...queryChain,
     });
 
     await expect(
@@ -54,6 +60,9 @@ describe("AppointmentRepository — lembretes", () => {
     expect(appointment.find.mock.results[0].value.sort).toHaveBeenCalledWith({
       startAt: 1,
     });
+    expect(appointment.find.mock.results[0].value.select).toHaveBeenCalledWith(
+      "+publicAccessTokenCiphertext +publicAccessTokenHash",
+    );
   });
 
   it("claim só é feito quando o lembrete não foi enviado e a trava está livre/expirada", async () => {

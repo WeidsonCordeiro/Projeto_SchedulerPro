@@ -22,6 +22,8 @@ export const HttpMessages = {
 
   /*Usuario*/
   USER_DISABLED: "Usuário desativado.",
+  USER_SUSPENDED_BY_COMPANY_DEACTIVATION:
+    "A empresa está suspensa. O seu acesso operacional está temporariamente indisponível.",
   USER_NOT_UNAUTHORIZED: "Usuário não autorizado.",
   USER_NOT_PERMISSION: "Usuário não possui permissão para executar esta ação.",
   USER_NOT_PREVILEGES:
@@ -66,6 +68,11 @@ export const HttpMessages = {
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",
   COMPANY_INVALID: "Empresa inválida.",
+  COMPANY_INACTIVE: "A empresa não está ativa para receber agendamentos.",
+  COMPANY_INACTIVE_OPERATION:
+    "A empresa está desactivada. Esta operação não está disponível.",
+  COMPANY_INACTIVE_ACCESS:
+    "A empresa está desactivada. O acesso ao sistema não está disponível.",
   COMPANY_LOGO_UPDATED: "Logo da empresa atualizada com sucesso.",
   COMPANY_LOGO_REMOVED: "Logo da empresa removida com sucesso.",
 
@@ -79,6 +86,14 @@ export const HttpMessages = {
   SERVICE_ACTIVATED: "Serviço ativado com sucesso.",
   SERVICE_DEACTIVATED: "Serviço desativado com sucesso.",
 
+  /**
+   * Serviço que existe e pertence à empresa, mas está inativo.
+   *
+   * Diferente de `SERVICE_NOT_FOUND` de propósito: empresa errada ou
+   * serviço eliminado devolvem 404, serviço inativo devolve 400.
+   */
+  SERVICE_INACTIVE: "Serviço encontra-se inativo.",
+
   /*Clientes*/
   CLIENT_CREATED: "Cliente criado com sucesso.",
   CLIENT_UPDATED: "Cliente atualizado com sucesso.",
@@ -89,18 +104,27 @@ export const HttpMessages = {
   CLIENT_DEACTIVATED: "Cliente desativado com sucesso.",
   CLIENT_NOT_FOUND: "Cliente não encontrado.",
   CLIENT_EMAIL_REQUIRED:
-    "O cliente precisa de um e-mail para receber credenciais de acesso.",
-  CLIENT_CREDENTIALS_SET:
-    "Credenciais de acesso do cliente definidas com sucesso.",
+    "O cliente precisa de um e-mail para receber o convite de acesso.",
   CLIENT_PROFILE_FOUND: "Perfil do cliente encontrado.",
   CLIENT_LINK_REQUIRED:
     "Esta conta de acesso ao portal não está vinculada a um cliente.",
   CLIENT_ROLE_FORBIDDEN:
-    "O acesso de um cliente ao portal deve ser criado pelo fluxo de credenciais.",
+    "O acesso de um cliente ao portal deve ser criado pelo fluxo de convites.",
   CLIENT_ACCESS_DENIED: "Não tem permissão para aceder a este cliente.",
   CLIENT_PHOTO_UPDATED: "Foto do cliente atualizada com sucesso.",
   CLIENT_PHOTO_REMOVED: "Foto do cliente removida com sucesso.",
   MY_APPOINTMENTS_FOUND: "Meus agendamentos encontrados.",
+
+  /*Convite de conta CLIENT (Stage 32)*/
+  CLIENT_INVITE_SENT: "Convite enviado para o e-mail do cliente.",
+  CLIENT_INVITE_FOUND: "Convite válido.",
+  CLIENT_INVITE_INVALID: "Este convite não é mais válido.",
+  CLIENT_INVITE_EXPIRED:
+    "Este convite expirou. Solicite um novo convite ao responsável.",
+  CLIENT_ALREADY_HAS_ACCOUNT: "Este cliente já possui uma conta de acesso.",
+  CLIENT_EMAIL_INVALID: "O e-mail do cliente não é válido.",
+  CLIENT_ACCOUNT_CREATED:
+    "Conta criada com sucesso. Já pode iniciar sessão.",
 
   /*Agendamentos*/
   APPOINTMENT_CREATED: "Agendamento criado com sucesso.",
@@ -110,6 +134,7 @@ export const HttpMessages = {
   APPOINTMENTS_FOUND: "Agendamentos encontrados.",
   APPOINTMENT_NOT_FOUND: "Agendamento não encontrado.",
   EMPLOYEE_CONFLICT: "O funcionário já possui um agendamento neste horário.",
+  EMPLOYEE_INACTIVE: "Funcionário encontra-se inativo.",
   CLIENT_CONFLICT: "O cliente já possui um agendamento neste horário.",
   APPOINTMENT_NO_SHOW: "Agendamento marcado como não comparecimento.",
   APPOINTMENT_CANCELLED: "Agendamento cancelado com sucesso.",
@@ -119,6 +144,42 @@ export const HttpMessages = {
     "Não é possível alterar o status deste agendamento.",
   STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
   APPOINTMENT_START_IN_PAST: "Não é possível agendar em um horário que já passou.",
+
+  /*Agendamento público (sem autenticação)*/
+  TOO_MANY_REQUESTS:
+    "Demasiadas tentativas de agendamento. Tente novamente mais tarde.",
+
+  /**
+   * Mensagem ÚNICA para qualquer falha de token público.
+   *
+   * Token malformado, token inexistente e agendamento eliminado
+   * soft devolvem exatamente esta mensagem, para que a rota
+   * não confirme a existência de um agendamento a quem está a
+   * tentar adivinhar tokens.
+   */
+  PUBLIC_APPOINTMENT_NOT_FOUND: "Agendamento não encontrado.",
+
+  /**
+   * Agendamento que já não pode ser alterado nem cancelado pelo
+   * link público: cancelado, concluído, no-show, ou já iniciado.
+   */
+  PUBLIC_APPOINTMENT_NOT_EDITABLE:
+    "Este agendamento já não pode ser alterado nem cancelado.",
+
+  /**
+   * ==========================================================
+   * Respostas do catálogo público (Stage 31 Parte 4).
+   *
+   * São mensagens de sucesso de leitura, como as de qualquer
+   * outro `*_FOUND` do projeto. As regras de elegibilidade
+   * (empresa/serviço/profissional inativos) reutilizam as
+   * mensagens acima, para que a criação pública e a consulta de
+   * catálogo nunca falem de maneiras diferentes.
+   * ==========================================================
+   */
+  PUBLIC_SERVICES_FOUND: "Serviços disponíveis encontrados.",
+  PUBLIC_EMPLOYEES_FOUND: "Profissionais disponíveis encontrados.",
+  PUBLIC_AVAILABILITY_FOUND: "Horários disponíveis encontrados.",
 
   /*Disponibilidade de funcionários*/
   AVAILABILITY_CREATED: "Disponibilidade do funcionário criada com sucesso.",
@@ -153,6 +214,8 @@ export const HttpMessages = {
   REPORT_EMPLOYEES_FOUND: "Ranking de funcionários gerado com sucesso.",
   REPORT_CLIENTS_FOUND: "Clientes recorrentes gerados com sucesso.",
   REPORT_CANCELLATIONS_FOUND: "Relatório de cancelamentos gerado com sucesso.",
+
+  DASHBOARD_SUMMARY_FOUND: "Resumo do dashboard gerado com sucesso.",
 
   /*Notificações*/
   NOTIFICATIONS_FOUND: "Notificações encontradas.",

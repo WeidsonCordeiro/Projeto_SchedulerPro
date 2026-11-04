@@ -12,11 +12,15 @@ import {
   formatAppointmentTime,
 } from "../../config/appointmentTime";
 import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { PortalAppointment } from "../../types/appointment";
 import PageHeader from "../../components/common/PageHeader";
+import LoadingState from "../../components/common/LoadingState";
+import ErrorState from "../../components/common/ErrorState";
 
 export default function PortalHomePage() {
   const user = useAppSelector((state) => state.auth.user);
+  const timezone = useAppSelector(selectCompanyTimezone);
 
   const [appointments, setAppointments] = useState<PortalAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,27 +60,13 @@ export default function PortalHomePage() {
     <section>
       <PageHeader title={`Olá, ${user?.name}`} description="Bem-vindo(a) ao seu portal de agendamentos." />
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar agendamentos…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadAppointments()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadAppointments()}
+        />
       )}
 
       {!isLoading && !loadError && (
@@ -106,8 +96,8 @@ export default function PortalHomePage() {
                             {appointment.serviceName ?? "Serviço"}
                           </div>
                           <div className="text-muted small">
-                            {formatAppointmentDate(appointment.startAt)} às{" "}
-                            {formatAppointmentTime(appointment.startAt)} ·{" "}
+                            {formatAppointmentDate(appointment.startAt, timezone)} às{" "}
+                            {formatAppointmentTime(appointment.startAt, timezone)} ·{" "}
                             {appointment.employeeName ?? "Funcionário"}
                           </div>
                         </div>

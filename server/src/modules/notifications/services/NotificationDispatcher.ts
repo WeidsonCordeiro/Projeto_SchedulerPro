@@ -32,14 +32,16 @@ import Logger from "../../../providers/logger/Logger";
 import { appointmentCreatedEmail } from "../../../providers/mail/templates/appointment-created.template";
 import { appointmentUpdatedEmail } from "../../../providers/mail/templates/appointment-updated.template";
 import { appointmentCancelledEmail } from "../../../providers/mail/templates/appointment-cancelled.template";
+import { clientInviteTemplate } from "../../../providers/mail/templates/client-invite.template";
 import { AppointmentEmailData } from "../../../providers/mail/templates/appointment-email-layout";
 
 import { NotificationType } from "../index";
 import { Role } from "../../../constants/roles";
 import {
-  DEFAULT_TIMEZONE,
+  resolveCompanyTimezone,
   toCompanyDateTime,
 } from "../../../utils/timezone";
+import { buildPublicManageUrl } from "../../../utils/public-manage-url";
 
 export interface AppointmentNotificationInput {
   companyId: string;
@@ -50,6 +52,36 @@ export interface AppointmentNotificationInput {
   employeeId: string;
   startAt: Date;
   notes?: string | null;
+  /**
+   * Token puro do link público, quando o evento nasceu do
+   * FLUXO PÚBLICO.
+   *
+   * Existe em memória em exatamente dois momentos: na criação
+   * (acabou de ser gerado) e na alteração/cancelamento (o
+   * cliente acabou de o apresentar na URL). Não é lido da base
+   * de dados — lá só existe o hash, que é irreversível e não
+   * produz um link utilizável.
+   *
+   * Omitido no fluxo administrativo: um agendamento criado por
+   * um utilizador autenticado não tem token público.
+   *
+   * NÃO registar este valor. O link só é montado para o HTML.
+   */
+  publicAccessToken?: string | null;
+}
+
+export interface ReminderEmailInput {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+export interface ClientInviteEmailInput {
+  to: string;
+  clientName: string;
+  companyName: string;
+  /** URL completa do link de aceite; contém o token puro. NUNCA registar. */
+  inviteUrl: string;
 }
 
 interface AppointmentContext {
@@ -95,6 +127,44 @@ class NotificationDispatcher {
     });
   }
 
+  /** Shared email delivery path for reminder templates. Errors bubble to the
+   * reminder service so its existing lease release and retry behavior applies. */
+  public async dispatchReminderEmail(input: ReminderEmailInput): Promise<void> {
+    await this.resendProvider.send(input);
+  }
+
+  /**
+   * ==========================================================
+   * Envia o e-mail de convite de conta CLIENT.
+   *
+   * Diferente dos eventos de agendamento (best effort), os
+   * erros AQUI são propagados: o serviço emissor depende do
+   * resultado para revogar um convite que não foi entregue.
+   *
+   * O `inviteUrl` contém o token puro — por isso não é
+   * registado em log, nem nesta função nem no chamador.
+   * ==========================================================
+   */
+  public async dispatchClientInviteEmail(
+    input: ClientInviteEmailInput,
+  ): Promise<void> {
+    const html = clientInviteTemplate({
+      clientName: input.clientName,
+      companyName: input.companyName,
+      inviteUrl: input.inviteUrl,
+    });
+
+    await this.resendProvider.send({
+      to: input.to,
+      subject: `${this.emailSubjectPrefix}Convite para o portal do cliente`,
+      html,
+    });
+
+    this.logger.email(`E-mail de convite enviado para ${input.to}`, {
+      type: "CLIENT_INVITE",
+    });
+  }
+
   /**
    * ==========================================================
    * Entrega as notificações de um evento de agendamento.
@@ -115,7 +185,7 @@ class NotificationDispatcher {
       }
 
       const company = await this.companyRepository.findById(input.companyId);
-      const timezone = company?.timezone ?? DEFAULT_TIMEZONE;
+      const timezone = resolveCompanyTimezone(company?.timezone);
       const companyName = company?.name ?? "SchedulerPro";
 
       const client = await this.clientRepository.findByIdAndCompany(
@@ -267,6 +337,13 @@ class NotificationDispatcher {
       timeLabel,
       endTimeLabel,
       notes: input.notes,
+      /**
+       * Só no fluxo público. `undefined` no administrativo →
+       * o template omite o bloco em vez de gerar um link morto.
+       */
+      publicManageUrl: input.publicAccessToken
+        ? buildPublicManageUrl(input.publicAccessToken)
+        : null,
     });
 
     try {

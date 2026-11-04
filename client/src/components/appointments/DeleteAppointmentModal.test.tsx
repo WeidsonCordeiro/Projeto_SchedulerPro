@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { configureStore } from "@reduxjs/toolkit";
+import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DeleteAppointmentModal from "./DeleteAppointmentModal";
+import authReducer from "../../store/slices/authSlice";
+import companyReducer from "../../store/slices/companySlice";
+import { user } from "../../test/fixtures";
 import appointmentsApi from "../../api/endpoints/appointments.api";
 import { httpError } from "../../test/http";
 import type { Appointment } from "../../types/appointment";
@@ -25,6 +30,22 @@ const appointment: Appointment = {
   updatedAt: "2026-07-01T10:00:00.000Z",
 };
 
+function makeStore() {
+  return configureStore({
+    reducer: { auth: authReducer, company: companyReducer },
+    preloadedState: {
+      auth: {
+        user,
+        mustChangePassword: false,
+        isAuthenticated: true,
+        isInitializing: false,
+        isLoading: false,
+      },
+      company: { company: null },
+    },
+  });
+}
+
 function renderModal(props: Partial<React.ComponentProps<typeof DeleteAppointmentModal>> = {}) {
   const propsBase = {
     isOpen: true,
@@ -34,7 +55,11 @@ function renderModal(props: Partial<React.ComponentProps<typeof DeleteAppointmen
     onDeleted: vi.fn(),
     ...props,
   };
-  return render(<DeleteAppointmentModal {...propsBase} />);
+  return render(
+    <Provider store={makeStore()}>
+      <DeleteAppointmentModal {...propsBase} />
+    </Provider>,
+  );
 }
 
 describe("DeleteAppointmentModal", () => {

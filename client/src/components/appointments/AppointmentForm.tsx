@@ -6,6 +6,7 @@ import appointmentsApi from "../../api/endpoints/appointments.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import AppointmentCalendar from "./AppointmentCalendar";
 import AvailableTimeSlots from "./AvailableTimeSlots";
+import EmployeeAvatarPicker from "./EmployeeAvatarPicker";
 import {
   APPOINTMENT_TIMEZONE,
   formatAppointmentEndTime,
@@ -75,6 +76,7 @@ function validate(
   serviceId: string,
   employeeId: string,
   startAt: string,
+  timezone: string,
 ): FieldErrors {
   const errors: FieldErrors = {};
 
@@ -92,7 +94,7 @@ function validate(
 
   if (!startAt) {
     errors.startAt = "A data e hora do agendamento são obrigatórias.";
-  } else if (!toIsoUtc(startAt)) {
+  } else if (!toIsoUtc(startAt, timezone)) {
     errors.startAt = "A data e hora do agendamento são inválidas.";
   }
 
@@ -138,7 +140,7 @@ export default function AppointmentForm({
   /** Gera o valor datetime-local para preenchimento a partir de initialDate/Time. */
   function buildInitialStartAt(): string {
     if (isEdit) {
-      return toLocalDateTimeInputValue(appointment!.startAt);
+      return toLocalDateTimeInputValue(appointment!.startAt, timezone);
     }
     if (initialDate && initialTime) {
       return `${initialDate}T${initialTime}`;
@@ -151,7 +153,10 @@ export default function AppointmentForm({
 
   function buildInitialSelectedDate(): string | null {
     if (isEdit) {
-      return toLocalDateTimeInputValue(appointment!.startAt).slice(0, 10);
+      return toLocalDateTimeInputValue(appointment!.startAt, timezone).slice(
+        0,
+        10,
+      );
     }
     return initialDate ?? null;
   }
@@ -343,7 +348,7 @@ export default function AppointmentForm({
     event.preventDefault();
     setErrorMessage(null);
 
-    const errors = validate(clientId, serviceId, employeeId, startAt);
+    const errors = validate(clientId, serviceId, employeeId, startAt, timezone);
     setFieldErrors(errors);
 
     if (errors.clientId || errors.serviceId || errors.employeeId || errors.startAt) {
@@ -356,7 +361,7 @@ export default function AppointmentForm({
         clientId,
         serviceId,
         employeeId,
-        startAt: toIsoUtc(startAt),
+        startAt: toIsoUtc(startAt, timezone),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
       };
       const response = isEdit
@@ -469,26 +474,25 @@ export default function AppointmentForm({
               </div>
 
               <div className="mb-3">
-                <label htmlFor="appointment-employee" className="form-label">
+                <span id="appointment-employee-label" className="form-label d-block">
                   Funcionário
-                </label>
-                <select
-                  id="appointment-employee"
-                  className={`form-select ${fieldErrors.employeeId ? "is-invalid" : ""}`}
+                </span>
+                <EmployeeAvatarPicker
+                  employees={employeeOptions}
                   value={employeeId}
-                  onChange={(event) => setEmployeeId(event.target.value)}
+                  onChange={setEmployeeId}
                   disabled={readOnlyView}
-                >
-                  <option value="">Selecione o funcionário</option>
-                  {employeeOptions.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name}
-                      {employee.role === "CLIENT" ? " (sem perfil de funcionário)" : ""}
-                    </option>
-                  ))}
-                </select>
+                  invalid={Boolean(fieldErrors.employeeId)}
+                  label="Funcionário"
+                  labelId="appointment-employee-label"
+                  describedById={
+                    fieldErrors.employeeId ? "appointment-employee-error" : undefined
+                  }
+                />
                 {fieldErrors.employeeId && (
-                  <div className="invalid-feedback">{fieldErrors.employeeId}</div>
+                  <div id="appointment-employee-error" className="invalid-feedback">
+                    {fieldErrors.employeeId}
+                  </div>
                 )}
               </div>
 

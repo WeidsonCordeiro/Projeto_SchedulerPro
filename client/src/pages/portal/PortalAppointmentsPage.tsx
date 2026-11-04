@@ -10,13 +10,18 @@ import {
   formatAppointmentDate,
   formatAppointmentTime,
 } from "../../config/appointmentTime";
+import { useAppSelector } from "../../store";
+import { selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { PortalAppointment } from "../../types/appointment";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import LoadingState from "../../components/common/LoadingState";
+import ErrorState from "../../components/common/ErrorState";
 
 type Filter = "all" | "upcoming" | "past";
 
 export default function PortalAppointmentsPage() {
+  const timezone = useAppSelector(selectCompanyTimezone);
   const [appointments, setAppointments] = useState<PortalAppointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -62,51 +67,45 @@ export default function PortalAppointmentsPage() {
 
   return (
     <section>
-      <PageHeader title="Meus agendamentos" description="Consulte os seus próximos atendimentos e o histórico." actions={<div className="btn-group" role="group" aria-label="Filtrar agendamentos">
-          <button
-            type="button"
-            className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-outline-primary"}`}
-            onClick={() => setFilter("all")}
-          >
-            Todos
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${filter === "upcoming" ? "btn-primary" : "btn-outline-primary"}`}
-            onClick={() => setFilter("upcoming")}
-          >
-            Próximos
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${filter === "past" ? "btn-primary" : "btn-outline-primary"}`}
-            onClick={() => setFilter("past")}
-          >
-            Passados
-          </button>
-        </div>} />
-
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
+      <PageHeader
+        title="Meus agendamentos"
+        description="Consulte os seus próximos atendimentos e o histórico."
+        actions={
+          <div className="filter-bar">
+            <div className="btn-group" role="group" aria-label="Filtrar agendamentos">
+              <button
+                type="button"
+                className={`btn btn-sm ${filter === "all" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setFilter("all")}
+              >
+                Todos
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${filter === "upcoming" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setFilter("upcoming")}
+              >
+                Próximos
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${filter === "past" ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setFilter("past")}
+              >
+                Passados
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        }
+      />
+
+      {isLoading && <LoadingState label="A carregar agendamentos…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadAppointments()}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={() => void loadAppointments()}
+        />
       )}
 
       {!isLoading && !loadError && visibleAppointments.length === 0 && (
@@ -131,8 +130,8 @@ export default function PortalAppointmentsPage() {
                   <tr key={appointment.id}>
                     <td>{appointment.serviceName ?? "—"}</td>
                     <td>{appointment.employeeName ?? "—"}</td>
-                    <td>{formatAppointmentDate(appointment.startAt)}</td>
-                    <td>{formatAppointmentTime(appointment.startAt)}</td>
+                    <td>{formatAppointmentDate(appointment.startAt, timezone)}</td>
+                    <td>{formatAppointmentTime(appointment.startAt, timezone)}</td>
                     <td>
                       <span
                         className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}

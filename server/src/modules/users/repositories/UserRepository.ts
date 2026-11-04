@@ -16,6 +16,7 @@ import User from "../models/User.model";
 import { CreateUserData, UpdateUserData } from "../types";
 import { UserDocument } from "../models/User.model";
 import { ClientSession } from "mongoose";
+import { Role } from "../../../constants/roles";
 
 class UserRepository {
   /**
@@ -135,6 +136,36 @@ class UserRepository {
 
   /**
    * ==========================================================
+   * Busca os profissionais ATIVOS de uma empresa.
+   *
+   * `role: { $nin: [CLIENT] }` em vez de `role: EMPLOYEE`: no
+   * modelo, `EMPLOYEE` é o valor por omissão e o dono, o
+   * gestor e o administrador também atendem. Excluir apenas
+   * `CLIENT` é o mesmo critério de `UserService.findAll`, e é o
+   * que a criação pública aceita (`requireActiveEmployee`
+   * rejeita `CLIENT`, não exige `EMPLOYEE`).
+   *
+   * O filtro é feito na consulta, e não depois em memória como
+   * em `findAll`, porque o índice `{ companyId, isActive }`
+   * já existe e o catálogo público não precisa deler os campos
+   * de autenticação de contas inativas.
+   * ==========================================================
+   */
+  public async findActiveEmployeesByCompanyId(
+    companyId: string | Types.ObjectId,
+  ): Promise<UserDocument[]> {
+    return User.find({
+      companyId,
+      isActive: true,
+      role: { $nin: [Role.CLIENT] },
+      deletedAt: null,
+    }).sort({
+      name: 1,
+    });
+  }
+
+  /**
+   * ==========================================================
    * Ativa um utilizador.
    * ==========================================================
    */
@@ -157,6 +188,58 @@ class UserRepository {
       { isActive: false },
       { new: true },
     );
+  }
+
+  /**
+   * Suspende utilizadores activos (excepto OWNER) quando a empresa
+   * é desactivada. Não altera soft-deletes nem contas já inactivas.
+   */
+  public async suspendActiveNonOwnerStaffForCompanyDeactivation(
+    companyId: string | Types.ObjectId,
+    session?: ClientSession,
+  ): Promise<number> {
+    const result = await User.updateMany(
+      {
+        companyId,
+        role: { $ne: Role.OWNER },
+        isActive: true,
+        deletedAt: null,
+      },
+      {
+        $set: {
+          isActive: false,
+          companyDeactivationSuspended: true,
+        },
+      },
+      { session },
+    );
+
+    return result.modifiedCount;
+  }
+
+  /**
+   * Restaura apenas utilizadores suspensos pela desactivação da empresa.
+   */
+  public async restoreUsersSuspendedByCompanyDeactivation(
+    companyId: string | Types.ObjectId,
+    session?: ClientSession,
+  ): Promise<number> {
+    const result = await User.updateMany(
+      {
+        companyId,
+        companyDeactivationSuspended: true,
+        deletedAt: null,
+      },
+      {
+        $set: {
+          isActive: true,
+          companyDeactivationSuspended: false,
+        },
+      },
+      { session },
+    );
+
+    return result.modifiedCount;
   }
 
   /**
@@ -191,7 +274,7 @@ class UserRepository {
     id: string | Types.ObjectId,
   ): Promise<UserDocument | null> {
     return User.findOne({ _id: id, deletedAt: null }).select(
-      "_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified",
+      "_id companyId role mustChangePassword isActive lockUntil deletedAt clientId emailVerified companyDeactivationSuspended",
     );
   }
 
@@ -260,22 +343,6 @@ class UserRepository {
 
   /**
    * ==========================================================
-   * Atualiza um utilizador, incluindo documentos soft-deleted.
-   *
-   * Usado para restaurar contas removidas (deletedAt: null).
-   * ==========================================================
-   */
-  public async updateIncludingDeleted(
-    id: string,
-    data: UpdateUserData,
-  ): Promise<UserDocument | null> {
-    return User.findOneAndUpdate({ _id: id }, data, {
-      new: true,
-      runValidators: true,
-    });
-  }
-  /**
-   * ==========================================================
    * Marca o e-mail do utilizador como verificado.
    * ==========================================================
    */
@@ -283,6 +350,25 @@ class UserRepository {
     await User.findOneAndUpdate({ _id: id, deletedAt: null }, {
       emailVerified: true,
     });
+  }
+
+  /**
+   * Serializa reservas concorrentes que partilham o mesmo funcionário.
+   */
+  public async touchBookingSerialization(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    session: ClientSession,
+  ): Promise<void> {
+    const updated = await User.findOneAndUpdate(
+      { _id: id, companyId, deletedAt: null },
+      { $set: { updatedAt: new Date() } },
+      { session, new: false },
+    );
+
+    if (!updated) {
+      return;
+    }
   }
 }
 

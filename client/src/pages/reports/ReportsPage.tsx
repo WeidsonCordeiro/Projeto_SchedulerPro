@@ -1,6 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import reportsApi from "../../api/endpoints/reports.api";
-import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
+import {
+  collectRelatedFailureMessages,
+  formatRelatedFailuresMessage,
+  getApiError,
+  getPageLoadErrorPresentation,
+} from "../../api/errors";
 import { getReportAbilities } from "../../config/reportPermissions";
 import {
   buildReportRange,
@@ -10,7 +15,7 @@ import {
   type ReportRangeISO,
 } from "../../config/reportPeriod";
 import { useAppSelector } from "../../store";
-import { selectCompanyTimezone } from "../../store/slices/companySlice";
+import { selectCompany, selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { AppointmentStatus } from "../../types/appointment";
 import type {
   ReportCancellations,
@@ -22,6 +27,10 @@ import type {
 } from "../../types/report";
 import { DateTime } from "luxon";
 import PageHeader from "../../components/common/PageHeader";
+import DashboardCard from "../../components/common/DashboardCard";
+import EmptyState from "../../components/common/EmptyState";
+import ErrorState from "../../components/common/ErrorState";
+import LoadingState from "../../components/common/LoadingState";
 
 const STATUSES: AppointmentStatus[] = [
   "scheduled",
@@ -41,7 +50,13 @@ const STATUS_ICONS: Record<AppointmentStatus, string> = {
 
 const EMPTY_OVERVIEW: ReportOverview = {
   total: 0,
-  byStatus: { scheduled: 0, confirmed: 0, completed: 0, cancelled: 0, "no-show": 0 },
+  byStatus: {
+    scheduled: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled: 0,
+    "no-show": 0,
+  },
 };
 
 const EMPTY_REVENUE: ReportRevenue = {
@@ -87,30 +102,6 @@ function formatPercent(value: number): string {
   return `${value.toLocaleString("pt-PT", { maximumFractionDigits: 2 })}%`;
 }
 
-function StatCard({
-  title,
-  value,
-  icon,
-}: {
-  title: string;
-  value: React.ReactNode;
-  icon: string;
-}) {
-  return (
-    <div className="card h-100">
-      <div className="card-body">
-        <div className="d-flex justify-content-between align-items-start">
-          <div>
-            <h3 className="card-title h6 mb-1">{title}</h3>
-            <p className="card-text fs-4 mb-0">{value}</p>
-          </div>
-          <i className={`bi ${icon} text-muted fs-4`} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function customMonthBounds(timezone: string) {
   const now = DateTime.now().setZone(timezone);
   return {
@@ -121,29 +112,41 @@ function customMonthBounds(timezone: string) {
 
 export default function ReportsPage() {
   const user = useAppSelector((state) => state.auth.user);
+  const company = useAppSelector(selectCompany);
+  const companyIsActive = company?.isActive;
   const timezone = useAppSelector(selectCompanyTimezone);
   const { canView } = getReportAbilities(user?.role ?? null);
 
   const [period, setPeriod] = useState<ReportPeriodKey>("month");
   const [customInput, setCustomInput] = useState(() =>
-    customMonthBounds(timezone),
+    customMonthBounds(timezone)
   );
   const [appliedCustom, setAppliedCustom] = useState(() =>
-    customMonthBounds(timezone),
+    customMonthBounds(timezone)
   );
   const [customError, setCustomError] = useState<string | null>(null);
+  const customDatesTouchedRef = useRef(false);
+
+  useEffect(() => {
+    if (customDatesTouchedRef.current) {
+      return;
+    }
+    const bounds = customMonthBounds(timezone);
+    setCustomInput(bounds);
+    setAppliedCustom(bounds);
+  }, [timezone]);
 
   const [overview, setOverview] = useState<ReportOverview>(EMPTY_OVERVIEW);
   const [revenue, setRevenue] = useState<ReportRevenue>(EMPTY_REVENUE);
   const [topServices, setTopServices] = useState<ReportTopService[]>([]);
   const [employees, setEmployees] = useState<ReportEmployee[]>([]);
   const [clients, setClients] = useState<ReportClients>(EMPTY_CLIENTS);
-  const [cancellations, setCancellations] = useState<ReportCancellations>(
-    EMPTY_CANCELLATIONS,
-  );
+  const [cancellations, setCancellations] =
+    useState<ReportCancellations>(EMPTY_CANCELLATIONS);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [relatedError, setRelatedError] = useState<string | null>(null);
 
   const range = useMemo<ReportRangeISO | null>(() => {
@@ -152,7 +155,7 @@ export default function ReportsPage() {
         "custom",
         timezone,
         appliedCustom.start,
-        appliedCustom.end,
+        appliedCustom.end
       );
     }
     return buildReportRange(period, timezone);
@@ -175,9 +178,16 @@ export default function ReportsPage() {
       const response = await reportsApi.getOverview(params);
       setOverview(response.data ?? EMPTY_OVERVIEW);
     } catch (error) {
-      setLoadError(getFriendlyErrorMessage(getApiError(error)));
-      setIsLoading(false);
-      return;
+      const presentation = getPageLoadErrorPresentation(
+        getApiError(error),
+        companyIsActive,
+      );
+      if (presentation.message) {
+        setLoadError(presentation.message);
+        setLoadErrorRetryable(presentation.retryable);
+        setIsLoading(false);
+        return;
+      }
     }
 
     const failures: string[] = [];
@@ -186,44 +196,45 @@ export default function ReportsPage() {
       const response = await reportsApi.getRevenue(params);
       setRevenue(response.data ?? EMPTY_REVENUE);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getTopServices({ ...params, limit: 5 });
       setTopServices(response.data ?? []);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getEmployees(params);
       setEmployees(response.data ?? []);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getClients({ ...params, limit: 5 });
       setClients(response.data ?? EMPTY_CLIENTS);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
       const response = await reportsApi.getCancellations(params);
       setCancellations(response.data ?? EMPTY_CANCELLATIONS);
     } catch (error) {
-      failures.push(getFriendlyErrorMessage(getApiError(error)));
+      collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     setRelatedError(
-      failures.length > 0
-        ? `Não foi possível carregar parte dos relatórios. ${failures.join(" ")}`
-        : null,
+      formatRelatedFailuresMessage(
+        failures,
+        "Não foi possível carregar parte dos relatórios.",
+      ),
     );
     setIsLoading(false);
-  }, []);
+  }, [companyIsActive]);
 
   useEffect(() => {
     if (!canView) {
@@ -248,21 +259,21 @@ export default function ReportsPage() {
       return;
     }
     if (start > end) {
-      setCustomError(
-        "A data inicial não pode ser posterior à data final.",
-      );
+      setCustomError("A data inicial não pode ser posterior à data final.");
       return;
     }
     setCustomError(null);
+    customDatesTouchedRef.current = true;
     setAppliedCustom({ start, end });
   }
 
   if (!canView) {
     return (
       <section>
-        <div className="mb-3">
-          <h1 className="h3 mb-0">Relatórios</h1>
-        </div>
+        <PageHeader
+          title="Relatórios"
+          description="Indicadores e rankings do período selecionado."
+        />
         <div className="alert alert-warning" role="alert">
           Você não tem permissão para acessar esta página.
         </div>
@@ -272,27 +283,48 @@ export default function ReportsPage() {
 
   const periodDescription =
     period === "custom"
-      ? `${formatReportDate(appliedCustom.start, timezone)} a ${formatReportDate(appliedCustom.end, timezone)}`
+      ? `${formatReportDate(
+          appliedCustom.start,
+          timezone
+        )} a ${formatReportDate(appliedCustom.end, timezone)}`
       : REPORT_PERIOD_LABELS[period];
+
+  const missingPriceCount =
+    (revenue.completedWithoutPrice ?? 0) +
+    (revenue.forecastWithoutPrice ?? 0);
 
   return (
     <section>
-      <PageHeader title="Relatórios" description="Acompanhe o desempenho da operação no período selecionado." actions={<span className="text-muted small">Período: {periodDescription}</span>} />
+      <PageHeader
+        title="Relatórios"
+        description="Acompanhe o desempenho da operação no período selecionado."
+        actions={
+          <span className="text-muted small">Período: {periodDescription}</span>
+        }
+      />
 
       <div className="mb-4">
         <div className="filter-bar">
-          <div className="btn-group" role="group" aria-label="Período do relatório">
-            {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriodKey[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                className={`btn btn-sm ${period === key ? "btn-primary" : "btn-outline-primary"}`}
-                aria-pressed={period === key}
-                onClick={() => selectPeriod(key)}
-              >
-                {REPORT_PERIOD_LABELS[key]}
-              </button>
-            ))}
+          <div
+            className="btn-group btn-group-sm"
+            role="group"
+            aria-label="Período do relatório"
+          >
+            {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriodKey[]).map(
+              (key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`btn btn-sm ${
+                    period === key ? "btn-primary" : "btn-outline-primary"
+                  }`}
+                  aria-pressed={period === key}
+                  onClick={() => selectPeriod(key)}
+                >
+                  {REPORT_PERIOD_LABELS[key]}
+                </button>
+              )
+            )}
           </div>
         </div>
 
@@ -307,9 +339,13 @@ export default function ReportsPage() {
                 type="date"
                 className="form-control form-control-sm"
                 value={customInput.start}
-                onChange={(event) =>
-                  setCustomInput((prev) => ({ ...prev, start: event.target.value }))
-                }
+                onChange={(event) => {
+                  customDatesTouchedRef.current = true;
+                  setCustomInput((prev) => ({
+                    ...prev,
+                    start: event.target.value,
+                  }));
+                }}
               />
             </div>
             <div className="col-auto">
@@ -321,9 +357,13 @@ export default function ReportsPage() {
                 type="date"
                 className="form-control form-control-sm"
                 value={customInput.end}
-                onChange={(event) =>
-                  setCustomInput((prev) => ({ ...prev, end: event.target.value }))
-                }
+                onChange={(event) => {
+                  customDatesTouchedRef.current = true;
+                  setCustomInput((prev) => ({
+                    ...prev,
+                    end: event.target.value,
+                  }));
+                }}
               />
             </div>
             <div className="col-auto">
@@ -344,37 +384,22 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {isLoading && (
-        <div className="d-flex justify-content-center py-5">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Carregando...</span>
-          </div>
-        </div>
-      )}
+      {isLoading && <LoadingState label="A carregar relatórios…" />}
 
       {!isLoading && loadError && (
-        <div className="alert alert-danger" role="alert">
-          {loadError}
-          <div className="mt-2">
-            <button
-              type="button"
-              className="btn btn-outline-danger btn-sm"
-              onClick={() => void loadReports(range)}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={loadError}
+          onRetry={
+            loadErrorRetryable ? () => void loadReports(range) : undefined
+          }
+        />
       )}
 
       {!isLoading && !loadError && overview.total === 0 && (
-        <div className="card">
-          <div className="card-body text-center py-5">
-            <p className="mb-3 text-muted">
-              Nenhum agendamento neste período.
-            </p>
-          </div>
-        </div>
+        <EmptyState
+          title="Nenhum agendamento neste período"
+          description="Altere o período ou aguarde novos agendamentos para ver indicadores aqui."
+        />
       )}
 
       {!isLoading && !loadError && overview.total > 0 && (
@@ -386,17 +411,17 @@ export default function ReportsPage() {
           )}
 
           <h2 className="h5 mb-3">Visão geral</h2>
-          <div className="row g-3 mb-4">
-            <div className="col-6 col-md-4 col-lg-2">
-              <StatCard
+          <div className="row g-3 dashboard-kpis">
+            <div className="col-12 col-md-2">
+              <DashboardCard
                 title="Total"
                 value={formatInteger(overview.total)}
-                icon="bi-calendar3"
+                icon="bi-calendar-check"
               />
             </div>
             {STATUSES.map((status) => (
-              <div className="col-6 col-md-4 col-lg-2" key={status}>
-                <StatCard
+              <div className="col-12 col-md-2" key={status}>
+                <DashboardCard
                   title={STATUSES_HEADERS[status]}
                   value={formatInteger(overview.byStatus[status] ?? 0)}
                   icon={STATUS_ICONS[status]}
@@ -405,29 +430,35 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          <h2 className="h5 mb-3">Receita</h2>
-          <div className="row g-3 mb-4">
-            <div className="col-md-6">
-              <StatCard
+          <h2 className="h5 mb-3 mt-3">Receita</h2>
+          <div className="row g-3 dashboard-kpis">
+            <div className="col-12 col-md-6">
+              <DashboardCard
                 title="Receita estimada (concluídos)"
-                value={
-                  <span data-testid="revenue-estimated">
-                    {formatMoney(revenue.estimatedRevenue)}
-                  </span>
-                }
-                icon="bi-cash"
+                value={formatMoney(revenue.estimatedRevenue)}
+                icon="bi-calendar-check"
               />
             </div>
-            <div className="col-md-6">
-              <StatCard
+            <div className="col-12 col-md-6">
+              <DashboardCard
                 title="Valor previsto (agendados e confirmados)"
                 value={formatMoney(revenue.forecastRevenue)}
-                icon="bi-calendar2-week"
+                icon="bi-check-circle"
               />
             </div>
           </div>
+          {missingPriceCount > 0 && (
+            <p
+              className="text-muted small mt-2 mb-0"
+              data-testid="missing-price-note"
+            >
+              {formatInteger(missingPriceCount)} agendamento(s) sem preço
+              histórico não entram nos valores acima. Estes são estimativas
+              baseadas no preço registado na reserva, não valores recebidos.
+            </p>
+          )}
 
-          <div className="row g-3 mb-4">
+          <div className="row g-3 mb-4 mt-3">
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Serviços mais realizados</div>
@@ -477,19 +508,14 @@ export default function ReportsPage() {
                 <div className="card-header">
                   Clientes recorrentes
                   <span className="text-muted small fw-normal ms-2">
-                    {formatInteger(clients.totalClients)} clientes ativos no período,{" "}
-                    {formatInteger(clients.recurringCount)} recorrentes
+                    {formatInteger(clients.totalClients)} clientes ativos no
+                    período, {formatInteger(clients.recurringCount)} recorrentes
                   </span>
                 </div>
                 <div className="table-responsive table-compact">
                   <RankingTable
                     emptyMessage="Nenhum cliente neste período."
-                    headers={[
-                      "Cliente",
-                      "Agend.",
-                      "Concl.",
-                      "Valor estimado",
-                    ]}
+                    headers={["Cliente", "Agend.", "Concl.", "Valor estimado"]}
                     rows={clients.topClients.map((client) => [
                       client.name ?? "—",
                       formatInteger(client.count),
@@ -506,7 +532,9 @@ export default function ReportsPage() {
                 <div className="card-body">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span>Cancelados</span>
-                    <strong>{formatInteger(cancellations.cancelledCount)}</strong>
+                    <strong>
+                      {formatInteger(cancellations.cancelledCount)}
+                    </strong>
                   </div>
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span>Total de agendamentos</span>

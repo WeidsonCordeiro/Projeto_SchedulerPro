@@ -13,9 +13,10 @@
 
 import { Types } from "mongoose";
 import Client, { ClientDocument } from "../models/Client.model";
-import { CreateClientDto } from "../dto/CreateClient.dto";
 import { UpdateClientDto } from "../dto/UpdateClient.dto";
 import { StoredImage } from "../../../providers/images/types";
+import { ClientSession } from "mongoose";
+import { RepositorySessionOptions } from "../../appointments/repositories/appointment-repository.types";
 
 class ClientRepository {
   /**
@@ -66,15 +67,79 @@ class ClientRepository {
 
   /**
    * ==========================================================
+   * Busca um cliente pelo e-mail dentro de uma empresa.
+   *
+   * Usado pelo agendamento público para reaproveitar o cliente já
+   * cadastrado em vez de duplicar o registo a cada agendamento.
+   *
+   * O companyId garante o isolamento entre empresas: um e-mail
+   * existente noutra empresa nunca é reutilizado.
+   * ==========================================================
+   */
+  public async findByEmailAndCompany(
+    email: string,
+    companyId: string | Types.ObjectId,
+    options?: RepositorySessionOptions,
+  ): Promise<ClientDocument | null> {
+    if (!email) {
+      return null;
+    }
+
+    let query = Client.findOne({
+      companyId,
+      email: email.trim().toLowerCase(),
+      deletedAt: null,
+    });
+
+    if (options?.session) {
+      query = query.session(options.session);
+    }
+
+    return query;
+  }
+
+  /**
+   * ==========================================================
    * Cria um novo cliente.
+   *
+   * `phone` é opcional porque o agendamento público pode criar um
+   * cliente sem telefone. O fluxo administrativo continua a exigir
+   * telefone antes de chegar aqui (`create-client.validator.ts`).
    * ==========================================================
    */
   public async create(
-    data: CreateClientDto & {
+    data: {
       companyId: Types.ObjectId;
+      name: string;
+      email?: string | null;
+      phone?: string | null;
+      notes?: string | null;
     },
+    options?: RepositorySessionOptions,
   ): Promise<ClientDocument> {
+    if (options?.session) {
+      const [created] = await Client.create([data], {
+        session: options.session,
+      });
+      return created;
+    }
+
     return Client.create(data);
+  }
+
+  /**
+   * Serializa reservas concorrentes que partilham o mesmo cliente.
+   */
+  public async touchBookingSerialization(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    session: ClientSession,
+  ): Promise<void> {
+    await Client.findOneAndUpdate(
+      { _id: id, companyId, deletedAt: null },
+      { $set: { updatedAt: new Date() } },
+      { session, new: false },
+    );
   }
 
   /**

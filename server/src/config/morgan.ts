@@ -16,6 +16,11 @@
 import morgan from "morgan";
 
 import { logger } from "./logger";
+import { redactPublicAppointmentToken } from "../utils/redact-public-appointment-token";
+
+morgan.token("safe-url", (req) =>
+  redactPublicAppointmentToken(req.url ?? ""),
+);
 
 const stream = {
   write: (message: string) => {
@@ -26,7 +31,7 @@ const stream = {
 };
 
 const morganMiddleware = morgan(
-  ":method :url :status :response-time ms",
+  ":method :safe-url :status :response-time ms",
 
   {
     stream,

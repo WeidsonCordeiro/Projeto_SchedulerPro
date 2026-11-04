@@ -29,6 +29,16 @@ vi.mock("../../../src/middlewares/require-password-change.middleware", () => ({
   },
 }));
 
+vi.mock("../../../src/middlewares/require-operational-company.middleware", () => ({
+  default: {
+    requireOperationalCompany: (
+      _req: express.Request,
+      _res: express.Response,
+      next: express.NextFunction,
+    ) => next(),
+  },
+}));
+
 vi.mock("../../../src/modules/services/controllers/ServiceController", () => ({
   default: {
     findAll: (_req: express.Request, res: express.Response) => res.json([]),
@@ -51,7 +61,6 @@ vi.mock("../../../src/modules/Clients/controllers/ClientController", () => ({
     activate: (_req: express.Request, res: express.Response) => res.json({}),
     deactivate: (_req: express.Request, res: express.Response) => res.json({}),
     findMe: (_req: express.Request, res: express.Response) => res.json({}),
-    setCredentials: (_req: express.Request, res: express.Response) => res.json({}),
     /**
      * Handlers das rotas de foto (POST/DELETE /:id/photo).
      * O registo das rotas exige que todos os handlers
