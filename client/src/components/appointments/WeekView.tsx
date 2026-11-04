@@ -13,10 +13,6 @@ export interface WeekViewProps {
   onDayClick: (dateKey: string) => void;
   onSlotClick: (dateKey: string, hour: number) => void;
   onAppointmentClick: (appointment: Appointment) => void;
-  onTimeGridAppointmentClick?: (
-    appointment: Appointment,
-    anchor: HTMLElement,
-  ) => void;
   onCreateForDay?: (dateKey: string) => void;
 }
 
@@ -31,7 +27,6 @@ export default function WeekView({
   onDayClick,
   onSlotClick,
   onAppointmentClick,
-  onTimeGridAppointmentClick,
   onCreateForDay,
 }: WeekViewProps) {
   if (isMobileViewport) {
@@ -60,13 +55,7 @@ export default function WeekView({
       onDayClick={onDayClick}
       onSlotClick={onSlotClick}
       todayKey={todayKey}
-      onAppointmentClick={(appointment, anchor) => {
-        if (onTimeGridAppointmentClick) {
-          onTimeGridAppointmentClick(appointment, anchor);
-        } else {
-          onAppointmentClick(appointment);
-        }
-      }}
+      onAppointmentClick={(appointment) => onAppointmentClick(appointment)}
     />
   );
 }

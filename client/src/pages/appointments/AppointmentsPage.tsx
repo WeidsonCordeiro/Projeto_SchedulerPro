@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import AppointmentScheduleFilters from "../../components/appointments/AppointmentScheduleFilters";
 import {
   EMPTY_APPOINTMENT_FILTER_CRITERIA,
@@ -12,7 +12,6 @@ import AppointmentForm from "../../components/appointments/AppointmentForm";
 import DeleteAppointmentModal from "../../components/appointments/DeleteAppointmentModal";
 import AppointmentsListView from "../../components/appointments/AppointmentsListView";
 import AppointmentsViewSwitcher from "../../components/appointments/AppointmentsViewSwitcher";
-import AppointmentQuickDetails from "../../components/appointments/AppointmentQuickDetails";
 import CalendarView from "../../components/appointments/CalendarView";
 import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import { isInstantInPast } from "../../config/appointmentCalendar";
@@ -58,11 +57,6 @@ export default function AppointmentsPage() {
   const [prefillEmployeeId, setPrefillEmployeeId] = useState<
     string | undefined
   >(undefined);
-
-  const [quickDetails, setQuickDetails] = useState<{
-    appointment: Appointment;
-    anchorRect: DOMRect;
-  } | null>(null);
 
   const [filterCriteria, setFilterCriteria] =
     useState<AppointmentFilterCriteria>(EMPTY_APPOINTMENT_FILTER_CRITERIA);
@@ -132,16 +126,6 @@ export default function AppointmentsPage() {
   const clearFilters = useCallback(() => {
     setFilterCriteria(EMPTY_APPOINTMENT_FILTER_CRITERIA);
   }, []);
-
-  useEffect(() => {
-    if (!quickDetails) return;
-    const stillVisible = visibleAppointments.some(
-      (item) => item.id === quickDetails.appointment.id,
-    );
-    if (!stillVisible) {
-      setQuickDetails(null);
-    }
-  }, [visibleAppointments, quickDetails]);
 
   function nameFor(map: Map<string, string>, id: string): string {
     return map.get(id) ?? "—";
@@ -230,20 +214,6 @@ export default function AppointmentsPage() {
     }
   }
 
-  const openQuickDetails = useCallback(
-    (appointment: Appointment, anchor: HTMLElement) => {
-      setQuickDetails({
-        appointment,
-        anchorRect: anchor.getBoundingClientRect(),
-      });
-    },
-    [],
-  );
-
-  const closeQuickDetails = useCallback(() => {
-    setQuickDetails(null);
-  }, []);
-
   if (!canList) {
     return (
       <section>
@@ -307,7 +277,6 @@ export default function AppointmentsPage() {
             onDayClick={handleCalendarDayClick}
             onSlotClick={handleCalendarSlotClick}
             onAppointmentClick={handleCalendarAppointmentClick}
-            onTimeGridAppointmentClick={openQuickDetails}
             todayKey={todayKey}
             month={{
               monthFocusedDateKey,
@@ -429,27 +398,6 @@ export default function AppointmentsPage() {
         />
       )}
 
-      {quickDetails && (
-        <AppointmentQuickDetails
-          appointment={quickDetails.appointment}
-          clientName={nameFor(
-            clientNames,
-            quickDetails.appointment.clientId,
-          )}
-          serviceName={nameFor(
-            serviceNames,
-            quickDetails.appointment.serviceId,
-          )}
-          employeeName={employeeNames.get(quickDetails.appointment.employeeId)}
-          servicePrice={services.find(
-            (service) => service.id === quickDetails.appointment.serviceId,
-          )?.price}
-          timezone={timezone}
-          anchorRect={quickDetails.anchorRect}
-          isMobilePanel={isMobileCalendar}
-          onClose={closeQuickDetails}
-        />
-      )}
     </section>
   );
 }
