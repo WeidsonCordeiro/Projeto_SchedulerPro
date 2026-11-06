@@ -183,7 +183,11 @@ export default function DashboardPage() {
       description={greeting}
       eyebrow="Visão geral"
       actions={
-        <Link className="btn btn-primary" to="/appointments">
+        <Link
+          className="btn btn-primary"
+          to="/appointments"
+          data-testid="dashboard-open-agenda"
+        >
           Abrir agenda
         </Link>
       }
@@ -192,7 +196,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <section>
+      <section className="dashboard-page">
         {pageHeader}
         <LoadingState label="A carregar o painel…" />
       </section>
@@ -201,7 +205,7 @@ export default function DashboardPage() {
 
   if (loadError) {
     return (
-      <section>
+      <section className="dashboard-page">
         {pageHeader}
         <ErrorState
           message={loadError}
@@ -212,7 +216,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <section>
+    <section className="dashboard-page">
       {pageHeader}
       {relatedError && (
         <div className="alert alert-warning mt-3" role="alert">
@@ -262,6 +266,7 @@ export default function DashboardPage() {
           timezone={timezone}
           title="Agenda do dia"
           emptyMessage="Nenhum agendamento para hoje."
+          listTestIdBase="dashboard-today-agenda"
         />
         <DashboardAppointments
           appointments={upcomingAppointments}
@@ -271,6 +276,7 @@ export default function DashboardPage() {
           timezone={timezone}
           title="Próximos agendamentos"
           emptyMessage="Nenhum agendamento próximo."
+          listTestIdBase="dashboard-upcoming-agenda"
         />
       </div>
     </section>
