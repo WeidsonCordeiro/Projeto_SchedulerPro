@@ -211,6 +211,26 @@ function cardValues(): string[] {
     .map((node) => node.textContent ?? "");
 }
 
+function todayAgendaDesktop() {
+  return within(screen.getByTestId("dashboard-today-agenda-desktop"));
+}
+
+function todayAgendaMobile() {
+  return within(screen.getByTestId("dashboard-today-agenda-mobile"));
+}
+
+function upcomingAgendaDesktop() {
+  return within(screen.getByTestId("dashboard-upcoming-agenda-desktop"));
+}
+
+function upcomingAgendaMobile() {
+  return within(screen.getByTestId("dashboard-upcoming-agenda-mobile"));
+}
+
+async function waitForDashboardLoaded() {
+  await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
+}
+
 const NOW = "2026-09-10T12:00:00.000Z";
 
 describe("DashboardPage", () => {
@@ -273,10 +293,16 @@ describe("DashboardPage", () => {
 
     expect(cardValues()).toEqual(["1", "2", "1"]);
 
-    const todayCard = screen.getByRole("heading", { name: "Agenda do dia" })
-      .closest(".card") as HTMLElement;
-    expect(within(todayCard).getAllByRole("row")).toHaveLength(2);
-    expect(within(todayCard).getByText("09:00")).toBeInTheDocument();
+    const todayDesktop = todayAgendaDesktop();
+    expect(todayDesktop.getAllByRole("row")).toHaveLength(2);
+    expect(todayDesktop.getByText("09:00")).toBeInTheDocument();
+    expect(screen.getByTestId("dashboard-today-agenda-desktop")).toHaveClass(
+      "d-none",
+      "d-md-block",
+    );
+    expect(screen.getByTestId("dashboard-today-agenda-mobile")).toHaveClass(
+      "d-md-none",
+    );
   });
 
   it("displays today appointments in API order", async () => {
@@ -303,12 +329,9 @@ describe("DashboardPage", () => {
     );
 
     renderDashboard();
-    await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
+    await waitForDashboardLoaded();
 
-    const card = screen
-      .getByRole("heading", { name: "Agenda do dia" })
-      .closest(".card") as HTMLElement;
-    const times = within(card)
+    const times = todayAgendaDesktop()
       .getAllByRole("row")
       .slice(1)
       .map((row) => row.querySelectorAll("td")[1]?.textContent);
@@ -337,12 +360,9 @@ describe("DashboardPage", () => {
     );
 
     renderDashboard();
-    await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
+    await waitForDashboardLoaded();
 
-    const card = screen
-      .getByRole("heading", { name: "Próximos agendamentos" })
-      .closest(".card") as HTMLElement;
-    expect(within(card).getAllByRole("row")).toHaveLength(3);
+    expect(upcomingAgendaDesktop().getAllByRole("row")).toHaveLength(3);
   });
 
   it("shows empty state when there are no appointments", async () => {
@@ -454,9 +474,10 @@ describe("DashboardPage", () => {
     );
 
     renderDashboard("OWNER", "Europe/Lisbon");
+    await waitForDashboardLoaded();
 
     expect(
-      await screen.findByText("02:30", { selector: ".text-nowrap" }),
+      todayAgendaDesktop().getByText("02:30", { selector: ".text-nowrap" }),
     ).toBeInTheDocument();
   });
 
@@ -507,5 +528,231 @@ describe("DashboardPage", () => {
       screen.queryByText(/Não foi possível carregar alguns nomes/i),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Reative a empresa/i)).not.toBeInTheDocument();
+  });
+
+  describe("mobile appointment list", () => {
+    it("renders two-column compact row with time and client; service only in expanded panel", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [
+            makeAppointment({
+              id: "today-1",
+              startAt: "2026-09-10T08:00:00.000Z",
+              endAt: "2026-09-10T08:30:00.000Z",
+              status: "scheduled",
+            }),
+          ],
+          upcomingAppointments: [
+            makeAppointment({
+              id: "up-1",
+              startAt: "2026-09-15T10:00:00.000Z",
+              endAt: "2026-09-15T10:30:00.000Z",
+              status: "confirmed",
+            }),
+          ],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const todayMobile = todayAgendaMobile();
+      const todayToggle = todayMobile.getByRole("button", { name: /09:00/i });
+      expect(within(todayToggle).getByText("09:00")).toBeInTheDocument();
+      expect(within(todayToggle).getByText("Maria Silva")).toBeInTheDocument();
+      expect(within(todayToggle).queryByText("Corte de cabelo")).not.toBeInTheDocument();
+      expect(within(todayToggle).getByText("Agendado")).toBeInTheDocument();
+      expect(todayToggle.querySelector(".bi-chevron-down")).toBeInTheDocument();
+      const collapsedPanel = todayMobile
+        .getByText("Ana Lima")
+        .closest(".dashboard-appointment-mobile-panel") as HTMLElement;
+      expect(collapsedPanel).toHaveAttribute("hidden");
+      expect(within(collapsedPanel).getByText("Corte de cabelo")).toBeInTheDocument();
+      expect(todayMobile.queryByRole("link")).not.toBeInTheDocument();
+
+      const upcomingMobile = upcomingAgendaMobile();
+      const upcomingToggle = upcomingMobile.getByRole("button", { name: /Confirmado/i });
+      expect(within(upcomingToggle).queryByText("Corte de cabelo")).not.toBeInTheDocument();
+      expect(within(upcomingToggle).getByText("Maria Silva")).toBeInTheDocument();
+      expect(upcomingMobile.queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    it("expands and collapses appointment details on row toggle", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [
+            makeAppointment({
+              id: "today-1",
+              startAt: "2026-09-10T08:00:00.000Z",
+              endAt: "2026-09-10T08:30:00.000Z",
+            }),
+          ],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const mobile = todayAgendaMobile();
+      const toggle = mobile.getByRole("button", { name: /09:00/i });
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "true");
+      expect(mobile.getByText("Ana Lima")).toBeInTheDocument();
+      expect(mobile.getByText("Profissional")).toBeInTheDocument();
+      expect(mobile.getByText("Serviço")).toBeInTheDocument();
+      expect(mobile.getByText("Corte de cabelo")).toBeInTheDocument();
+
+      fireEvent.click(toggle);
+      expect(toggle).toHaveAttribute("aria-expanded", "false");
+      expect(
+        mobile.getByText("Ana Lima").closest(".dashboard-appointment-mobile-panel"),
+      ).toHaveAttribute("hidden");
+    });
+
+    it("keeps only one expanded appointment per section", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [
+            makeAppointment({
+              id: "a",
+              startAt: "2026-09-10T08:00:00.000Z",
+              endAt: "2026-09-10T08:30:00.000Z",
+            }),
+            makeAppointment({
+              id: "b",
+              startAt: "2026-09-10T10:00:00.000Z",
+              endAt: "2026-09-10T10:30:00.000Z",
+            }),
+          ],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const mobile = todayAgendaMobile();
+      const first = mobile.getByRole("button", { name: /09:00/i });
+      const second = mobile.getByRole("button", { name: /11:00/i });
+
+      fireEvent.click(first);
+      expect(first).toHaveAttribute("aria-expanded", "true");
+      expect(second).toHaveAttribute("aria-expanded", "false");
+
+      fireEvent.click(second);
+      expect(first).toHaveAttribute("aria-expanded", "false");
+      expect(second).toHaveAttribute("aria-expanded", "true");
+    });
+
+    it("uses a scroll container for long mobile lists", async () => {
+      const manyToday = Array.from({ length: 20 }, (_, index) =>
+        makeAppointment({
+          id: `appt-${index}`,
+          startAt: `2026-09-10T${String(8 + Math.floor(index / 2)).padStart(2, "0")}:${index % 2 === 0 ? "00" : "30"}:00.000Z`,
+          endAt: `2026-09-10T${String(8 + Math.floor(index / 2)).padStart(2, "0")}:${index % 2 === 0 ? "30" : "00"}:00.000Z`,
+        }),
+      );
+
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: manyToday,
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const scroll = screen.getByTestId("dashboard-today-agenda-mobile-scroll");
+      expect(scroll).toHaveClass("dashboard-appointment-mobile-list");
+      expect(within(scroll).getAllByRole("button")).toHaveLength(20);
+    });
+
+    it("does not duplicate empty states on mobile surfaces", async () => {
+      mockSummaryResponse(makeSummary());
+      renderDashboard();
+
+      expect(
+        await screen.findByText("Nenhum agendamento para hoje."),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-today-agenda-mobile"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-upcoming-agenda-mobile"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("exposes desktop and mobile test surfaces with Bootstrap visibility classes", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [makeAppointment({ id: "x" })],
+          upcomingAppointments: [makeAppointment({ id: "y" })],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-upcoming-agenda-desktop")).toHaveClass(
+        "d-none",
+        "d-md-block",
+      );
+      expect(screen.getByTestId("dashboard-upcoming-agenda-mobile")).toHaveClass(
+        "d-md-none",
+      );
+    });
+  });
+
+  describe("dashboard tablet and desktop layout", () => {
+    it("wraps the page in dashboard-page and keeps the open agenda link", async () => {
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(document.querySelector("section.dashboard-page")).toBeInTheDocument();
+      const link = screen.getByTestId("dashboard-open-agenda");
+      expect(link).toHaveAttribute("href", "/appointments");
+      expect(link).toHaveTextContent("Abrir agenda");
+    });
+
+    it("keeps six table columns on the desktop appointment surface", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [makeAppointment({ id: "desk-1" })],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const headers = todayAgendaDesktop().getAllByRole("columnheader");
+      expect(headers.map((h) => h.textContent)).toEqual([
+        "Dia",
+        "Horário",
+        "Cliente",
+        "Serviço",
+        "Profissional",
+        "Status",
+      ]);
+    });
+
+    it("renders the scheduled status badge on the desktop appointment table", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [
+            makeAppointment({
+              id: "status-row",
+              status: "scheduled",
+            }),
+          ],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const badge = todayAgendaDesktop().getByText("Agendado");
+      expect(badge).toHaveClass("badge", "status-badge-80");
+    });
   });
 });
