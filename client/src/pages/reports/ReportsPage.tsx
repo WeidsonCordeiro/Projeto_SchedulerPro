@@ -269,7 +269,7 @@ export default function ReportsPage() {
 
   if (!canView) {
     return (
-      <section>
+      <section className="reports-page">
         <PageHeader
           title="Relatórios"
           description="Indicadores e rankings do período selecionado."
@@ -294,7 +294,7 @@ export default function ReportsPage() {
     (revenue.forecastWithoutPrice ?? 0);
 
   return (
-    <section>
+    <section className="reports-page">
       <PageHeader
         title="Relatórios"
         description="Acompanhe o desempenho da operação no período selecionado."
@@ -462,7 +462,10 @@ export default function ReportsPage() {
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Serviços mais realizados</div>
-                <div className="table-responsive table-compact">
+                <div
+                  className="d-none d-md-block table-responsive table-compact"
+                  data-testid="reports-top-services-desktop"
+                >
                   <RankingTable
                     emptyMessage="Nenhum serviço neste período."
                     headers={["Serviço", "Agend.", "Concl.", "Valor estimado"]}
@@ -474,12 +477,61 @@ export default function ReportsPage() {
                     ])}
                   />
                 </div>
+                <div
+                  className="reports-top-services-mobile d-md-none px-3 pb-3 pt-0"
+                  data-testid="reports-top-services-mobile"
+                >
+                  {topServices.length === 0 ? (
+                    <p className="text-muted small mb-0">
+                      Nenhum serviço neste período.
+                    </p>
+                  ) : (
+                    <ul className="list-unstyled mb-0 reports-ranking-mobile-list">
+                      {topServices.map((service, index) => (
+                        <li
+                          key={service.serviceId}
+                          className="reports-ranking-mobile-card"
+                          data-testid={`reports-top-service-mobile-item-${index}`}
+                        >
+                          <div className="reports-ranking-mobile-head">
+                            <span
+                              className="reports-ranking-mobile-rank"
+                              aria-hidden
+                            >
+                              #{index + 1}
+                            </span>
+                            <span className="reports-ranking-mobile-name">
+                              {service.name ?? "—"}
+                            </span>
+                          </div>
+                          <div className="reports-ranking-mobile-primary-metric">
+                            <span className="reports-ranking-mobile-metric-label">
+                              Agendamentos
+                            </span>
+                            <span className="reports-ranking-mobile-metric-value">
+                              {formatInteger(service.count)}
+                            </span>
+                          </div>
+                          <dl className="reports-ranking-mobile-details">
+                            <dt>Concluídos</dt>
+                            <dd>{formatInteger(service.completedCount)}</dd>
+                            <dt>Valor estimado</dt>
+                            <dd>{formatMoney(service.estimatedRevenue)}</dd>
+                          </dl>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
             <div className="col-xl-6">
               <div className="card h-100">
                 <div className="card-header">Funcionários</div>
-                <div className="table-responsive table-compact">
+                <div
+                  className="d-none d-md-block table-responsive table-compact"
+                  data-testid="reports-top-employees-desktop"
+                >
                   <RankingTable
                     emptyMessage="Nenhum agendamento neste período."
                     headers={[
@@ -498,6 +550,54 @@ export default function ReportsPage() {
                     ])}
                   />
                 </div>
+                <div
+                  className="reports-top-employees-mobile d-md-none px-3 pb-3 pt-0"
+                  data-testid="reports-top-employees-mobile"
+                >
+                  {employees.length === 0 ? (
+                    <p className="text-muted small mb-0">
+                      Nenhum agendamento neste período.
+                    </p>
+                  ) : (
+                    <ul className="list-unstyled mb-0 reports-ranking-mobile-list">
+                      {employees.map((employee, index) => (
+                        <li
+                          key={employee.employeeId}
+                          className="reports-ranking-mobile-card"
+                          data-testid={`reports-top-employee-mobile-item-${index}`}
+                        >
+                          <div className="reports-ranking-mobile-head">
+                            <span
+                              className="reports-ranking-mobile-rank"
+                              aria-hidden
+                            >
+                              #{index + 1}
+                            </span>
+                            <span className="reports-ranking-mobile-name">
+                              {employee.name ?? "—"}
+                            </span>
+                          </div>
+                          <div className="reports-ranking-mobile-primary-metric">
+                            <span className="reports-ranking-mobile-metric-label">
+                              Agendamentos
+                            </span>
+                            <span className="reports-ranking-mobile-metric-value">
+                              {formatInteger(employee.count)}
+                            </span>
+                          </div>
+                          <dl className="reports-ranking-mobile-details">
+                            <dt>Concluídos</dt>
+                            <dd>{formatInteger(employee.completedCount)}</dd>
+                            <dt>Cancel.</dt>
+                            <dd>{formatInteger(employee.cancelledCount)}</dd>
+                            <dt>Valor estimado</dt>
+                            <dd>{formatMoney(employee.estimatedRevenue)}</dd>
+                          </dl>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -505,14 +605,32 @@ export default function ReportsPage() {
           <div className="row g-3">
             <div className="col-xl-6">
               <div className="card h-100">
-                <div className="card-header">
-                  Clientes recorrentes
-                  <span className="text-muted small fw-normal ms-2">
+                <div
+                  className="card-header reports-clients-recurring-card-header d-flex flex-column flex-md-row flex-md-wrap align-items-start align-items-md-baseline justify-content-between"
+                  data-testid="reports-top-clients-card-header"
+                >
+                  <span className="mb-0">Clientes recorrentes</span>
+                  <span className="text-muted small fw-normal d-none d-md-inline ms-md-2">
                     {formatInteger(clients.totalClients)} clientes ativos no
                     período, {formatInteger(clients.recurringCount)} recorrentes
                   </span>
+                  <div
+                    className="text-muted small fw-normal d-md-none mb-0 reports-clients-recurring-summary"
+                    data-testid="reports-top-clients-header-summary-mobile"
+                  >
+                    <span className="d-block">
+                      {formatInteger(clients.totalClients)} clientes ativos no
+                      período
+                    </span>
+                    <span className="d-block">
+                      {formatInteger(clients.recurringCount)} recorrentes
+                    </span>
+                  </div>
                 </div>
-                <div className="table-responsive table-compact">
+                <div
+                  className="d-none d-md-block table-responsive table-compact"
+                  data-testid="reports-top-clients-desktop"
+                >
                   <RankingTable
                     emptyMessage="Nenhum cliente neste período."
                     headers={["Cliente", "Agend.", "Concl.", "Valor estimado"]}
@@ -523,6 +641,52 @@ export default function ReportsPage() {
                       formatMoney(client.estimatedRevenue),
                     ])}
                   />
+                </div>
+                <div
+                  className="reports-top-clients-mobile d-md-none px-3 pb-3 pt-0"
+                  data-testid="reports-top-clients-mobile"
+                >
+                  {clients.topClients.length === 0 ? (
+                    <p className="text-muted small mb-0">
+                      Nenhum cliente neste período.
+                    </p>
+                  ) : (
+                    <ul className="list-unstyled mb-0 reports-ranking-mobile-list">
+                      {clients.topClients.map((client, index) => (
+                        <li
+                          key={client.clientId}
+                          className="reports-ranking-mobile-card"
+                          data-testid={`reports-top-client-mobile-item-${index}`}
+                        >
+                          <div className="reports-ranking-mobile-head">
+                            <span
+                              className="reports-ranking-mobile-rank"
+                              aria-hidden
+                            >
+                              #{index + 1}
+                            </span>
+                            <span className="reports-ranking-mobile-name">
+                              {client.name ?? "—"}
+                            </span>
+                          </div>
+                          <div className="reports-ranking-mobile-primary-metric">
+                            <span className="reports-ranking-mobile-metric-label">
+                              Agendamentos
+                            </span>
+                            <span className="reports-ranking-mobile-metric-value">
+                              {formatInteger(client.count)}
+                            </span>
+                          </div>
+                          <dl className="reports-ranking-mobile-details">
+                            <dt>Concluídos</dt>
+                            <dd>{formatInteger(client.completedCount)}</dd>
+                            <dt>Valor estimado</dt>
+                            <dd>{formatMoney(client.estimatedRevenue)}</dd>
+                          </dl>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>

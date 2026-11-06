@@ -139,6 +139,30 @@ function getRevenueEstimatedValue(): HTMLElement {
   return within(card as HTMLElement).getByTestId("card-value");
 }
 
+function reportsTopServicesDesktop() {
+  return within(screen.getByTestId("reports-top-services-desktop"));
+}
+
+function reportsTopServicesMobile() {
+  return within(screen.getByTestId("reports-top-services-mobile"));
+}
+
+function reportsTopEmployeesDesktop() {
+  return within(screen.getByTestId("reports-top-employees-desktop"));
+}
+
+function reportsTopEmployeesMobile() {
+  return within(screen.getByTestId("reports-top-employees-mobile"));
+}
+
+function reportsTopClientsDesktop() {
+  return within(screen.getByTestId("reports-top-clients-desktop"));
+}
+
+function reportsTopClientsMobile() {
+  return within(screen.getByTestId("reports-top-clients-mobile"));
+}
+
 function renderReports(role: Role | null = "OWNER", timezone: string = TZ) {
   return render(
     <Provider store={makeStore(role, timezone)}>
@@ -209,15 +233,270 @@ describe("ReportsPage", () => {
     expect(screen.getByTestId("cancellation-rate")).toHaveTextContent("15%");
 
     expect(screen.getByText("Serviços mais realizados")).toBeInTheDocument();
-    expect(screen.getByText("Corte de cabelo")).toBeInTheDocument();
-    expect(screen.getByText("75,00")).toBeInTheDocument();
+    expect(reportsTopServicesDesktop().getByText("Corte de cabelo")).toBeInTheDocument();
+    expect(reportsTopServicesDesktop().getByText("75,00")).toBeInTheDocument();
     expect(screen.getByText("Funcionários")).toBeInTheDocument();
-    expect(screen.getByText("Ana Lima")).toBeInTheDocument();
-    expect(screen.getByText("90,00")).toBeInTheDocument();
+    expect(reportsTopEmployeesDesktop().getByText("Ana Lima")).toBeInTheDocument();
+    expect(reportsTopEmployeesDesktop().getByText("90,00")).toBeInTheDocument();
     expect(screen.getByText("Clientes recorrentes")).toBeInTheDocument();
-    expect(screen.getByText("Maria Silva")).toBeInTheDocument();
-    expect(screen.getByText("60,00")).toBeInTheDocument();
+    expect(reportsTopClientsDesktop().getByText("Maria Silva")).toBeInTheDocument();
+    expect(reportsTopClientsDesktop().getByText("60,00")).toBeInTheDocument();
     expect(screen.getByText("Cancelamentos")).toBeInTheDocument();
+  });
+
+  describe("ranking de serviços (superfícies mobile e desktop)", () => {
+    it("usa classes de visibilidade Bootstrap nas superfícies desktop e mobile", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      expect(screen.getByTestId("reports-top-services-desktop")).toHaveClass(
+        "d-none",
+        "d-md-block",
+      );
+      expect(screen.getByTestId("reports-top-services-mobile")).toHaveClass(
+        "d-md-none",
+      );
+    });
+
+    it("na superfície mobile, mostra posição, nome do serviço, agendamentos, concluídos e valor estimado", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const item = within(screen.getByTestId("reports-top-service-mobile-item-0"));
+      expect(item.getByText("#1")).toBeInTheDocument();
+      expect(item.getByText("Corte de cabelo")).toBeInTheDocument();
+      expect(item.getByText("Agendamentos")).toBeInTheDocument();
+      expect(item.getByText("8")).toBeInTheDocument();
+      expect(item.getByText("Concluídos")).toBeInTheDocument();
+      expect(item.getByText("5")).toBeInTheDocument();
+      expect(item.getByText("Valor estimado")).toBeInTheDocument();
+      expect(item.getByText("75,00")).toBeInTheDocument();
+    });
+
+    it("preserva a tabela na superfície desktop com colunas esperadas", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const desktop = reportsTopServicesDesktop();
+      expect(
+        desktop.getByRole("columnheader", { name: "Serviço" }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Agend." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Concl." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Valor estimado" }),
+      ).toBeInTheDocument();
+      expect(desktop.getByRole("table")).toBeInTheDocument();
+    });
+
+    it("mostra mensagem vazia nas duas superfícies quando não há serviços no ranking", async () => {
+      mockSuccess();
+      vi.mocked(reportsApi.getTopServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [],
+      } satisfies ApiResponse<ReportTopService[]>);
+
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      expect(
+        reportsTopServicesDesktop().getByText("Nenhum serviço neste período."),
+      ).toBeInTheDocument();
+      expect(
+        reportsTopServicesMobile().getByText("Nenhum serviço neste período."),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("ranking de funcionários (superfícies mobile e desktop)", () => {
+    it("usa classes de visibilidade Bootstrap nas superfícies desktop e mobile", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      expect(screen.getByTestId("reports-top-employees-desktop")).toHaveClass(
+        "d-none",
+        "d-md-block",
+      );
+      expect(screen.getByTestId("reports-top-employees-mobile")).toHaveClass(
+        "d-md-none",
+      );
+    });
+
+    it("na superfície mobile, mostra posição, nome e todas as métricas do funcionário", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const item = within(
+        screen.getByTestId("reports-top-employee-mobile-item-0"),
+      );
+      expect(item.getByText("#1")).toBeInTheDocument();
+      expect(item.getByText("Ana Lima")).toBeInTheDocument();
+      expect(item.getByText("Agendamentos")).toBeInTheDocument();
+      expect(item.getByText("12")).toBeInTheDocument();
+      expect(item.getByText("Concluídos")).toBeInTheDocument();
+      expect(item.getByText("6")).toBeInTheDocument();
+      expect(item.getByText("Cancel.")).toBeInTheDocument();
+      expect(item.getByText("2")).toBeInTheDocument();
+      expect(item.getByText("Valor estimado")).toBeInTheDocument();
+      expect(item.getByText("90,00")).toBeInTheDocument();
+    });
+
+    it("preserva a tabela na superfície desktop com colunas esperadas", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const desktop = reportsTopEmployeesDesktop();
+      expect(
+        desktop.getByRole("columnheader", { name: "Funcionário" }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Agend." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Concl." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Cancel." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Valor estimado" }),
+      ).toBeInTheDocument();
+      expect(desktop.getByRole("table")).toBeInTheDocument();
+    });
+
+    it("mostra mensagem vazia nas duas superfícies quando não há funcionários no ranking", async () => {
+      mockSuccess();
+      vi.mocked(reportsApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [],
+      } satisfies ApiResponse<ReportEmployee[]>);
+
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      expect(
+        reportsTopEmployeesDesktop().getByText(
+          "Nenhum agendamento neste período.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        reportsTopEmployeesMobile().getByText(
+          "Nenhum agendamento neste período.",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("ranking de clientes recorrentes (superfícies mobile e desktop)", () => {
+    it("usa classes de visibilidade Bootstrap nas superfícies desktop e mobile", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      expect(screen.getByTestId("reports-top-clients-desktop")).toHaveClass(
+        "d-none",
+        "d-md-block",
+      );
+      expect(screen.getByTestId("reports-top-clients-mobile")).toHaveClass(
+        "d-md-none",
+      );
+    });
+
+    it("expõe totais no cabeçalho do card nas variantes desktop e mobile", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const header = screen.getByTestId("reports-top-clients-card-header");
+      expect(header).toHaveTextContent("4");
+      expect(header).toHaveTextContent("2");
+      expect(header).toHaveTextContent("clientes ativos no período");
+      expect(header).toHaveTextContent("recorrentes");
+
+      const mobileSummary = screen.getByTestId(
+        "reports-top-clients-header-summary-mobile",
+      );
+      expect(mobileSummary).toHaveTextContent(
+        "4 clientes ativos no período",
+      );
+      expect(mobileSummary).toHaveTextContent("2 recorrentes");
+
+      const desktopLine = header.querySelector(".d-none.d-md-inline");
+      expect(desktopLine?.textContent).toContain("4");
+      expect(desktopLine?.textContent).toContain("2");
+    });
+
+    it("na superfície mobile, mostra posição, nome e métricas do cliente", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const item = within(screen.getByTestId("reports-top-client-mobile-item-0"));
+      expect(item.getByText("#1")).toBeInTheDocument();
+      expect(item.getByText("Maria Silva")).toBeInTheDocument();
+      expect(item.getByText("Agendamentos")).toBeInTheDocument();
+      expect(item.getByText("5")).toBeInTheDocument();
+      expect(item.getByText("Concluídos")).toBeInTheDocument();
+      expect(item.getByText("4")).toBeInTheDocument();
+      expect(item.getByText("Valor estimado")).toBeInTheDocument();
+      expect(item.getByText("60,00")).toBeInTheDocument();
+    });
+
+    it("preserva a tabela na superfície desktop com colunas esperadas", async () => {
+      mockSuccess();
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      const desktop = reportsTopClientsDesktop();
+      expect(
+        desktop.getByRole("columnheader", { name: "Cliente" }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Agend." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Concl." }),
+      ).toBeInTheDocument();
+      expect(
+        desktop.getByRole("columnheader", { name: "Valor estimado" }),
+      ).toBeInTheDocument();
+      expect(desktop.getByRole("table")).toBeInTheDocument();
+    });
+
+    it("mostra mensagem vazia nas duas superfícies quando não há clientes no ranking", async () => {
+      mockSuccess();
+      vi.mocked(reportsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: {
+          totalClients: 0,
+          recurringCount: 0,
+          topClients: [],
+        },
+      } satisfies ApiResponse<ReportClients>);
+
+      renderReports();
+      await screen.findByText("Visão geral");
+
+      expect(
+        reportsTopClientsDesktop().getByText("Nenhum cliente neste período."),
+      ).toBeInTheDocument();
+      expect(
+        reportsTopClientsMobile().getByText("Nenhum cliente neste período."),
+      ).toBeInTheDocument();
+    });
   });
 
   it("consulta os endpoints com o período mensal padrão", async () => {
