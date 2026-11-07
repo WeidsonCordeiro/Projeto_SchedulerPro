@@ -210,7 +210,7 @@ export default function ClientsPage() {
       {!isLoading && !loadError && clients.length > 0 && (
         <>
           <div
-            className="card table-card mt-3 d-none d-md-block"
+            className="card table-card mt-3 d-none d-xl-block"
             data-testid="clients-list-desktop"
           >
             <div className="table-responsive">
@@ -260,6 +260,54 @@ export default function ClientsPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div
+            className="entity-list-tablet d-none d-md-block d-xl-none mt-3"
+            data-testid="clients-list-tablet"
+          >
+            {clients.map((client) => (
+              <div key={client.id} className="card entity-tablet-card">
+                <div className="card-body py-3">
+                  <div className="entity-tablet-card-head">
+                    <ImageAvatar
+                      image={client.avatar}
+                      name={client.name}
+                      size="sm"
+                      shape="rounded"
+                      alt=""
+                    />
+                    <div className="entity-tablet-card-main">
+                      <div className="entity-tablet-card-title-row">
+                        <strong className="d-block entity-tablet-card-name">
+                          {client.name}
+                        </strong>
+                        {client.isActive ? (
+                          <span className="badge text-bg-success flex-shrink-0">
+                            Ativo
+                          </span>
+                        ) : (
+                          <span className="badge text-bg-secondary flex-shrink-0">
+                            Inativo
+                          </span>
+                        )}
+                      </div>
+                      <p className="entity-tablet-card-email mb-2">
+                        {client.email ?? "—"}
+                      </p>
+                      <p className="entity-tablet-card-phone mb-0 small">
+                        {client.phone}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {clientActionsVisible && (
+                  <div className="card-footer bg-transparent border-top-0 pt-0">
+                    {renderClientRowActions(client)}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
           <div

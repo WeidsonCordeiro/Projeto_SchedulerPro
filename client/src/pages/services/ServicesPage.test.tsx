@@ -72,6 +72,10 @@ function servicesMobile() {
   return within(screen.getByTestId("services-list-mobile"));
 }
 
+function servicesTablet() {
+  return within(screen.getByTestId("services-list-tablet"));
+}
+
 describe("ServicesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -489,7 +493,7 @@ describe("ServicesPage", () => {
     expect(store.getState()).not.toHaveProperty("services");
   });
 
-  it("uses responsive wrappers for desktop table and mobile cards", async () => {
+  it("uses responsive wrappers for desktop table, tablet cards and mobile cards", async () => {
     vi.mocked(servicesApi.getServices).mockResolvedValue({
       success: true,
       message: "ok",
@@ -501,9 +505,91 @@ describe("ServicesPage", () => {
 
     expect(screen.getByTestId("services-list-desktop")).toHaveClass(
       "d-none",
+      "d-xl-block",
+    );
+    expect(screen.getByTestId("services-list-tablet")).toHaveClass(
+      "d-none",
       "d-md-block",
+      "d-xl-none",
     );
     expect(screen.getByTestId("services-list-mobile")).toHaveClass("d-md-none");
+  });
+
+  describe("tablet entity cards", () => {
+    it("renders service details in tablet cards with full description", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+
+      renderPage();
+      await findDesktopTable();
+
+      const tablet = servicesTablet();
+      expect(tablet.getByText("Corte de cabelo")).toBeInTheDocument();
+      expect(tablet.getByText("Corte simples")).toBeInTheDocument();
+      expect(tablet.getByText("30 min")).toBeInTheDocument();
+      expect(tablet.getByText("15,50")).toBeInTheDocument();
+      expect(tablet.getByText("Duração")).toBeInTheDocument();
+      expect(tablet.getByText("Preço")).toBeInTheDocument();
+      expect(tablet.getByText("Ativo")).toBeInTheDocument();
+    });
+
+    it("shows toggle actions on tablet for OWNER", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      const tablet = servicesTablet();
+      expect(tablet.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+      expect(tablet.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
+      expect(tablet.getByRole("button", { name: /excluir/i })).toBeInTheDocument();
+    });
+
+    it("shows Aguarde while toggle is pending on tablet", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+      vi.mocked(servicesApi.deactivateService).mockReturnValue(
+        new Promise(() => {}),
+      );
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      fireEvent.click(
+        servicesTablet().getByRole("button", { name: /desativar/i }),
+      );
+
+      expect(
+        servicesTablet().getByRole("button", { name: /aguarde/i }),
+      ).toBeDisabled();
+    });
+
+    it("hides tablet action footer for EMPLOYEE read-only", async () => {
+      vi.mocked(servicesApi.getServices).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeService()],
+      });
+
+      renderPage(makeStore("EMPLOYEE"));
+      await findDesktopTable();
+
+      const tablet = servicesTablet();
+      expect(tablet.getByText("Corte de cabelo")).toBeInTheDocument();
+      expect(
+        tablet.queryByRole("button", { name: /editar/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("mobile entity cards", () => {

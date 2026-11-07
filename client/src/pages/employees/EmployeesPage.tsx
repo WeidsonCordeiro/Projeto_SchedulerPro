@@ -294,7 +294,7 @@ export default function EmployeesPage() {
       {!isLoading && !loadError && employees.length > 0 && (
         <>
           <div
-            className="card table-card mt-3 d-none d-md-block"
+            className="card table-card mt-3 d-none d-xl-block"
             data-testid="employees-list-desktop"
           >
             <div className="table-responsive">
@@ -358,6 +358,67 @@ export default function EmployeesPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div
+            className="entity-list-tablet d-none d-md-block d-xl-none mt-3"
+            data-testid="employees-list-tablet"
+          >
+            {employees.map((employee) => {
+              const isSelf = employee.id === currentUser?.id;
+              return (
+                <div key={employee.id} className="card entity-tablet-card">
+                  <div className="card-body py-3">
+                    <div className="entity-tablet-card-head">
+                      <ImageAvatar
+                        image={employee.avatar}
+                        name={employee.name}
+                        size="sm"
+                        shape="rounded"
+                        alt=""
+                      />
+                      <div className="entity-tablet-card-main">
+                        <div className="entity-tablet-card-title-row">
+                          <div className="entity-tablet-card-title-text">
+                            <strong className="d-block">{employee.name}</strong>
+                            {isSelf && (
+                              <span className="table-subline">Você</span>
+                            )}
+                          </div>
+                          {employee.isActive === false ? (
+                            <span className="badge text-bg-secondary flex-shrink-0">
+                              Inativo
+                            </span>
+                          ) : (
+                            <span className="badge text-bg-success flex-shrink-0">
+                              Ativo
+                            </span>
+                          )}
+                        </div>
+                        <p className="entity-tablet-card-email mb-2">
+                          {employee.email}
+                        </p>
+                        <div className="entity-tablet-card-meta">
+                          <span
+                            className={`badge ${ROLE_BADGE_CLASS[employee.role]}`}
+                          >
+                            {employee.role}
+                          </span>
+                          <span className="small text-muted">
+                            Adicionado em {formatDate(employee.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {actionsVisible && (
+                    <div className="card-footer bg-transparent border-top-0 pt-0">
+                      {renderEmployeeRowActions(employee)}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div

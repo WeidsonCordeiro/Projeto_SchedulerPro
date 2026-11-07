@@ -74,6 +74,10 @@ function employeesMobile() {
   return within(screen.getByTestId("employees-list-mobile"));
 }
 
+function employeesTablet() {
+  return within(screen.getByTestId("employees-list-tablet"));
+}
+
 describe("EmployeesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -566,7 +570,7 @@ describe("EmployeesPage", () => {
     expect(store.getState()).not.toHaveProperty("employees");
   });
 
-  it("uses responsive wrappers for desktop table and mobile cards", async () => {
+  it("uses responsive wrappers for desktop table, tablet cards and mobile cards", async () => {
     vi.mocked(employeesApi.getEmployees).mockResolvedValue({
       success: true,
       message: "ok",
@@ -578,9 +582,77 @@ describe("EmployeesPage", () => {
 
     expect(screen.getByTestId("employees-list-desktop")).toHaveClass(
       "d-none",
+      "d-xl-block",
+    );
+    expect(screen.getByTestId("employees-list-tablet")).toHaveClass(
+      "d-none",
       "d-md-block",
+      "d-xl-none",
     );
     expect(screen.getByTestId("employees-list-mobile")).toHaveClass("d-md-none");
+  });
+
+  describe("tablet entity cards", () => {
+    it("renders employee details in tablet cards", async () => {
+      vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeEmployee()],
+      });
+
+      renderPage();
+      await findDesktopTable();
+
+      const tablet = employeesTablet();
+      expect(tablet.getByText("Ana Silva")).toBeInTheDocument();
+      expect(tablet.getByText("ana@example.com")).toBeInTheDocument();
+      expect(tablet.getByText("EMPLOYEE")).toBeInTheDocument();
+      expect(tablet.getByText("Ativo")).toBeInTheDocument();
+      expect(tablet.getByText(/Adicionado em/i)).toBeInTheDocument();
+    });
+
+    it("shows row actions on tablet for OWNER including delete", async () => {
+      vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeEmployee()],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      const tablet = employeesTablet();
+      expect(tablet.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+      expect(tablet.getByRole("button", { name: /desativar/i })).toBeInTheDocument();
+      expect(tablet.getByRole("button", { name: /excluir/i })).toBeInTheDocument();
+    });
+
+    it("marks your own card on tablet and hides destructive actions", async () => {
+      vi.mocked(employeesApi.getEmployees).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeEmployee({
+            id: "507f1f77bcf86cd799439011",
+            name: "Owner Teste",
+            role: "OWNER",
+          }),
+        ],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      const tablet = employeesTablet();
+      expect(tablet.getByText("Você")).toBeInTheDocument();
+      expect(tablet.getByRole("button", { name: /editar/i })).toBeInTheDocument();
+      expect(
+        tablet.queryByRole("button", { name: /desativar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        tablet.queryByRole("button", { name: /excluir/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("mobile entity cards", () => {
