@@ -253,7 +253,7 @@ export default function ServicesPage() {
       {!isLoading && !loadError && services.length > 0 && (
         <>
           <div
-            className="card table-card mt-3 d-none d-md-block"
+            className="card table-card mt-3 d-none d-xl-block"
             data-testid="services-list-desktop"
           >
             <div className="table-responsive">
@@ -297,6 +297,56 @@ export default function ServicesPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          <div
+            className="entity-list-tablet d-none d-md-block d-xl-none mt-3"
+            data-testid="services-list-tablet"
+          >
+            {services.map((service) => (
+              <div key={service.id} className="card entity-tablet-card">
+                <div className="card-body py-3">
+                  <div className="entity-tablet-card-title-row mb-2">
+                    <h3 className="h6 mb-0 entity-tablet-service-name">
+                      {service.name}
+                    </h3>
+                    {service.isActive ? (
+                      <span className="badge text-bg-success flex-shrink-0">
+                        Ativo
+                      </span>
+                    ) : (
+                      <span className="badge text-bg-secondary flex-shrink-0">
+                        Inativo
+                      </span>
+                    )}
+                  </div>
+                  {service.description && (
+                    <p className="entity-tablet-service-description mb-2 mb-sm-3">
+                      {service.description}
+                    </p>
+                  )}
+                  <div className="row g-2 entity-tablet-service-meta-row">
+                    <div className="col-sm-6">
+                      <span className="small text-muted text-uppercase fw-semibold d-block mb-0">
+                        Duração
+                      </span>
+                      <span>{service.duration} min</span>
+                    </div>
+                    <div className="col-sm-6">
+                      <span className="small text-muted text-uppercase fw-semibold d-block mb-0">
+                        Preço
+                      </span>
+                      <span>{formatPrice(service.price)}</span>
+                    </div>
+                  </div>
+                </div>
+                {serviceActionsVisible && (
+                  <div className="card-footer bg-transparent border-top-0 pt-0">
+                    {renderServiceRowActions(service)}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
           <div

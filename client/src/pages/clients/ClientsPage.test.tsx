@@ -72,6 +72,10 @@ function clientsMobile() {
   return within(screen.getByTestId("clients-list-mobile"));
 }
 
+function clientsTablet() {
+  return within(screen.getByTestId("clients-list-tablet"));
+}
+
 describe("ClientsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -589,7 +593,7 @@ describe("ClientsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses responsive wrappers for desktop table and mobile cards", async () => {
+  it("uses responsive wrappers for desktop table, tablet cards and mobile cards", async () => {
     vi.mocked(clientsApi.getClients).mockResolvedValue({
       success: true,
       message: "ok",
@@ -601,9 +605,71 @@ describe("ClientsPage", () => {
 
     expect(screen.getByTestId("clients-list-desktop")).toHaveClass(
       "d-none",
+      "d-xl-block",
+    );
+    expect(screen.getByTestId("clients-list-tablet")).toHaveClass(
+      "d-none",
       "d-md-block",
+      "d-xl-none",
     );
     expect(screen.getByTestId("clients-list-mobile")).toHaveClass("d-md-none");
+  });
+
+  describe("tablet entity cards", () => {
+    it("renders client details in tablet cards", async () => {
+      vi.mocked(clientsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeClient()],
+      });
+
+      renderPage();
+      await findDesktopTable();
+
+      const tablet = clientsTablet();
+      expect(tablet.getByText("Ana Silva")).toBeInTheDocument();
+      expect(tablet.getByText("ana@example.com")).toBeInTheDocument();
+      expect(tablet.getByText("912345678")).toBeInTheDocument();
+      expect(tablet.getByText("Ativo")).toBeInTheDocument();
+    });
+
+    it("shows Convidar on tablet when invite is allowed", async () => {
+      vi.mocked(clientsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeClient()],
+      });
+
+      renderPage(makeStore("OWNER"));
+      await findDesktopTable();
+
+      expect(
+        clientsTablet().getByRole("button", { name: /convidar/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides tablet action footer for EMPLOYEE read-only", async () => {
+      vi.mocked(clientsApi.getClients).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [makeClient()],
+      });
+
+      renderPage(makeStore("EMPLOYEE"));
+      await findDesktopTable();
+
+      const tablet = clientsTablet();
+      expect(tablet.getByText("Ana Silva")).toBeInTheDocument();
+      expect(
+        tablet.queryByRole("button", { name: /editar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        tablet.queryByRole("button", { name: /convidar/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        tablet.queryByRole("button", { name: /excluir/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("mobile entity cards", () => {
