@@ -174,6 +174,7 @@ export default function DashboardPage() {
 
   const scheduledCount = summary?.period.byStatus.scheduled ?? 0;
   const confirmedCount = summary?.period.byStatus.confirmed ?? 0;
+  const activeClientsCount = summary?.activeClientsCount ?? 0;
 
   const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
 
@@ -234,25 +235,32 @@ export default function DashboardPage() {
         </div>
       </div>
       <div className="row g-3 dashboard-kpis">
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-6 col-lg-3">
           <DashboardCard
             title="Hoje"
             value={todayAppointments.length}
             icon="bi-calendar-check"
           />
         </div>
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-6 col-lg-3">
           <DashboardCard
             title="Pendentes"
             value={scheduledCount}
             icon="bi-clock"
           />
         </div>
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-6 col-lg-3">
           <DashboardCard
             title="Confirmados"
             value={confirmedCount}
             icon="bi-check-circle"
+          />
+        </div>
+        <div className="col-12 col-md-6 col-lg-3">
+          <DashboardCard
+            title="Clientes ativos"
+            value={activeClientsCount}
+            icon="bi-people"
           />
         </div>
       </div>

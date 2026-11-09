@@ -211,6 +211,11 @@ function cardValues(): string[] {
     .map((node) => node.textContent ?? "");
 }
 
+function activeClientsCard() {
+  const title = screen.getByRole("heading", { name: "Clientes ativos" });
+  return title.closest(".card") as HTMLElement;
+}
+
 function todayAgendaDesktop() {
   return within(screen.getByTestId("dashboard-today-agenda-desktop"));
 }
@@ -291,7 +296,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText(/olá, owner teste/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
 
-    expect(cardValues()).toEqual(["1", "2", "1"]);
+    expect(cardValues()).toEqual(["1", "2", "1", "0"]);
 
     const todayDesktop = todayAgendaDesktop();
     expect(todayDesktop.getAllByRole("row")).toHaveLength(2);
@@ -372,7 +377,7 @@ describe("DashboardPage", () => {
     expect(
       await screen.findByText("Nenhum agendamento para hoje."),
     ).toBeInTheDocument();
-    expect(cardValues()).toEqual(["0", "0", "0"]);
+    expect(cardValues()).toEqual(["0", "0", "0", "0"]);
     expect(screen.getByText("Nenhum agendamento próximo.")).toBeInTheDocument();
   });
 
@@ -753,6 +758,67 @@ describe("DashboardPage", () => {
 
       const badge = todayAgendaDesktop().getByText("Agendado");
       expect(badge).toHaveClass("badge", "status-badge-80");
+    });
+  });
+
+  describe("active clients KPI", () => {
+    it("shows the active clients count from the summary", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 12 }));
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(
+        screen.getByRole("heading", { name: "Clientes ativos" }),
+      ).toBeInTheDocument();
+      expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+        "12",
+      );
+    });
+
+    it("shows zero active clients when the summary reports 0", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 0 }));
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+        "0",
+      );
+    });
+
+    it("keeps existing KPI titles and four card values after load", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [makeAppointment()],
+          period: {
+            ...makeSummary().period,
+            byStatus: { ...emptyByStatus(), scheduled: 2, confirmed: 1 },
+          },
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(screen.getByRole("heading", { name: "Hoje" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Pendentes" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Confirmados" })).toBeInTheDocument();
+      expect(cardValues()).toEqual(["1", "2", "1", "0"]);
+    });
+
+    it("uses responsive column classes on the fourth KPI wrapper", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 3 }));
+
+      const { container } = renderDashboard();
+      await waitForDashboardLoaded();
+
+      const grid = container.querySelector(".dashboard-kpis");
+      expect(grid).toBeTruthy();
+      const columns = grid!.children;
+      expect(columns).toHaveLength(4);
+      const fourth = columns[3] as HTMLElement;
+      expect(fourth).toHaveClass("col-12", "col-md-6", "col-lg-3");
     });
   });
 });
