@@ -23,13 +23,43 @@ function makeStore() {
 }
 
 describe("commitCompanyToStore", () => {
-  it("updates company slice and auth.user.companyName", () => {
+  it("updates company slice, auth.user.companyName and companyTimezone", () => {
     const store = makeStore();
     store.dispatch(setCredentials(session));
     store.dispatch(commitCompanyToStore(company));
 
     expect(store.getState().company.company).toEqual(company);
     expect(store.getState().auth.user?.companyName).toBe("Nome Atualizado");
+    expect(store.getState().auth.user?.companyTimezone).toBe("Europe/Lisbon");
     expect(store.getState().auth.user?.role).toBe(session.role);
+  });
+
+  it("syncs an updated timezone without changing unrelated auth fields", () => {
+    const store = makeStore();
+    store.dispatch(setCredentials(session));
+    const updatedTimezone: Company = {
+      ...company,
+      timezone: "America/Sao_Paulo",
+    };
+    store.dispatch(commitCompanyToStore(updatedTimezone));
+
+    expect(store.getState().company.company?.timezone).toBe("America/Sao_Paulo");
+    expect(store.getState().auth.user?.companyTimezone).toBe("America/Sao_Paulo");
+    expect(store.getState().auth.user?.companyName).toBe("Nome Atualizado");
+    expect(store.getState().auth.user?.role).toBe(session.role);
+  });
+
+  it("syncs a name change while preserving the company timezone in auth", () => {
+    const store = makeStore();
+    store.dispatch(setCredentials(session));
+    const renamed: Company = {
+      ...company,
+      name: "outro nome",
+      timezone: "Europe/Lisbon",
+    };
+    store.dispatch(commitCompanyToStore(renamed));
+
+    expect(store.getState().auth.user?.companyName).toBe("outro nome");
+    expect(store.getState().auth.user?.companyTimezone).toBe("Europe/Lisbon");
   });
 });

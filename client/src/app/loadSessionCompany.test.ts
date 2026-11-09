@@ -47,6 +47,15 @@ describe("loadSessionCompany", () => {
     expect(store.getState().company.company?.name).toBe("salao do centro");
   });
 
+  it("syncs company name and timezone into auth when session credentials are set", async () => {
+    const store = makeStore();
+    store.dispatch(setCredentials(session));
+    await loadSessionCompany(store.dispatch, session, store.getState);
+    expect(store.getState().company.company?.timezone).toBe("Europe/Lisbon");
+    expect(store.getState().auth.user?.companyName).toBe("salao do centro");
+    expect(store.getState().auth.user?.companyTimezone).toBe("Europe/Lisbon");
+  });
+
   it("does not call getCompany for MANAGER", async () => {
     const store = makeStore();
     const managerSession: AuthSession = {

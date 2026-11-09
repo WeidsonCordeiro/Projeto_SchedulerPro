@@ -2,7 +2,8 @@ import companyApi from "../api/endpoints/company.api";
 import { getCompanyAbilities } from "../config/companyPermissions";
 import type { AppDispatch, RootState } from "../store";
 import { store } from "../store";
-import { clearCompany, setCompany } from "../store/slices/companySlice";
+import { clearCompany } from "../store/slices/companySlice";
+import { commitCompanyToStore } from "../store/companySessionSync";
 import type { AuthSession } from "../types/auth";
 
 /**
@@ -41,7 +42,7 @@ export async function loadSessionCompany(
     const companyResponse = await companyApi.getCompany();
     const company = companyResponse.data?.[0];
     if (company) {
-      dispatch(setCompany(company));
+      dispatch(commitCompanyToStore(company));
     } else {
       dispatch(clearCompany());
     }
