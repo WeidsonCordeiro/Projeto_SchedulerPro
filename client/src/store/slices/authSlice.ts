@@ -84,6 +84,11 @@ const authSlice = createSlice({
         state.user.companyName = action.payload;
       }
     },
+    setUserCompanyTimezone(state, action: PayloadAction<string>) {
+      if (state.user) {
+        state.user.companyTimezone = action.payload;
+      }
+    },
     setSessionExpirationMessage(state, action: PayloadAction<string>) {
       state.sessionExpirationMessage = action.payload;
     },
@@ -102,6 +107,7 @@ export const {
   clearSessionExpirationMessage,
   setStaffCompanyAccessSuspended,
   setUserCompanyName,
+  setUserCompanyTimezone,
 } = authSlice.actions;
 
 export default authSlice.reducer;

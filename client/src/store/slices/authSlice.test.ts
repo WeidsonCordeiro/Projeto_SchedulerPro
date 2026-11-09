@@ -8,6 +8,7 @@ import authReducer, {
   setLoading,
   setSessionExpirationMessage,
   setUserCompanyName,
+  setUserCompanyTimezone,
 } from "./authSlice";
 import { session, sessionRequiringChange } from "../../test/fixtures";
 
@@ -146,6 +147,27 @@ describe("authSlice", () => {
 
   it("setUserCompanyName is a no-op when user is null", () => {
     const state = authReducer(initialState, setUserCompanyName("ignored"));
+
+    expect(state.user).toBeNull();
+  });
+
+  it("setUserCompanyTimezone updates only companyTimezone when user is present", () => {
+    const authenticated = authReducer(initialState, setCredentials(session));
+    const state = authReducer(
+      authenticated,
+      setUserCompanyTimezone("America/New_York"),
+    );
+
+    expect(state.user?.companyTimezone).toBe("America/New_York");
+    expect(state.user?.companyName).toBe(session.companyName);
+    expect(state.user?.role).toBe(session.role);
+  });
+
+  it("setUserCompanyTimezone is a no-op when user is null", () => {
+    const state = authReducer(
+      initialState,
+      setUserCompanyTimezone("America/New_York"),
+    );
 
     expect(state.user).toBeNull();
   });

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,7 +7,9 @@ import companyApi from "../../api/endpoints/company.api";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
-import companyReducer from "../../store/slices/companySlice";
+import companyReducer, {
+  selectCompanyTimezone,
+} from "../../store/slices/companySlice";
 import { formatTimezoneOptionLabel } from "../../config/timezones";
 import { getPublicBookingUrl } from "../../config/publicBookingUrl";
 import type { Role } from "../../types/auth";
@@ -149,6 +151,8 @@ describe("CompanyPage", () => {
     // A empresa carregada também alimenta o estado de sessão (timezone).
     await waitFor(() => {
       expect(store.getState().company.company).toEqual(loadedCompany);
+      expect(store.getState().auth.user?.companyTimezone).toBe("Europe/Lisbon");
+      expect(selectCompanyTimezone(store.getState())).toBe("Europe/Lisbon");
     });
   });
 
@@ -299,6 +303,9 @@ describe("CompanyPage", () => {
     });
     await waitFor(() => {
       expect(store.getState().company.company).toEqual(updated);
+      expect(store.getState().auth.user?.companyTimezone).toBe("America/Sao_Paulo");
+      expect(selectCompanyTimezone(store.getState())).toBe("America/Sao_Paulo");
+      expect(store.getState().auth.user?.companyName).toBe("salao novo");
     });
   });
 
@@ -512,6 +519,36 @@ describe("CompanyPage", () => {
       expect(
         screen.queryByTestId("company-inactive-notice"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("responsive markup", () => {
+    it("exposes a stable test id and structure on the public booking link group", async () => {
+      renderPage();
+
+      const group = await screen.findByTestId("company-public-booking-link");
+      expect(group).toHaveClass("input-group", "company-public-booking-link");
+
+      const scoped = within(group);
+      expect(scoped.getByLabelText("Link público de agendamento")).toHaveAttribute(
+        "type",
+        "url",
+      );
+      expect(
+        scoped.getByRole("button", { name: "Copiar link" }),
+      ).toBeInTheDocument();
+      expect(scoped.getByRole("link", { name: "Abrir link" })).toBeInTheDocument();
+    });
+
+    it("wraps the logo uploader in the responsive company-form-logo-uploader container", async () => {
+      renderPage();
+
+      await screen.findByLabelText("Nome");
+      const wrapper = document.querySelector(".company-form-logo-uploader");
+      expect(wrapper).not.toBeNull();
+      expect(
+        within(wrapper as HTMLElement).getByLabelText("Adicionar logo"),
+      ).toBeInTheDocument();
     });
   });
 });
