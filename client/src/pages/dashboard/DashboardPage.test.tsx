@@ -233,7 +233,7 @@ function upcomingAgendaMobile() {
 }
 
 async function waitForDashboardLoaded() {
-  await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i });
+  await screen.findByRole("heading", { name: "Resumo do dia" });
 }
 
 const NOW = "2026-09-10T12:00:00.000Z";
@@ -758,6 +758,178 @@ describe("DashboardPage", () => {
 
       const badge = todayAgendaDesktop().getByText("Agendado");
       expect(badge).toHaveClass("badge", "status-badge-80");
+    });
+  });
+
+  describe("status distribution (O2)", () => {
+    it("renders all five status distribution rows", async () => {
+      mockSummaryResponse(makeSummary());
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(
+        screen.getByTestId("dashboard-status-distribution"),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-status-row-scheduled")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-status-row-confirmed")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-status-row-completed")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-status-row-cancelled")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-status-row-no-show")).toBeInTheDocument();
+    });
+
+    it("shows non-zero counts for completed, cancelled and no-show", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          period: {
+            ...makeSummary().period,
+            total: 10,
+            byStatus: {
+              ...emptyByStatus(),
+              scheduled: 2,
+              confirmed: 3,
+              completed: 2,
+              cancelled: 2,
+              "no-show": 1,
+            },
+          },
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-status-count-completed")).toHaveTextContent(
+        "2",
+      );
+      expect(screen.getByTestId("dashboard-status-count-cancelled")).toHaveTextContent(
+        "2",
+      );
+      expect(screen.getByTestId("dashboard-status-count-no-show")).toHaveTextContent(
+        "1",
+      );
+    });
+
+    it("uses proportional bar widths from period totals", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          period: {
+            ...makeSummary().period,
+            total: 10,
+            byStatus: {
+              ...emptyByStatus(),
+              scheduled: 3,
+              confirmed: 0,
+              completed: 0,
+              cancelled: 0,
+              "no-show": 0,
+            },
+          },
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-status-bar-scheduled")).toHaveStyle({
+        width: "30%",
+      });
+    });
+
+    it("shows zero counts for every status when byStatus is empty", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          period: {
+            ...makeSummary().period,
+            total: 0,
+            byStatus: emptyByStatus(),
+          },
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(
+        screen.getByTestId("dashboard-status-distribution-empty"),
+      ).toHaveTextContent(/sem agendamentos no período/i);
+
+      for (const status of [
+        "scheduled",
+        "confirmed",
+        "completed",
+        "cancelled",
+        "no-show",
+      ] as const) {
+        expect(screen.getByTestId(`dashboard-status-count-${status}`)).toHaveTextContent(
+          "0",
+        );
+        expect(screen.getByTestId(`dashboard-status-bar-${status}`)).toHaveStyle({
+          width: "0%",
+        });
+      }
+    });
+
+    it("shows the centralized Portuguese labels", async () => {
+      mockSummaryResponse(makeSummary());
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-status-label-scheduled")).toHaveTextContent(
+        "Agendado",
+      );
+      expect(screen.getByTestId("dashboard-status-label-confirmed")).toHaveTextContent(
+        "Confirmado",
+      );
+      expect(screen.getByTestId("dashboard-status-label-completed")).toHaveTextContent(
+        "Concluído",
+      );
+      expect(screen.getByTestId("dashboard-status-label-cancelled")).toHaveTextContent(
+        "Cancelado",
+      );
+      expect(screen.getByTestId("dashboard-status-label-no-show")).toHaveTextContent(
+        "Não compareceu",
+      );
+    });
+
+    it("does not render distribution while the summary is still loading", () => {
+      vi.mocked(dashboardApi.getSummary).mockReturnValue(new Promise(() => {}));
+      renderDashboard();
+
+      expect(
+        screen.queryByTestId("dashboard-status-distribution"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not render distribution when the summary request fails", async () => {
+      vi.mocked(dashboardApi.getSummary).mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      );
+
+      renderDashboard();
+      await screen.findByText("Erro interno do servidor.");
+
+      expect(
+        screen.queryByTestId("dashboard-status-distribution"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("keeps today and upcoming agenda sections after adding distribution", async () => {
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: [makeAppointment()],
+          upcomingAppointments: [
+            makeAppointment({ id: "up1", startAt: "2026-09-11T09:00:00.000Z" }),
+          ],
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-today-agenda-desktop")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-upcoming-agenda-desktop")).toBeInTheDocument();
     });
   });
 

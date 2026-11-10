@@ -19,6 +19,7 @@ import type { Employee, EmployeeRole } from "../../types/employee";
 import type { DashboardSummary } from "../../types/dashboard";
 import DashboardCard from "../../components/common/DashboardCard";
 import DashboardAppointments from "./DashboardAppointments";
+import DashboardStatusDistribution from "./DashboardStatusDistribution";
 import PageHeader from "../../components/common/PageHeader";
 import ErrorState from "../../components/common/ErrorState";
 import LoadingState from "../../components/common/LoadingState";
@@ -264,6 +265,8 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {summary && <DashboardStatusDistribution period={summary.period} />}
 
       <div className="dashboard-agenda-grid">
         <DashboardAppointments
