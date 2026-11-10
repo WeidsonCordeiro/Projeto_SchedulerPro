@@ -68,6 +68,7 @@ describe("DashboardService.getSummary", () => {
     expect(dashboardRepository.findStatusCounts).toHaveBeenCalledWith(
       companyId,
       range,
+      undefined,
     );
     expect(result.period.total).toBe(4);
     expect(result.period.byStatus[AppointmentStatus.SCHEDULED]).toBe(2);
@@ -92,6 +93,7 @@ describe("DashboardService.getSummary", () => {
       companyId,
       now,
       20,
+      undefined,
     );
   });
 
@@ -105,6 +107,30 @@ describe("DashboardService.getSummary", () => {
       companyId,
       now,
       5,
+      undefined,
     );
+  });
+
+  it("propaga employeeId e omite activeClientsCount para escopo de funcionário", async () => {
+    const employeeId = "507f1f77bcf86cd799439099";
+
+    const result = await DashboardService.getSummary(companyId, range, {
+      now,
+      readScope: { companyId, employeeId },
+    });
+
+    expect(dashboardRepository.findStatusCounts).toHaveBeenCalledWith(
+      companyId,
+      range,
+      employeeId,
+    );
+    expect(dashboardRepository.findUpcoming).toHaveBeenCalledWith(
+      companyId,
+      now,
+      5,
+      employeeId,
+    );
+    expect(dashboardRepository.countActiveClients).not.toHaveBeenCalled();
+    expect(result.activeClientsCount).toBeUndefined();
   });
 });

@@ -17,7 +17,8 @@ export interface DashboardSummary {
   };
   todayAppointments: DashboardAppointmentItem[];
   upcomingAppointments: DashboardAppointmentItem[];
-  activeClientsCount: number;
+  /** Omitido para EMPLOYEE (KPI não aplicável ao escopo). */
+  activeClientsCount?: number;
 }
 
 export interface DashboardAppointmentItem {

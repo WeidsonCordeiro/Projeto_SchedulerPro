@@ -17,7 +17,7 @@ import { Request, Response } from "express";
 import AppointmentService from "../services/AppointmentService";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
-import { Role } from "../../../constants/roles";
+import { resolveAppointmentReadScope } from "../utils/appointment-read-scope";
 import { ResponseHandler } from "../../../utils/response";
 
 class AppointmentController {
@@ -51,8 +51,7 @@ class AppointmentController {
   */
   public findAll = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
-    const clientScope =
-      req.user!.role === Role.CLIENT ? req.user!.clientId : undefined;
+    const readScope = resolveAppointmentReadScope(req.user!);
 
     const { startAt, endAt } = req.query as Record<string, string | undefined>;
     const filter: { startAt?: Date; endAt?: Date } = {};
@@ -67,7 +66,7 @@ class AppointmentController {
     const appointments = await this.appointmentService.findAll(
       companyId,
       filter,
-      clientScope,
+      readScope,
     );
 
     return ResponseHandler.success(
@@ -130,13 +129,12 @@ class AppointmentController {
   */
   public findById = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
-    const clientScope =
-      req.user!.role === Role.CLIENT ? req.user!.clientId : undefined;
+    const readScope = resolveAppointmentReadScope(req.user!);
 
     const appointment = await this.appointmentService.findById(
       req.params.id as string,
       companyId,
-      clientScope,
+      readScope,
     );
 
     return ResponseHandler.success(

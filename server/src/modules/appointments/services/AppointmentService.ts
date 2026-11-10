@@ -14,6 +14,11 @@
 import { Types, ClientSession } from "mongoose";
 
 import AppointmentRepository from "../repositories/AppointmentRepository";
+import {
+  type AppointmentReadScope,
+  isCompanyWideAppointmentReadScope,
+  toAppointmentListScope,
+} from "../utils/appointment-read-scope";
 import { withBookingTransaction } from "./appointment-booking-transaction";
 import AppointmentMapper from "../mappers/AppointmentMapper";
 import PublicAppointmentMapper from "../mappers/PublicAppointmentMapper";
@@ -703,7 +708,7 @@ class AppointmentService {
   public async findAll(
     companyId: string,
     filter: AppointmentListFilter = {},
-    clientScope?: string,
+    readScope: AppointmentReadScope = { companyId },
     now: Date = new Date(),
   ) {
     /**
@@ -712,10 +717,11 @@ class AppointmentService {
      * automaticamente cancelado antes da consulta.
      *
      * A expiração é global da empresa e não é disparada em
-     * consultas escopadas a um cliente (portal).
+     * consultas escopadas a um cliente (portal) nem a um
+     * funcionário (evita cancelar agendamentos de colegas).
      * ----------------------------------------------------------
      */
-    if (!clientScope) {
+    if (isCompanyWideAppointmentReadScope(readScope)) {
       await this.expireOverdueScheduled(companyId, now);
     }
 
@@ -723,7 +729,7 @@ class AppointmentService {
       await this.appointmentRepository.findByCompanyId(
         companyId,
         filter,
-        clientScope,
+        toAppointmentListScope(readScope),
       );
 
     return appointments.map(AppointmentMapper.toResponse);
@@ -751,14 +757,18 @@ class AppointmentService {
 * Busca um agendamento pelo ID.
 * ==========================================================
   */
-  public async findById(id: string, companyId: string, clientScope?: string) {
-    const appointment = await this.appointmentRepository.findById(id);
+  public async findById(
+    id: string,
+    companyId: string,
+    readScope: AppointmentReadScope = { companyId },
+  ) {
+    const appointment = await this.appointmentRepository.findByIdInCompany(
+      id,
+      companyId,
+      toAppointmentListScope(readScope),
+    );
 
-    if (!appointment || appointment.companyId.toString() !== companyId) {
-      throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
-    }
-
-    if (clientScope && appointment.clientId.toString() !== clientScope) {
+    if (!appointment) {
       throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
     }
 
@@ -784,7 +794,7 @@ class AppointmentService {
       await this.appointmentRepository.findByCompanyId(
         companyId,
         filter,
-        clientId,
+        { clientId },
       );
 
     return Promise.all(

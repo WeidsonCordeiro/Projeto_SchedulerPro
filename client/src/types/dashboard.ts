@@ -9,5 +9,5 @@ export interface DashboardSummary {
   };
   todayAppointments: Appointment[];
   upcomingAppointments: Appointment[];
-  activeClientsCount: number;
+  activeClientsCount?: number;
 }

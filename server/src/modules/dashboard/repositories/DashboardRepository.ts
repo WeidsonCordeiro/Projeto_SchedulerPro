@@ -10,8 +10,9 @@ class DashboardRepository {
   private buildStartAtRangeMatch(
     companyId: string | Types.ObjectId,
     range: DashboardRange,
+    employeeId?: string | Types.ObjectId,
   ): Record<string, unknown> {
-    return {
+    const match: Record<string, unknown> = {
       companyId: new Types.ObjectId(companyId),
       deletedAt: null,
       startAt: {
@@ -19,14 +20,21 @@ class DashboardRepository {
         $lt: range.endAt,
       },
     };
+
+    if (employeeId) {
+      match.employeeId = new Types.ObjectId(employeeId);
+    }
+
+    return match;
   }
 
   public async findStatusCounts(
     companyId: string | Types.ObjectId,
     range: DashboardRange,
+    employeeId?: string | Types.ObjectId,
   ): Promise<StatusCountRow[]> {
     const pipeline: PipelineStage[] = [
-      { $match: this.buildStartAtRangeMatch(companyId, range) },
+      { $match: this.buildStartAtRangeMatch(companyId, range, employeeId) },
       { $group: { _id: "$status", count: { $sum: 1 } } },
       { $project: { _id: 0, status: "$_id", count: 1 } },
     ];
@@ -37,8 +45,11 @@ class DashboardRepository {
   public async findAppointmentsInPeriod(
     companyId: string | Types.ObjectId,
     range: DashboardRange,
+    employeeId?: string | Types.ObjectId,
   ): Promise<AppointmentDocument[]> {
-    return Appointment.find(this.buildStartAtRangeMatch(companyId, range)).sort({
+    return Appointment.find(
+      this.buildStartAtRangeMatch(companyId, range, employeeId),
+    ).sort({
       startAt: 1,
     });
   }
@@ -47,15 +58,22 @@ class DashboardRepository {
     companyId: string | Types.ObjectId,
     now: Date,
     limit: number,
+    employeeId?: string | Types.ObjectId,
   ): Promise<AppointmentDocument[]> {
-    return Appointment.find({
+    const query: Record<string, unknown> = {
       companyId,
       deletedAt: null,
       status: {
         $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
       },
       startAt: { $gte: now },
-    })
+    };
+
+    if (employeeId) {
+      query.employeeId = employeeId;
+    }
+
+    return Appointment.find(query)
       .sort({ startAt: 1 })
       .limit(limit);
   }
