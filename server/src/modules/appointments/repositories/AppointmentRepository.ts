@@ -33,6 +33,11 @@ export interface AppointmentListRange {
   endAt?: Date;
 }
 
+export interface AppointmentListScope {
+  clientId?: string | Types.ObjectId;
+  employeeId?: string | Types.ObjectId;
+}
+
 /**
  * Campos do documento usados na persistência dos lembretes.
  *
@@ -57,6 +62,30 @@ class AppointmentRepository {
       _id: id,
       deletedAt: null,
     });
+  }
+
+  /**
+   * Busca por ID restrita ao tenant e, opcionalmente, a cliente ou funcionário.
+   */
+  public async findByIdInCompany(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    scope?: AppointmentListScope,
+  ): Promise<AppointmentDocument | null> {
+    const query: Record<string, unknown> = {
+      _id: id,
+      companyId,
+      deletedAt: null,
+    };
+
+    if (scope?.clientId) {
+      query.clientId = scope.clientId;
+    }
+    if (scope?.employeeId) {
+      query.employeeId = scope.employeeId;
+    }
+
+    return Appointment.findOne(query);
   }
 
   /**
@@ -96,15 +125,18 @@ class AppointmentRepository {
   public async findByCompanyId(
     companyId: string | Types.ObjectId,
     range?: AppointmentListRange,
-    clientId?: string | Types.ObjectId,
+    scope?: AppointmentListScope,
   ): Promise<AppointmentDocument[]> {
     const query: Record<string, unknown> = {
       companyId,
       deletedAt: null,
     };
 
-    if (clientId) {
-      query.clientId = clientId;
+    if (scope?.clientId) {
+      query.clientId = scope.clientId;
+    }
+    if (scope?.employeeId) {
+      query.employeeId = scope.employeeId;
     }
 
     if (range?.startAt) {

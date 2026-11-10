@@ -190,7 +190,7 @@ describe("AppointmentService -> notificações", () => {
     await AppointmentService.findAll(
       companyId,
       {},
-      undefined,
+      { companyId },
       new Date("2026-09-01T00:00:00.000Z"),
     );
 

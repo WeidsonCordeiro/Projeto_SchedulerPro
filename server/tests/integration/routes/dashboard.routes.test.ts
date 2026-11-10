@@ -114,6 +114,7 @@ describe("Dashboard HTTP integration", () => {
         startAt: new Date("2026-09-01T00:00:00.000Z"),
         endAt: new Date("2026-10-01T00:00:00.000Z"),
       },
+      undefined,
     );
   });
 
@@ -125,6 +126,7 @@ describe("Dashboard HTTP integration", () => {
     expect(dashboardRepository.findStatusCounts).toHaveBeenCalledWith(
       ids.companyA,
       expect.any(Object),
+      undefined,
     );
     expect(dashboardRepository.findStatusCounts).not.toHaveBeenCalledWith(
       "507f1f77bcf86cd799439099",
@@ -144,7 +146,13 @@ describe("Dashboard HTTP integration", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(dashboardRepository.findStatusCounts).toHaveBeenCalled();
+    expect(dashboardRepository.findStatusCounts).toHaveBeenCalledWith(
+      ids.companyA,
+      expect.any(Object),
+      "actor",
+    );
+    expect(dashboardRepository.countActiveClients).not.toHaveBeenCalled();
+    expect(response.body.data.activeClientsCount).toBeUndefined();
   });
 
   it("bloqueia CLIENT", async () => {

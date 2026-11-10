@@ -23,7 +23,7 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
     findByEmployeeAndDay: vi.fn(), create: vi.fn(), update: vi.fn(), softDelete: vi.fn(),
   },
   appointmentRepository: {
-    findById: vi.fn(), findByCompanyId: vi.fn(), create: vi.fn(), update: vi.fn(),
+    findById: vi.fn(), findByIdInCompany: vi.fn(), findByCompanyId: vi.fn(), create: vi.fn(), update: vi.fn(),
     updateStatus: vi.fn(), softDelete: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(),
     cancelOverdueScheduled: vi.fn(),
   },
@@ -104,6 +104,7 @@ beforeEach(() => {
   availabilityExceptionRepository.findByEmployeeAndDate.mockResolvedValue([]);
 
   appointmentRepository.findById.mockResolvedValue(appointmentA());
+  appointmentRepository.findByIdInCompany.mockResolvedValue(appointmentA());
   appointmentRepository.findByCompanyId.mockResolvedValue([appointmentA()]);
   appointmentRepository.hasEmployeeConflict.mockResolvedValue(false);
   appointmentRepository.hasClientConflict.mockResolvedValue(false);
@@ -238,6 +239,7 @@ describe("Appointment HTTP integration", () => {
 
   it("nega consulta, update, status e delete de appointment de outra empresa", async () => {
     appointmentRepository.findById.mockResolvedValue({ ...appointmentA(), companyId: ref(ids.companyB) });
+    appointmentRepository.findByIdInCompany.mockResolvedValue(null);
     expect((await request(app).get(`/api/appointments/${ids.appointment}`)).status).toBe(404);
     expect((await request(app).patch(`/api/appointments/${ids.appointment}`).send({ notes: "x" })).status).toBe(404);
     expect((await request(app).patch(`/api/appointments/${ids.appointment}/confirm`)).status).toBe(404);
@@ -365,7 +367,7 @@ describe("Appointment HTTP integration", () => {
     expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(
       ids.companyA,
       {},
-      ids.client,
+      { clientId: ids.client },
     );
   });
 

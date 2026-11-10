@@ -1,4 +1,5 @@
 import AppointmentMapper from "../../appointments/mappers/AppointmentMapper";
+import { AppointmentReadScope } from "../../appointments/utils/appointment-read-scope";
 import { AppointmentStatus } from "../../../constants/appointment-status";
 import DashboardRepository from "../repositories/DashboardRepository";
 import {
@@ -51,17 +52,35 @@ class DashboardService {
   public async getSummary(
     companyId: string,
     range: DashboardRange,
-    options: { upcomingLimit?: number; now?: Date } = {},
+    options: {
+      upcomingLimit?: number;
+      now?: Date;
+      readScope?: AppointmentReadScope;
+    } = {},
   ): Promise<DashboardSummary> {
     const now = options.now ?? new Date();
     const upcomingLimit = this.normalizeUpcomingLimit(options.upcomingLimit);
+    const employeeId = options.readScope?.employeeId;
+
+    const includeActiveClients = !employeeId;
 
     const [statusRows, periodAppointments, upcomingDocuments, activeClientsCount] =
       await Promise.all([
-        this.dashboardRepository.findStatusCounts(companyId, range),
-        this.dashboardRepository.findAppointmentsInPeriod(companyId, range),
-        this.dashboardRepository.findUpcoming(companyId, now, upcomingLimit),
-        this.dashboardRepository.countActiveClients(companyId),
+        this.dashboardRepository.findStatusCounts(companyId, range, employeeId),
+        this.dashboardRepository.findAppointmentsInPeriod(
+          companyId,
+          range,
+          employeeId,
+        ),
+        this.dashboardRepository.findUpcoming(
+          companyId,
+          now,
+          upcomingLimit,
+          employeeId,
+        ),
+        includeActiveClients
+          ? this.dashboardRepository.countActiveClients(companyId)
+          : Promise.resolve(undefined),
       ]);
 
     const { byStatus, total } = this.buildByStatus(statusRows);
@@ -79,7 +98,9 @@ class DashboardService {
       },
       todayAppointments,
       upcomingAppointments: upcomingDocuments.map(AppointmentMapper.toResponse),
-      activeClientsCount,
+      ...(activeClientsCount !== undefined
+        ? { activeClientsCount }
+        : {}),
     };
   }
 }

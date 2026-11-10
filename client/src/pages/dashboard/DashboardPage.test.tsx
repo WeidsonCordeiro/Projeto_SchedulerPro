@@ -993,6 +993,19 @@ describe("DashboardPage", () => {
       );
     });
 
+    it("hides active clients KPI for EMPLOYEE even when API omits the field", async () => {
+      const { activeClientsCount: _omit, ...summaryWithoutKpi } = makeSummary();
+      mockSummaryResponse(summaryWithoutKpi);
+
+      renderDashboard("EMPLOYEE");
+      await waitForDashboardLoaded();
+
+      expect(
+        screen.queryByRole("heading", { name: "Clientes ativos" }),
+      ).not.toBeInTheDocument();
+      expect(cardValues()).toHaveLength(3);
+    });
+
     it("keeps existing KPI titles and four card values after load", async () => {
       mockSummaryResponse(
         makeSummary({

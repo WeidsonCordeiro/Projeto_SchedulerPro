@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 
+import { resolveAppointmentReadScope } from "../../appointments/utils/appointment-read-scope";
 import DashboardService from "../services/DashboardService";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
@@ -28,10 +29,15 @@ class DashboardController {
   public getSummary = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
 
+    const readScope = resolveAppointmentReadScope(req.user!);
+
     const summary = await this.dashboardService.getSummary(
       companyId,
       this.buildRange(req),
-      { upcomingLimit: this.readUpcomingLimit(req) },
+      {
+        upcomingLimit: this.readUpcomingLimit(req),
+        readScope,
+      },
     );
 
     return ResponseHandler.success(

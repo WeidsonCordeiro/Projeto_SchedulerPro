@@ -56,6 +56,11 @@ export default function DashboardPage() {
     currentUser?.role != null &&
     CAN_LIST_EMPLOYEES_ROLES.includes(currentUser.role);
 
+  const showActiveClientsKpi = currentUser?.role !== "EMPLOYEE";
+  const kpiColClass = showActiveClientsKpi
+    ? "col-12 col-md-6 col-lg-3"
+    : "col-12 col-md-6 col-lg-4";
+
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -292,7 +297,7 @@ export default function DashboardPage() {
 
   const scheduledCount = summary?.period.byStatus.scheduled ?? 0;
   const confirmedCount = summary?.period.byStatus.confirmed ?? 0;
-  const activeClientsCount = summary?.activeClientsCount ?? 0;
+  const activeClientsCount = summary?.activeClientsCount;
 
   const greeting = currentUser ? `Olá, ${currentUser.name}` : "Bem-vindo";
 
@@ -374,34 +379,36 @@ export default function DashboardPage() {
         </div>
       </div>
       <div className="row g-3 dashboard-kpis">
-        <div className="col-12 col-md-6 col-lg-3">
+        <div className={kpiColClass}>
           <DashboardCard
             title="Hoje"
             value={todayAppointments.length}
             icon="bi-calendar-check"
           />
         </div>
-        <div className="col-12 col-md-6 col-lg-3">
+        <div className={kpiColClass}>
           <DashboardCard
             title="Pendentes"
             value={scheduledCount}
             icon="bi-clock"
           />
         </div>
-        <div className="col-12 col-md-6 col-lg-3">
+        <div className={kpiColClass}>
           <DashboardCard
             title="Confirmados"
             value={confirmedCount}
             icon="bi-check-circle"
           />
         </div>
-        <div className="col-12 col-md-6 col-lg-3">
-          <DashboardCard
-            title="Clientes ativos"
-            value={activeClientsCount}
-            icon="bi-people"
-          />
-        </div>
+        {showActiveClientsKpi && activeClientsCount !== undefined && (
+          <div className={kpiColClass}>
+            <DashboardCard
+              title="Clientes ativos"
+              value={activeClientsCount}
+              icon="bi-people"
+            />
+          </div>
+        )}
       </div>
 
       {summary && <DashboardStatusDistribution period={summary.period} />}
