@@ -1143,6 +1143,19 @@ button,
   font-size: 1.65rem !important;
   font-weight: 800;
 }
+.dashboard-status-distribution {
+  border: 0;
+  box-shadow: none;
+  margin-top: 1rem;
+}
+.dashboard-status-distribution-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.dashboard-status-distribution-progress {
+  height: 0.35rem;
+}
 .dashboard-agenda-grid {
   display: flex;
   flex-direction: column;
