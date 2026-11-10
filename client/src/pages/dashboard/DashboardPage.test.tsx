@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -20,6 +26,7 @@ import type { Service } from "../../types/service";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
 import type { DashboardSummary } from "../../types/dashboard";
+import { DASHBOARD_REFRESH_WARNING_MESSAGE } from "../../config/dashboardRefresh";
 
 vi.mock("../../api/endpoints/dashboard.api", () => ({
   default: { getSummary: vi.fn() },
@@ -148,6 +155,7 @@ function makeStore(
         isAuthenticated: Boolean(role),
         isInitializing: false,
         isLoading: false,
+        staffCompanyAccessSuspended: false,
       },
       company: timezone
         ? {
@@ -236,6 +244,30 @@ async function waitForDashboardLoaded() {
   await screen.findByRole("heading", { name: "Resumo do dia" });
 }
 
+function setDocumentVisibility(state: DocumentVisibilityState) {
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    get: () => state,
+  });
+}
+
+function dispatchVisibilityVisible() {
+  setDocumentVisibility("visible");
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 const NOW = "2026-09-10T12:00:00.000Z";
 
 describe("DashboardPage", () => {
@@ -243,12 +275,14 @@ describe("DashboardPage", () => {
     vi.clearAllMocks();
     mockRelatedData();
     mockSummaryResponse(makeSummary());
+    setDocumentVisibility("visible");
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(NOW));
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    setDocumentVisibility("visible");
   });
 
   it("shows a loading spinner while data loads", () => {
@@ -991,6 +1025,383 @@ describe("DashboardPage", () => {
       expect(columns).toHaveLength(4);
       const fourth = columns[3] as HTMLElement;
       expect(fourth).toHaveClass("col-12", "col-md-6", "col-lg-3");
+    });
+  });
+
+  describe("automatic refresh (O5)", () => {
+    it("reloads summary after unmount and remount", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 5 }));
+      const { unmount } = renderDashboard();
+      await waitForDashboardLoaded();
+      expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+        "5",
+      );
+
+      unmount();
+
+      mockSummaryResponse(makeSummary({ activeClientsCount: 99 }));
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+        "99",
+      );
+    });
+
+    it("refreshes when the tab becomes visible after the throttle interval", async () => {
+      renderDashboard();
+      await waitForDashboardLoaded();
+      expect(dashboardApi.getSummary).toHaveBeenCalledTimes(1);
+
+      mockSummaryResponse(makeSummary({ activeClientsCount: 20 }));
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
+      await vi.waitFor(() => {
+        expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+          "20",
+        );
+      });
+    });
+
+    it("does not refresh when visibility becomes hidden", async () => {
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      setDocumentVisibility("hidden");
+      act(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      });
+
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(dashboardApi.getSummary).toHaveBeenCalledTimes(1);
+    });
+
+    it("throttles rapid visible events to one extra call per interval", async () => {
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+    });
+
+    it("does not start a second refresh while one is already in flight", async () => {
+      const hanging = deferred<ApiResponse<DashboardSummary>>();
+      vi.mocked(dashboardApi.getSummary)
+        .mockResolvedValueOnce({
+          success: true,
+          message: "ok",
+          data: makeSummary(),
+        } satisfies ApiResponse<DashboardSummary>)
+        .mockImplementationOnce(() => hanging.promise);
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+      dispatchVisibilityVisible();
+
+      expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        hanging.resolve({
+          success: true,
+          message: "ok",
+          data: makeSummary({ activeClientsCount: 7 }),
+        });
+      });
+
+      await vi.waitFor(() => {
+        expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+          "7",
+        );
+      });
+    });
+
+    it("waits for the full 45 second throttle before another automatic refresh", async () => {
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      act(() => {
+        vi.advanceTimersByTime(44_999);
+      });
+      dispatchVisibilityVisible();
+      expect(dashboardApi.getSummary).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("keeps existing KPIs and shows a warning when a silent refresh fails", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 11 }));
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      vi.mocked(dashboardApi.getSummary).mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId("dashboard-refresh-warning")).toHaveTextContent(
+          DASHBOARD_REFRESH_WARNING_MESSAGE,
+        );
+      });
+      expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+        "11",
+      );
+      expect(screen.queryByText("Erro interno do servidor.")).not.toBeInTheDocument();
+    });
+
+    it("does not show fullscreen loading during a silent refresh", async () => {
+      const hanging = deferred<ApiResponse<DashboardSummary>>();
+      vi.mocked(dashboardApi.getSummary)
+        .mockResolvedValueOnce({
+          success: true,
+          message: "ok",
+          data: makeSummary({
+            todayAppointments: [makeAppointment()],
+          }),
+        } satisfies ApiResponse<DashboardSummary>)
+        .mockImplementationOnce(() => hanging.promise);
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+      expect(screen.getByTestId("dashboard-today-agenda-desktop")).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      expect(screen.queryByText("A carregar o painel…")).not.toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-today-agenda-desktop")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-refreshing")).toBeInTheDocument();
+
+      await act(async () => {
+        hanging.resolve({
+          success: true,
+          message: "ok",
+          data: makeSummary(),
+        });
+      });
+    });
+
+    it("preserves O2 distribution after a successful silent refresh", async () => {
+      let summaryCalls = 0;
+      vi.mocked(dashboardApi.getSummary).mockImplementation(async () => {
+        summaryCalls += 1;
+        if (summaryCalls === 1) {
+          return {
+            success: true,
+            message: "ok",
+            data: makeSummary(),
+          } satisfies ApiResponse<DashboardSummary>;
+        }
+        return {
+          success: true,
+          message: "ok",
+          data: makeSummary({
+            period: {
+              ...makeSummary().period,
+              total: 1,
+              byStatus: {
+                ...emptyByStatus(),
+                completed: 1,
+              },
+            },
+          }),
+        } satisfies ApiResponse<DashboardSummary>;
+      });
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId("dashboard-status-count-completed")).toHaveTextContent(
+          "1",
+        );
+      });
+    });
+
+    it("ignores stale summary responses that complete after a newer load cycle", async () => {
+      const slow = deferred<ApiResponse<DashboardSummary>>();
+      const fresh = deferred<ApiResponse<DashboardSummary>>();
+
+      let summaryCalls = 0;
+      vi.mocked(dashboardApi.getSummary).mockImplementation(() => {
+        summaryCalls += 1;
+        if (summaryCalls === 1) {
+          return Promise.resolve({
+            success: true,
+            message: "ok",
+            data: makeSummary({ activeClientsCount: 1 }),
+          } satisfies ApiResponse<DashboardSummary>);
+        }
+        if (summaryCalls === 2) {
+          return slow.promise;
+        }
+        return fresh.promise;
+      });
+
+      const view = (timezone: string) => (
+        <Provider store={makeStore("OWNER", timezone)}>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </Provider>
+      );
+
+      const { rerender } = render(view("Europe/Lisbon"));
+      await waitForDashboardLoaded();
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      rerender(view("America/Sao_Paulo"));
+
+      await act(async () => {
+        fresh.resolve({
+          success: true,
+          message: "ok",
+          data: makeSummary({ activeClientsCount: 50 }),
+        });
+      });
+
+      await vi.waitFor(() => {
+        expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+          "50",
+        );
+      });
+
+      await act(async () => {
+        slow.resolve({
+          success: true,
+          message: "ok",
+          data: makeSummary({ activeClientsCount: 99 }),
+        });
+      });
+
+      expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+        "50",
+      );
+    });
+
+    it("removes the visibility listener when the page unmounts", async () => {
+      const removeSpy = vi.spyOn(document, "removeEventListener");
+      const { unmount } = renderDashboard();
+      await waitForDashboardLoaded();
+
+      unmount();
+
+      expect(removeSpy).toHaveBeenCalledWith(
+        "visibilitychange",
+        expect.any(Function),
+      );
+      removeSpy.mockRestore();
+    });
+
+    it("does not register automatic refresh when staff company access is suspended", () => {
+      const addSpy = vi.spyOn(document, "addEventListener");
+      const store = configureStore({
+        reducer: { auth: authReducer, company: companyReducer },
+        preloadedState: {
+          auth: {
+            user: { ...user, role: "MANAGER" as const },
+            mustChangePassword: false,
+            isAuthenticated: true,
+            isInitializing: false,
+            isLoading: false,
+            staffCompanyAccessSuspended: true,
+          },
+          company: { company: null },
+        },
+      });
+
+      render(
+        <Provider store={store}>
+          <MemoryRouter>
+            <DashboardPage />
+          </MemoryRouter>
+        </Provider>,
+      );
+
+      const visibilityCalls = addSpy.mock.calls.filter(
+        ([event]) => event === "visibilitychange",
+      );
+      expect(visibilityCalls).toHaveLength(0);
+      addSpy.mockRestore();
+    });
+
+    it("releases the in-flight guard after refresh failure so a later refresh can run", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 3 }));
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      vi.mocked(dashboardApi.getSummary).mockRejectedValueOnce(
+        httpError(500, { message: "Erro interno do servidor." }),
+      );
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(screen.getByTestId("dashboard-refresh-warning")).toBeInTheDocument();
+      });
+
+      mockSummaryResponse(makeSummary({ activeClientsCount: 8 }));
+
+      act(() => {
+        vi.advanceTimersByTime(45_000);
+      });
+      dispatchVisibilityVisible();
+
+      await vi.waitFor(() => {
+        expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
+          "8",
+        );
+      });
     });
   });
 });
