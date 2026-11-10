@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dashboardApi from "../../api/endpoints/dashboard.api";
 import clientsApi from "../../api/endpoints/clients.api";
 import servicesApi from "../../api/endpoints/services.api";
@@ -10,6 +10,8 @@ import {
   getPageLoadErrorPresentation,
 } from "../../api/errors";
 import { buildReportRange } from "../../config/reportPeriod";
+import { DASHBOARD_REFRESH_WARNING_MESSAGE } from "../../config/dashboardRefresh";
+import { useDashboardVisibilityRefresh } from "../../hooks/useDashboardVisibilityRefresh";
 import { useAppSelector } from "../../store";
 import { selectCompany, selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { Appointment } from "../../types/appointment";
@@ -34,6 +36,13 @@ const CAN_LIST_EMPLOYEES_ROLES: EmployeeRole[] = ["OWNER", "ADMIN"];
 
 const UPCOMING_LIMIT = 5;
 
+interface FetchedRelatedData {
+  clients: Client[];
+  services: Service[];
+  employees: Employee[];
+  relatedError: string | null;
+}
+
 export default function DashboardPage() {
   const currentUser = useAppSelector((state) => state.auth.user);
   const staffCompanyAccessSuspended = useAppSelector(
@@ -53,16 +62,23 @@ export default function DashboardPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadErrorRetryable, setLoadErrorRetryable] = useState(true);
   const [relatedError, setRelatedError] = useState<string | null>(null);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
+
+  const isMountedRef = useRef(true);
+  const loadGenerationRef = useRef(0);
+  const refreshInFlightRef = useRef(false);
+  const hasInitialLoadCompletedRef = useRef(false);
 
   const todayRange = useMemo(
     () => buildReportRange("today", timezone),
     [timezone],
   );
 
-  const loadSummary = useCallback(async () => {
+  const fetchSummary = useCallback(async (): Promise<DashboardSummary | null> => {
     if (!todayRange) {
       throw new Error(
         "Não foi possível calcular o período do dia no timezone da empresa.",
@@ -74,68 +90,82 @@ export default function DashboardPage() {
       endAt: todayRange.endAt,
       upcomingLimit: UPCOMING_LIMIT,
     });
-    setSummary(response.data ?? null);
+    return response.data ?? null;
   }, [todayRange]);
 
-  const loadClients = useCallback(async () => {
-    const response = await clientsApi.getClients();
-    setClients(response.data ?? []);
-  }, []);
-
-  const loadServices = useCallback(async () => {
-    const response = await servicesApi.getServices();
-    setServices(response.data ?? []);
-  }, []);
-
-  const loadEmployees = useCallback(async () => {
-    const response = await employeesApi.getEmployees();
-    setEmployees(
-      (response.data ?? []).filter((employee) => employee.role !== "CLIENT"),
-    );
-  }, []);
-
-  const loadRelated = useCallback(async () => {
+  const fetchRelatedData = useCallback(async (): Promise<FetchedRelatedData> => {
     const failures: string[] = [];
+    let nextClients: Client[] = [];
+    let nextServices: Service[] = [];
+    let nextEmployees: Employee[] = [];
 
     try {
-      await loadClients();
+      const response = await clientsApi.getClients();
+      nextClients = response.data ?? [];
     } catch (error) {
       collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     try {
-      await loadServices();
+      const response = await servicesApi.getServices();
+      nextServices = response.data ?? [];
     } catch (error) {
       collectRelatedFailureMessages(failures, error, companyIsActive);
     }
 
     if (canListEmployees) {
       try {
-        await loadEmployees();
+        const response = await employeesApi.getEmployees();
+        nextEmployees = (response.data ?? []).filter(
+          (employee) => employee.role !== "CLIENT",
+        );
       } catch (error) {
         collectRelatedFailureMessages(failures, error, companyIsActive);
       }
     }
 
-    setRelatedError(
-      formatRelatedFailuresMessage(
+    return {
+      clients: nextClients,
+      services: nextServices,
+      employees: nextEmployees,
+      relatedError: formatRelatedFailuresMessage(
         failures,
         "Não foi possível carregar alguns nomes.",
       ),
-    );
-  }, [loadClients, loadServices, loadEmployees, canListEmployees, companyIsActive]);
+    };
+  }, [canListEmployees, companyIsActive]);
+
+  const applyRelatedData = useCallback((related: FetchedRelatedData) => {
+    setClients(related.clients);
+    setServices(related.services);
+    setEmployees(related.employees);
+    setRelatedError(related.relatedError);
+  }, []);
 
   const loadAll = useCallback(async () => {
     if (staffCompanyAccessSuspended) {
       return;
     }
+
+    const generation = ++loadGenerationRef.current;
+    refreshInFlightRef.current = false;
+    hasInitialLoadCompletedRef.current = false;
+
     setIsLoading(true);
     setLoadError(null);
     setRelatedError(null);
+    setRefreshWarning(null);
 
     try {
-      await loadSummary();
+      const summaryData = await fetchSummary();
+      if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+        return;
+      }
+      setSummary(summaryData);
     } catch (error) {
+      if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+        return;
+      }
       const presentation = getPageLoadErrorPresentation(
         getApiError(error),
         companyIsActive,
@@ -148,13 +178,100 @@ export default function DashboardPage() {
       }
     }
 
-    await loadRelated();
+    try {
+      const relatedData = await fetchRelatedData();
+      if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+        return;
+      }
+      applyRelatedData(relatedData);
+    } catch {
+      if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+        return;
+      }
+      setRelatedError("Não foi possível carregar alguns nomes.");
+    }
+
+    if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+      return;
+    }
     setIsLoading(false);
-  }, [loadSummary, loadRelated, staffCompanyAccessSuspended, companyIsActive]);
+    hasInitialLoadCompletedRef.current = true;
+  }, [
+    applyRelatedData,
+    companyIsActive,
+    fetchRelatedData,
+    fetchSummary,
+    staffCompanyAccessSuspended,
+  ]);
+
+  const refreshDashboard = useCallback(async () => {
+    if (staffCompanyAccessSuspended) {
+      return;
+    }
+    if (refreshInFlightRef.current) {
+      return;
+    }
+    if (!hasInitialLoadCompletedRef.current) {
+      return;
+    }
+
+    refreshInFlightRef.current = true;
+    const generation = ++loadGenerationRef.current;
+    setIsRefreshing(true);
+    setRefreshWarning(null);
+
+    let refreshFailed = false;
+
+    try {
+      const summaryData = await fetchSummary();
+      if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+        return;
+      }
+      setSummary(summaryData);
+
+      const relatedData = await fetchRelatedData();
+      if (!isMountedRef.current || generation !== loadGenerationRef.current) {
+        return;
+      }
+      applyRelatedData(relatedData);
+    } catch {
+      refreshFailed = true;
+    } finally {
+      if (generation === loadGenerationRef.current) {
+        refreshInFlightRef.current = false;
+        if (isMountedRef.current) {
+          setIsRefreshing(false);
+          if (refreshFailed) {
+            setRefreshWarning(DASHBOARD_REFRESH_WARNING_MESSAGE);
+          }
+        }
+      }
+    }
+  }, [
+    applyRelatedData,
+    fetchRelatedData,
+    fetchSummary,
+    staffCompanyAccessSuspended,
+  ]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     void loadAll();
   }, [loadAll]);
+
+  useDashboardVisibilityRefresh({
+    enabled: !staffCompanyAccessSuspended,
+    isInitialLoading: isLoading,
+    onRefresh: () => {
+      void refreshDashboard();
+    },
+  });
 
   const clientNames = useMemo(
     () => new Map(clients.map((c) => [c.id, c.name])),
@@ -220,6 +337,15 @@ export default function DashboardPage() {
   return (
     <section className="dashboard-page">
       {pageHeader}
+      {refreshWarning && (
+        <div
+          className="alert alert-warning mt-3"
+          role="alert"
+          data-testid="dashboard-refresh-warning"
+        >
+          {refreshWarning}
+        </div>
+      )}
       {relatedError && (
         <div className="alert alert-warning mt-3" role="alert">
           {relatedError}
@@ -233,6 +359,18 @@ export default function DashboardPage() {
           <span className="text-muted small">
             Atualizado com os dados da sua agenda
           </span>
+          {isRefreshing && (
+            <span
+              className="text-muted small d-block mt-1"
+              data-testid="dashboard-refreshing"
+            >
+              <span
+                className="spinner-border spinner-border-sm me-1"
+                aria-hidden
+              />
+              A atualizar…
+            </span>
+          )}
         </div>
       </div>
       <div className="row g-3 dashboard-kpis">
