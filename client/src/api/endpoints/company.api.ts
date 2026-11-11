@@ -68,6 +68,20 @@ export const companyApi = {
     );
     return data;
   },
+
+  /**
+   * DELETE /companies/:id.
+   *
+   * Soft delete no backend. Apenas OWNER (COMPANY_DELETE).
+   * O id é o companyId da sessão (empresa autenticada), nunca um valor
+   * arbitrário escolhido pelo utilizador.
+   */
+  async deleteCompany(id: string) {
+    const { data } = await apiClient.delete<ApiResponse<null>>(
+      `/companies/${id}`,
+    );
+    return data;
+  },
 };
 
 export default companyApi;

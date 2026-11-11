@@ -5,6 +5,7 @@ export interface CompanyAbilities {
   canUpdate: boolean;
   canActivate: boolean;
   canDeactivate: boolean;
+  canDelete: boolean;
 }
 
 /**
@@ -15,6 +16,7 @@ export interface CompanyAbilities {
  *  - COMPANY_UPDATE      (PATCH /companies/:id)     -> OWNER, ADMIN
  *  - COMPANY_ACTIVATE    (PATCH .../activate)       -> OWNER
  *  - COMPANY_DEACTIVATE  (PATCH .../deactivate)     -> OWNER
+ *  - COMPANY_DELETE      (DELETE /companies/:id)    -> OWNER
  *  - MANAGER, EMPLOYEE e CLIENT não possuem nenhuma permissão de empresa.
  *
  * Este é apenas UX. A autorização real continua no backend.
@@ -22,6 +24,7 @@ export interface CompanyAbilities {
 const CAN_VIEW_ROLES: Role[] = ["OWNER", "ADMIN"];
 const CAN_UPDATE_ROLES: Role[] = ["OWNER", "ADMIN"];
 const CAN_LIFECYCLE_ROLES: Role[] = ["OWNER"];
+const CAN_DELETE_ROLES: Role[] = ["OWNER"];
 
 export function getCompanyAbilities(role: Role | null): CompanyAbilities {
   if (!role) {
@@ -30,6 +33,7 @@ export function getCompanyAbilities(role: Role | null): CompanyAbilities {
       canUpdate: false,
       canActivate: false,
       canDeactivate: false,
+      canDelete: false,
     };
   }
 
@@ -40,5 +44,6 @@ export function getCompanyAbilities(role: Role | null): CompanyAbilities {
     canUpdate: CAN_UPDATE_ROLES.includes(role),
     canActivate: canLifecycle,
     canDeactivate: canLifecycle,
+    canDelete: CAN_DELETE_ROLES.includes(role),
   };
 }

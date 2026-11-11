@@ -1,7 +1,12 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  type InitialEntry,
+} from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "./LoginPage";
 import GuestRoute from "../routes/GuestRoute";
@@ -48,10 +53,13 @@ function makeStore(auth?: Partial<AuthState>) {
   });
 }
 
-function renderLogin(store = makeStore()) {
+function renderLogin(
+  store = makeStore(),
+  initialEntries: InitialEntry[] = ["/login"],
+) {
   render(
     <Provider store={store}>
-      <MemoryRouter initialEntries={["/login"]}>
+      <MemoryRouter initialEntries={initialEntries}>
         <Routes>
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<LoginPage />} />
@@ -304,5 +312,16 @@ describe("LoginPage", () => {
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(store.getState().auth.sessionExpirationMessage).toBeNull();
+  });
+
+  it("shows success feedback from navigation state", () => {
+    const message = "Empresa eliminada com sucesso. A sua sessão foi encerrada.";
+    renderLogin(makeStore(), [
+      { pathname: "/login", state: { successMessage: message } },
+    ]);
+
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveClass("alert-success");
+    expect(alert).toHaveTextContent("eliminada com sucesso");
   });
 });

@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CompanyPage from "./CompanyPage";
 import companyApi from "../../api/endpoints/company.api";
+import authApi from "../../api/endpoints/auth.api";
 import { httpError } from "../../test/http";
 import { user } from "../../test/fixtures";
 import authReducer from "../../store/slices/authSlice";
@@ -21,8 +23,15 @@ vi.mock("../../api/endpoints/company.api", () => ({
     updateCompany: vi.fn(),
     activateCompany: vi.fn(),
     deactivateCompany: vi.fn(),
+    deleteCompany: vi.fn(),
     uploadCompanyLogo: vi.fn(),
     removeCompanyLogo: vi.fn(),
+  },
+}));
+
+vi.mock("../../api/endpoints/auth.api", () => ({
+  default: {
+    logout: vi.fn(),
   },
 }));
 
@@ -54,7 +63,12 @@ function renderPage(role: Role | null = "OWNER") {
   const store = makeStore(role);
   render(
     <Provider store={store}>
-      <CompanyPage />
+      <MemoryRouter initialEntries={["/company"]}>
+        <Routes>
+          <Route path="/company" element={<CompanyPage />} />
+          <Route path="/login" element={<div>Login page</div>} />
+        </Routes>
+      </MemoryRouter>
     </Provider>,
   );
   return store;
@@ -470,6 +484,137 @@ describe("CompanyPage", () => {
       expect(
         await screen.findByText("Erro interno do servidor."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("soft delete", () => {
+    it("shows the danger zone for OWNER when the company is active", async () => {
+      renderPage("OWNER");
+
+      expect(await screen.findByTestId("company-danger-zone")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /eliminar empresa/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show delete when the company is inactive", async () => {
+      vi.mocked(companyApi.getCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [{ ...loadedCompany, isActive: false }],
+      });
+
+      renderPage("OWNER");
+      await screen.findByText("Inativa");
+
+      expect(screen.queryByTestId("company-danger-zone")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /eliminar empresa/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not show the danger zone for ADMIN", async () => {
+      renderPage("ADMIN");
+      await screen.findByLabelText("Nome");
+
+      expect(screen.queryByTestId("company-danger-zone")).not.toBeInTheDocument();
+    });
+
+    it("opens the modal without calling delete", async () => {
+      renderPage("OWNER");
+      fireEvent.click(
+        await screen.findByRole("button", { name: /eliminar empresa/i }),
+      );
+
+      expect(
+        screen.getByRole("heading", { name: /eliminar empresa/i }),
+      ).toBeInTheDocument();
+      expect(companyApi.deleteCompany).not.toHaveBeenCalled();
+    });
+
+    it("does not delete when the user cancels", async () => {
+      renderPage("OWNER");
+      fireEvent.click(
+        await screen.findByRole("button", { name: /eliminar empresa/i }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /cancelar/i }));
+
+      expect(companyApi.deleteCompany).not.toHaveBeenCalled();
+    });
+
+    it("deletes, logs out, clears store and navigates to login", async () => {
+      vi.mocked(companyApi.deleteCompany).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: null,
+      });
+      vi.mocked(authApi.logout).mockResolvedValue({
+        success: true,
+        message: "ok",
+      });
+
+      const store = renderPage("OWNER");
+      fireEvent.click(
+        await screen.findByRole("button", { name: /eliminar empresa/i }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^eliminar$/i }));
+
+      await waitFor(() => {
+        expect(companyApi.deleteCompany).toHaveBeenCalledWith(loadedCompany.id);
+      });
+      expect(authApi.logout).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(store.getState().auth.isAuthenticated).toBe(false);
+        expect(store.getState().company.company).toBeNull();
+      });
+      expect(await screen.findByText("Login page")).toBeInTheDocument();
+    });
+
+    it("keeps the session and shows feedback when delete fails", async () => {
+      vi.mocked(companyApi.deleteCompany).mockRejectedValue(
+        httpError(403, { message: "Operação não permitida." }),
+      );
+
+      const store = renderPage("OWNER");
+      fireEvent.click(
+        await screen.findByRole("button", { name: /eliminar empresa/i }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^eliminar$/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Operação não permitida.",
+      );
+      expect(authApi.logout).not.toHaveBeenCalled();
+      expect(store.getState().auth.isAuthenticated).toBe(true);
+    });
+
+    it("disables confirm while delete is in progress", async () => {
+      let resolveDelete!: (
+        value: Awaited<ReturnType<typeof companyApi.deleteCompany>>,
+      ) => void;
+      vi.mocked(companyApi.deleteCompany).mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveDelete = resolve;
+          }),
+      );
+
+      renderPage("OWNER");
+      fireEvent.click(
+        await screen.findByRole("button", { name: /eliminar empresa/i }),
+      );
+      const confirm = screen.getByRole("button", { name: /^eliminar$/i });
+      fireEvent.click(confirm);
+
+      await waitFor(() => {
+        expect(confirm).toBeDisabled();
+      });
+
+      resolveDelete({ success: true, message: "ok", data: null });
+      vi.mocked(authApi.logout).mockResolvedValue({
+        success: true,
+        message: "ok",
+      });
     });
   });
 

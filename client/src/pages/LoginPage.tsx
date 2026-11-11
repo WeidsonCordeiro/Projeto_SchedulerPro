@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
   clearSessionExpirationMessage,
@@ -20,12 +20,15 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const isLoading = useAppSelector((state) => state.auth.isLoading);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const sessionExpirationMessage = useAppSelector(
     (state) => state.auth.sessionExpirationMessage
@@ -40,6 +43,16 @@ export default function LoginPage() {
       dispatch(clearSessionExpirationMessage());
     }
   }, [sessionExpirationMessage, dispatch]);
+
+  useEffect(() => {
+    const fromState = (location.state as { successMessage?: string } | null)
+      ?.successMessage;
+    if (!fromState) {
+      return;
+    }
+    setSuccessMessage(fromState);
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.pathname, location.state, navigate]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -79,6 +92,12 @@ export default function LoginPage() {
     <div className="row">
       <div className="col-12">
         <h1 className="h3 mb-3">Entrar</h1>
+
+        {successMessage && (
+          <div className="alert alert-success" role="alert">
+            {successMessage}
+          </div>
+        )}
 
         {errorMessage && (
           <div className="alert alert-danger" role="alert">

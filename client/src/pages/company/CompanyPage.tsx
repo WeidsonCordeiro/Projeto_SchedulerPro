@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { completeSessionLogout } from "../../app/completeSessionLogout";
 import companyApi from "../../api/endpoints/company.api";
 import { getApiError, getFriendlyErrorMessage } from "../../api/errors";
 import CompanyForm from "../../components/company/CompanyForm";
@@ -38,10 +40,14 @@ function CompanyReadOnlyProfile({ company }: { company: Company }) {
   );
 }
 
+const COMPANY_DELETED_LOGIN_MESSAGE =
+  "Empresa eliminada com sucesso. A sua sessão foi encerrada.";
+
 export default function CompanyPage() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
-  const { canView, canUpdate, canActivate, canDeactivate } =
+  const { canView, canUpdate, canActivate, canDeactivate, canDelete } =
     getCompanyAbilities(user?.role ?? null);
 
   const [company, setCompanyData] = useState<Company | null>(null);
@@ -55,6 +61,9 @@ export default function CompanyPage() {
   const [deactivateModalError, setDeactivateModalError] = useState<
     string | null
   >(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteModalError, setDeleteModalError] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (!copyMessage) {
@@ -156,6 +165,46 @@ export default function CompanyPage() {
       setDeactivateModalError(getFriendlyErrorMessage(failure));
     } finally {
       setLifecycleLoading(false);
+    }
+  }
+
+  const showDangerZone = Boolean(company && canDelete && company.isActive);
+
+  function openDeleteModal() {
+    setDeleteModalError(null);
+    setDeleteModalOpen(true);
+  }
+
+  function closeDeleteModal() {
+    if (deleteLoading) {
+      return;
+    }
+    setDeleteModalOpen(false);
+    setDeleteModalError(null);
+  }
+
+  async function handleConfirmDelete() {
+    if (!company) {
+      return;
+    }
+
+    setDeleteModalError(null);
+    setDeleteLoading(true);
+    try {
+      const response = await companyApi.deleteCompany(company.id);
+      if (!response?.success) {
+        setDeleteModalError("Resposta inválida do servidor.");
+        return;
+      }
+
+      await completeSessionLogout(dispatch, navigate, {
+        loginState: { successMessage: COMPANY_DELETED_LOGIN_MESSAGE },
+      });
+    } catch (error) {
+      const failure = getApiError(error);
+      setDeleteModalError(getFriendlyErrorMessage(failure));
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -343,8 +392,57 @@ export default function CompanyPage() {
               )}
             </div>
           </div>
+
+          {showDangerZone && (
+            <div
+              className="card border-danger mt-4"
+              data-testid="company-danger-zone"
+            >
+              <div className="card-header bg-danger-subtle">
+                <h2 className="h5 mb-0 text-danger-emphasis">Zona perigosa</h2>
+              </div>
+              <div className="card-body">
+                <p className="text-muted">
+                  A eliminação é lógica: a empresa deixa de estar disponível no
+                  sistema, o agendamento público deixa de funcionar e a sua sessão
+                  será encerrada. Esta operação não pode ser revertida pela
+                  aplicação.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-outline-danger"
+                  onClick={openDeleteModal}
+                  disabled={deleteLoading || lifecycleLoading}
+                >
+                  Eliminar empresa
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
+
+      <DestructiveConfirmModal
+        isOpen={deleteModalOpen}
+        title="Eliminar empresa"
+        onClose={closeDeleteModal}
+        onConfirm={() => void handleConfirmDelete()}
+        isSubmitting={deleteLoading}
+        errorMessage={deleteModalError}
+        confirmLabel="Eliminar"
+        submittingLabel="Eliminando..."
+        focusCancelOnOpen
+        closeOnEscape
+      >
+        <p>
+          Tem certeza que deseja eliminar a empresa{" "}
+          <strong>{company?.name}</strong>?
+        </p>
+        <p className="mb-0">
+          A empresa será removida logicamente e deixará de estar disponível. O
+          acesso autenticado terminará e será redirecionado para o login.
+        </p>
+      </DestructiveConfirmModal>
 
       <DestructiveConfirmModal
         isOpen={deactivateModalOpen}
