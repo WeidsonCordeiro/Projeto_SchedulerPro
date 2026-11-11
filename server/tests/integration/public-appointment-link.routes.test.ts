@@ -42,6 +42,7 @@ const {
     findByPublicAccessTokenHash: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateInCompany: vi.fn(),
     updateStatus: vi.fn(),
     softDelete: vi.fn(),
     hasEmployeeConflict: vi.fn(),
@@ -286,16 +287,23 @@ beforeEach(() => {
     async (hash: string) => (hash === TOKEN_HASH ? appointment() : null),
   );
   appointmentRepository.findById.mockImplementation(async () => appointment());
-  appointmentRepository.update.mockImplementation(
-    async (_id: unknown, data: Record<string, unknown>) => {
-      if (data.startAt instanceof Date) currentStartAt = data.startAt;
-      if (data.endAt instanceof Date) currentEndAt = data.endAt;
-      if (data.notes !== undefined) currentNotes = data.notes as string | null;
-      if (data.serviceId) currentServiceId = String(data.serviceId);
-      if (data.employeeId) currentEmployeeId = String(data.employeeId);
 
-      return appointment();
-    },
+  const applyUpdateData = (data: Record<string, unknown>) => {
+    if (data.startAt instanceof Date) currentStartAt = data.startAt;
+    if (data.endAt instanceof Date) currentEndAt = data.endAt;
+    if (data.notes !== undefined) currentNotes = data.notes as string | null;
+    if (data.serviceId) currentServiceId = String(data.serviceId);
+    if (data.employeeId) currentEmployeeId = String(data.employeeId);
+
+    return appointment();
+  };
+
+  appointmentRepository.update.mockImplementation(
+    async (_id: unknown, data: Record<string, unknown>) => applyUpdateData(data),
+  );
+  appointmentRepository.updateInCompany.mockImplementation(
+    async (_id: unknown, _companyId: unknown, data: Record<string, unknown>) =>
+      applyUpdateData(data),
   );
   appointmentRepository.updateStatus.mockImplementation(async () => {
     currentStatus = AppointmentStatus.CANCELLED;
@@ -515,16 +523,18 @@ describe("PATCH /api/public/appointments/:token", () => {
     const response = await request(app).patch(url()).send({ notes: "Primeira vez" });
 
     expect(response.status).toBe(200);
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      ids.companyA,
       expect.objectContaining({ notes: "Primeira vez" }),
+      undefined,
     );
   });
 
   it("não regenera o token", async () => {
     await request(app).patch(url()).send({ notes: "olá" });
 
-    expect(appointmentRepository.update.mock.calls[0][1]).not.toHaveProperty(
+    expect(appointmentRepository.updateInCompany.mock.calls[0][2]).not.toHaveProperty(
       "publicAccessTokenHash",
     );
   });
@@ -541,7 +551,7 @@ describe("PATCH /api/public/appointments/:token", () => {
       .send({ startAt: "2020-01-15T10:00:00.000Z" });
 
     expect(response.status).toBe(400);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita data sem fuso horário com 400", async () => {
@@ -560,7 +570,7 @@ describe("PATCH /api/public/appointments/:token", () => {
     const response = await request(app).patch(url()).send({ startAt: value });
 
     expect(response.status).toBe(400);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita startAt vazio com 400", async () => {
@@ -583,7 +593,7 @@ describe("PATCH /api/public/appointments/:token", () => {
       .send({ serviceId: ids.serviceB });
 
     expect(response.status).toBe(404);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita funcionário de outra empresa com 404", async () => {
@@ -601,7 +611,7 @@ describe("PATCH /api/public/appointments/:token", () => {
       .send({ employeeId: ids.employeeB });
 
     expect(response.status).toBe(404);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita funcionário inativo com 400", async () => {
@@ -644,7 +654,7 @@ describe("PATCH /api/public/appointments/:token", () => {
     const response = await request(app).patch(url()).send({ notes: "olá" });
 
     expect(response.status).toBe(409);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita horário bloqueado por exceção com 409", async () => {
@@ -685,7 +695,7 @@ describe("PATCH /api/public/appointments/:token", () => {
     const response = await request(app).patch(url()).send({ notes: "olá" });
 
     expect(response.status).toBe(400);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa agendamento concluído com 400", async () => {
@@ -759,7 +769,7 @@ describe("PATCH — campos recusados", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
     expect(appointmentRepository.updateStatus).not.toHaveBeenCalled();
   });
 
@@ -771,7 +781,7 @@ describe("PATCH — campos recusados", () => {
       .send({ status: AppointmentStatus.SCHEDULED });
 
     expect(response.status).toBe(400);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa corpo que não é objeto JSON", async () => {

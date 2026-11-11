@@ -51,6 +51,7 @@ async function connectTestDatabase(): Promise<void> {
   }
 
   replSet = await MongoMemoryReplSet.create({
+    instanceOpts: [{ launchTimeout: 120_000 }],
     replSet: { count: 1, storageEngine: "wiredTiger" },
   });
   await mongoose.connect(replSet.getUri());
@@ -342,6 +343,11 @@ describe("GW-3 appointment booking concurrency (ACC-01–07)", () => {
         movable.id,
         { startAt: occupiedStart },
         tenant.companyId,
+        {
+          userId: String(tenant.employeeAId),
+          companyId: tenant.companyId,
+          role: Role.OWNER,
+        },
         NOW,
       ),
     ).rejects.toMatchObject({

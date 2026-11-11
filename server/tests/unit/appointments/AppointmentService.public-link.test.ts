@@ -15,7 +15,9 @@ const {
     findById: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateInCompany: vi.fn(),
     updateStatus: vi.fn(),
+    updateStatusInCompany: vi.fn(),
     hasEmployeeConflict: vi.fn(),
     hasClientConflict: vi.fn(),
     softDelete: vi.fn(),
@@ -175,15 +177,21 @@ beforeEach(() => {
   appointmentRepository.findById.mockImplementation(async () =>
     currentAppointment(),
   );
-  appointmentRepository.update.mockImplementation(
-    async (_id: unknown, data: Record<string, unknown>) => {
-      if (data.startAt instanceof Date) currentStartAt = data.startAt;
-      if (data.endAt instanceof Date) currentEndAt = data.endAt;
-      if (data.notes !== undefined) currentNotes = data.notes as string | null;
-      if (data.serviceId) currentServiceId = String(data.serviceId);
+  const applyUpdateData = (data: Record<string, unknown>) => {
+    if (data.startAt instanceof Date) currentStartAt = data.startAt;
+    if (data.endAt instanceof Date) currentEndAt = data.endAt;
+    if (data.notes !== undefined) currentNotes = data.notes as string | null;
+    if (data.serviceId) currentServiceId = String(data.serviceId);
 
-      return currentAppointment();
-    },
+    return currentAppointment();
+  };
+
+  appointmentRepository.update.mockImplementation(
+    async (_id: unknown, data: Record<string, unknown>) => applyUpdateData(data),
+  );
+  appointmentRepository.updateInCompany.mockImplementation(
+    async (_id: unknown, _companyId: unknown, data: Record<string, unknown>) =>
+      applyUpdateData(data),
   );
   appointmentRepository.updateStatus.mockImplementation(async () => {
     currentStatus = AppointmentStatus.CANCELLED;
@@ -370,7 +378,7 @@ describe("AppointmentService.updatePublicByToken — estado do agendamento", () 
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalled();
   });
 
   it.each([
@@ -390,7 +398,7 @@ describe("AppointmentService.updatePublicByToken — estado do agendamento", () 
       ),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa agendamento já iniciado com 400", async () => {
@@ -405,7 +413,7 @@ describe("AppointmentService.updatePublicByToken — estado do agendamento", () 
       AppointmentService.updatePublicByToken(TOKEN, { notes: "olá" }, NOW),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa token inválido antes de qualquer escrita", async () => {
@@ -413,7 +421,7 @@ describe("AppointmentService.updatePublicByToken — estado do agendamento", () 
       AppointmentService.updatePublicByToken("invalido", { notes: "olá" }, NOW),
     ).rejects.toMatchObject({ statusCode: 404 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 });
 
@@ -426,8 +434,8 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       duration: 90,
       name: "Corte + Barba",
     });
-    appointmentRepository.update.mockImplementation(
-      async (_id: unknown, data: Record<string, unknown>) => ({
+    appointmentRepository.updateInCompany.mockImplementation(
+      async (_id: unknown, _companyId: unknown, data: Record<string, unknown>) => ({
         ...storedAppointment(data),
       }),
     );
@@ -438,15 +446,17 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({
         serviceId: expect.anything(),
         endAt: new Date(START_AT.getTime() + 90 * 60 * 1000),
       }),
+      undefined,
     );
 
-    const persisted = appointmentRepository.update.mock.calls[0][1];
+    const persisted = appointmentRepository.updateInCompany.mock.calls[0][2];
     expect(persisted.serviceId.toString()).toBe(otherServiceId);
   });
 
@@ -459,12 +469,14 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({
         startAt: newStart,
         endAt: new Date(newStart.getTime() + 30 * 60 * 1000),
       }),
+      undefined,
     );
   });
 
@@ -477,7 +489,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       ),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa serviço de outra empresa com 404", async () => {
@@ -493,7 +505,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       AppointmentService.updatePublicByToken(TOKEN, { serviceId: otherServiceId }, NOW),
     ).rejects.toMatchObject({ statusCode: 404 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa serviço inativo com 400", async () => {
@@ -524,7 +536,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       AppointmentService.updatePublicByToken(TOKEN, { employeeId: otherEmployeeId }, NOW),
     ).rejects.toMatchObject({ statusCode: 404 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa funcionário inativo com 400", async () => {
@@ -594,7 +606,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       ),
     ).rejects.toThrow("indisponível");
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa conflito do funcionário com 409", async () => {
@@ -608,7 +620,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       ),
     ).rejects.toMatchObject({ statusCode: 409 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("recusa conflito do cliente com 409", async () => {
@@ -622,7 +634,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       ),
     ).rejects.toMatchObject({ statusCode: 409 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("exclui o próprio agendamento da verificação de conflitos", async () => {
@@ -655,7 +667,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       AppointmentService.updatePublicByToken(TOKEN, { notes: "olá" }, NOW),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("revalida o serviço atual quando já não existe", async () => {
@@ -665,7 +677,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       AppointmentService.updatePublicByToken(TOKEN, { notes: "olá" }, NOW),
     ).rejects.toMatchObject({ statusCode: 404 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("revalida o profissional atual mesmo sem o enviar", async () => {
@@ -682,7 +694,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       AppointmentService.updatePublicByToken(TOKEN, { notes: "olá" }, NOW),
     ).rejects.toMatchObject({ statusCode: 400 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita o profissional atual se for uma conta de acesso", async () => {
@@ -699,7 +711,7 @@ describe("AppointmentService.updatePublicByToken — alterações de agenda", ()
       AppointmentService.updatePublicByToken(TOKEN, { notes: "olá" }, NOW),
     ).rejects.toMatchObject({ statusCode: 404 });
 
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita o serviço atual de outra empresa", async () => {
@@ -736,18 +748,22 @@ describe("AppointmentService.updatePublicByToken — notas e token", () => {
   it("altera as observações", async () => {
     await AppointmentService.updatePublicByToken(TOKEN, { notes: "Nova nota" }, NOW);
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({ notes: "Nova nota" }),
+      undefined,
     );
   });
 
   it("limpa as observações com null explícito", async () => {
     await AppointmentService.updatePublicByToken(TOKEN, { notes: null }, NOW);
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({ notes: null }),
+      undefined,
     );
   });
 
@@ -758,16 +774,18 @@ describe("AppointmentService.updatePublicByToken — notas e token", () => {
 
     await AppointmentService.updatePublicByToken(TOKEN, { startAt: "2027-08-30T10:00:00.000Z" }, NOW);
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({ notes: "Nota original" }),
+      undefined,
     );
   });
 
   it("não regenera nem apaga o token na alteração", async () => {
     await AppointmentService.updatePublicByToken(TOKEN, { notes: "Nova nota" }, NOW);
 
-    const persisted = appointmentRepository.update.mock.calls[0][1];
+    const persisted = appointmentRepository.updateInCompany.mock.calls[0][2];
 
     expect(persisted).not.toHaveProperty("publicAccessTokenHash");
   });
@@ -775,7 +793,7 @@ describe("AppointmentService.updatePublicByToken — notas e token", () => {
   it("mantém o cliente original", async () => {
     await AppointmentService.updatePublicByToken(TOKEN, { notes: "Nova nota" }, NOW);
 
-    const persisted = appointmentRepository.update.mock.calls[0][1];
+    const persisted = appointmentRepository.updateInCompany.mock.calls[0][2];
 
     expect(persisted).not.toHaveProperty("clientId");
   });
@@ -793,7 +811,7 @@ describe("AppointmentService.updatePublicByToken — notas e token", () => {
   });
 
   it("devolve 404 se o agendamento desaparecer durante a alteração", async () => {
-    appointmentRepository.update.mockResolvedValue(null);
+    appointmentRepository.updateInCompany.mockResolvedValue(null);
 
     await expect(
       AppointmentService.updatePublicByToken(TOKEN, { notes: "Nova nota" }, NOW),

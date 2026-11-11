@@ -17,11 +17,24 @@ import { Request, Response } from "express";
 import AppointmentService from "../services/AppointmentService";
 import { HttpMessages } from "../../../constants/http-messages";
 import { HttpStatus } from "../../../constants/http-status";
-import { resolveAppointmentReadScope } from "../utils/appointment-read-scope";
+import {
+  resolveAppointmentReadScope,
+  type SessionUserForReadScope,
+} from "../utils/appointment-read-scope";
 import { ResponseHandler } from "../../../utils/response";
 
 class AppointmentController {
   private readonly appointmentService = AppointmentService;
+
+  private sessionUser(req: Request): SessionUserForReadScope {
+    const user = req.user!;
+    return {
+      userId: user.userId,
+      companyId: user.companyId,
+      role: user.role,
+      ...(user.clientId ? { clientId: user.clientId } : {}),
+    };
+  }
   /**
 
 * ==========================================================
@@ -158,6 +171,7 @@ class AppointmentController {
       req.params.id as string,
       req.body,
       companyId,
+      this.sessionUser(req),
     );
 
     return ResponseHandler.success(
@@ -180,6 +194,7 @@ class AppointmentController {
     const appointment = await this.appointmentService.confirm(
       req.params.id as string,
       companyId,
+      this.sessionUser(req),
     );
 
     return ResponseHandler.success(
@@ -202,6 +217,7 @@ class AppointmentController {
     const appointment = await this.appointmentService.complete(
       req.params.id as string,
       companyId,
+      this.sessionUser(req),
     );
 
     return ResponseHandler.success(
@@ -224,6 +240,7 @@ class AppointmentController {
     const appointment = await this.appointmentService.cancel(
       req.params.id as string,
       companyId,
+      this.sessionUser(req),
     );
 
     return ResponseHandler.success(
@@ -246,6 +263,7 @@ class AppointmentController {
     const appointment = await this.appointmentService.markAsNoShow(
       req.params.id as string,
       companyId,
+      this.sessionUser(req),
     );
 
     return ResponseHandler.success(
@@ -267,7 +285,11 @@ class AppointmentController {
   public delete = async (req: Request, res: Response) => {
     const companyId = req.user!.companyId;
 
-    await this.appointmentService.delete(req.params.id as string, companyId);
+    await this.appointmentService.delete(
+      req.params.id as string,
+      companyId,
+      this.sessionUser(req),
+    );
 
     return ResponseHandler.success(
       res,
