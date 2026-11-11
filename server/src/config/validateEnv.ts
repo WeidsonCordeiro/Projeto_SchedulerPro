@@ -140,4 +140,21 @@ export function validateEnv(): void {
   }
 
   validatePublicAppointmentTokenEncryption();
+  validateAppointmentExpirationInterval();
+}
+
+function validateAppointmentExpirationInterval(): void {
+  const raw = process.env.APPOINTMENT_EXPIRATION_INTERVAL_MS;
+
+  if (!raw?.trim()) {
+    return;
+  }
+
+  const intervalMs = Number(raw.trim());
+
+  if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+    fail(
+      "A variável APPOINTMENT_EXPIRATION_INTERVAL_MS deve ser um número positivo.",
+    );
+  }
 }

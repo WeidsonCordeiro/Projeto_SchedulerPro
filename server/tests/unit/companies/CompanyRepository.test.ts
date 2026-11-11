@@ -31,6 +31,15 @@ describe("CompanyRepository", () => {
     expect(company.find).toHaveBeenCalledWith(activeFilter);
   });
 
+  it("findAllActiveNotDeleted filtra isActive e deletedAt nulo", async () => {
+    company.find.mockResolvedValue([]);
+    await CompanyRepository.findAllActiveNotDeleted();
+    expect(company.find).toHaveBeenCalledWith({
+      deletedAt: null,
+      isActive: true,
+    });
+  });
+
   it("update aplica o filtro de empresa ativa e validadores", async () => {
     company.findOneAndUpdate.mockResolvedValue({});
     await CompanyRepository.update(id, { name: "Atualizada" });

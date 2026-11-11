@@ -21,6 +21,7 @@
 
 import dotenv from "dotenv";
 import { validateEnv } from "./validateEnv";
+import { resolveAppointmentExpirationIntervalMs } from "../modules/appointments/appointment-expiration.config";
 
 // Carrega o arquivo .env
 dotenv.config();
@@ -145,5 +146,13 @@ export const env = {
      * Frontend URL
      * */
     FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
+  },
+  jobs: {
+    /**
+     * Intervalo do job de expiração de agendamentos scheduled vencidos (ms).
+     */
+    APPOINTMENT_EXPIRATION_INTERVAL_MS: resolveAppointmentExpirationIntervalMs(
+      process.env.APPOINTMENT_EXPIRATION_INTERVAL_MS,
+    ),
   },
 };

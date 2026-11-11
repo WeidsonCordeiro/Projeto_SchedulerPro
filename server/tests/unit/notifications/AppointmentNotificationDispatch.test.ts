@@ -201,7 +201,7 @@ describe("AppointmentService -> notificações", () => {
     expect(notificationDispatcher.dispatchAppointmentEvent).not.toHaveBeenCalled();
   });
 
-  it("não dispara notificações na expiração automática de scheduled vencidos", async () => {
+  it("listagem não dispara expiração nem notificações", async () => {
     await AppointmentService.findAll(
       companyId,
       {},
@@ -209,7 +209,7 @@ describe("AppointmentService -> notificações", () => {
       new Date("2026-09-01T00:00:00.000Z"),
     );
 
-    expect(appointmentRepository.cancelOverdueScheduled).toHaveBeenCalled();
+    expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled();
     expect(notificationDispatcher.dispatchAppointmentEvent).not.toHaveBeenCalled();
   });
 

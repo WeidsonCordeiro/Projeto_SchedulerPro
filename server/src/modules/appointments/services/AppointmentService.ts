@@ -17,7 +17,6 @@ import AppointmentRepository from "../repositories/AppointmentRepository";
 import {
   type AppointmentReadScope,
   type AppointmentListScope,
-  isCompanyWideAppointmentReadScope,
   toAppointmentListScope,
   type SessionUserForReadScope,
 } from "../utils/appointment-read-scope";
@@ -724,19 +723,7 @@ class AppointmentService {
     readScope: AppointmentReadScope = { companyId },
     now: Date = new Date(),
   ) {
-    /**
-     * ----------------------------------------------------------
-     * Agendamento "scheduled" cujo início já passou é
-     * automaticamente cancelado antes da consulta.
-     *
-     * A expiração é global da empresa e não é disparada em
-     * consultas escopadas a um cliente (portal) nem a um
-     * funcionário (evita cancelar agendamentos de colegas).
-     * ----------------------------------------------------------
-     */
-    if (isCompanyWideAppointmentReadScope(readScope)) {
-      await this.expireOverdueScheduled(companyId, now);
-    }
+    void now;
 
     const appointments =
       await this.appointmentRepository.findByCompanyId(
@@ -1375,10 +1362,10 @@ class AppointmentService {
     }
 
     /**
-     * Agendamento scheduled/confirmed já no passado: o próprio
-     * sistema o cancela automaticamente
-     * (`cancelOverdueScheduled`). Cancelar aqui é coerente com
-     * essa regra e evita depender de uma job ter corrido.
+     * Agendamento scheduled/confirmed já no passado: a expiração
+     * automática de scheduled vencidos corre no
+     * AppointmentExpirationScheduler. Cancelar aqui permanece
+     * válido como acção explícita do utilizador no portal.
      */
 
     await this.cancel(

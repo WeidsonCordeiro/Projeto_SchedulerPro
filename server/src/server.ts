@@ -20,6 +20,7 @@ import { env } from "./config/env";
 import Database from "./providers/database";
 import Logger from "./providers/logger";
 import ReminderScheduler from "./modules/reminders/scheduler/ReminderScheduler";
+import AppointmentExpirationScheduler from "./modules/appointments/scheduler/AppointmentExpirationScheduler";
 
 let server: ReturnType<typeof app.listen>;
 
@@ -35,6 +36,7 @@ async function startServer() {
      * (catch-up após indisponibilidade) e depois periodicamente.
      */
     ReminderScheduler.start();
+    AppointmentExpirationScheduler.start();
 
     server = app.listen(env.app.PORT, () => {
       Logger.success(`API iniciada na porta ${env.app.PORT}`);
@@ -53,6 +55,8 @@ async function shutdown(signal: string): Promise<void> {
   Logger.system(`Recebido sinal ${signal}. Encerrando aplicação...`);
 
   try {
+    await AppointmentExpirationScheduler.stop();
+
     if (server) {
       await new Promise<void>((resolve, reject) => {
         server.close((err) => {

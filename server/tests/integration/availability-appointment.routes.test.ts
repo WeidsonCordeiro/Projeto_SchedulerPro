@@ -335,10 +335,10 @@ describe("Appointment HTTP integration", () => {
     expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
-  it("cancela scheduled vencidos antes de listar appointments", async () => {
+  it("não cancela scheduled vencidos ao listar appointments", async () => {
     const response = await request(app).get("/api/appointments");
     expect(response.status).toBe(200);
-    expect(appointmentRepository.cancelOverdueScheduled).toHaveBeenCalledWith(ids.companyA, expect.any(Date));
+    expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled();
   });
 
   it("cobre transições válidas e inválidas de status", async () => {
