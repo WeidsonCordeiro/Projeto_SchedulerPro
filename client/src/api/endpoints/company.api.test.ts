@@ -181,4 +181,33 @@ describe("companyApi", () => {
       response: { status: 403 },
     });
   });
+
+  it("deletes /companies/:id (soft delete)", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({
+      data: {
+        success: true,
+        message: "Empresa removida com sucesso.",
+        data: null,
+      },
+    });
+
+    const result = await companyApi.deleteCompany("abc123");
+
+    expect(apiClient.delete).toHaveBeenCalledWith("/companies/abc123");
+    expect(result).toEqual({
+      success: true,
+      message: "Empresa removida com sucesso.",
+      data: null,
+    });
+  });
+
+  it("propagates API errors during delete", async () => {
+    vi.mocked(apiClient.delete).mockRejectedValue(
+      httpError(403, { message: "Operação não permitida." }),
+    );
+
+    await expect(companyApi.deleteCompany("abc123")).rejects.toMatchObject({
+      response: { status: 403 },
+    });
+  });
 });

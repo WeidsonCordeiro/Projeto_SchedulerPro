@@ -1,12 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import authApi from "../../api/endpoints/auth.api";
+import { completeSessionLogout } from "../../app/completeSessionLogout";
 import { useAppDispatch } from "../../store";
-import {
-  clearCredentials,
-  clearSessionExpirationMessage,
-  setLoading,
-} from "../../store/slices/authSlice";
-import { clearCompany } from "../../store/slices/companySlice";
 import { STAFF_COMPANY_SUSPENSION_FRIENDLY_MESSAGE } from "../../api/errors";
 
 export default function StaffCompanySuspendedView() {
@@ -14,17 +8,7 @@ export default function StaffCompanySuspendedView() {
   const navigate = useNavigate();
 
   async function handleLogout() {
-    dispatch(setLoading(true));
-    try {
-      await authApi.logout();
-    } catch {
-      // Mantém logout local mesmo se o backend falhar.
-    } finally {
-      dispatch(clearCredentials());
-      dispatch(clearSessionExpirationMessage());
-      dispatch(clearCompany());
-      navigate("/login", { replace: true });
-    }
+    await completeSessionLogout(dispatch, navigate);
   }
 
   return (

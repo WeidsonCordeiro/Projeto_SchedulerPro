@@ -1,13 +1,7 @@
 import { type RefObject } from "react";
 import { useNavigate } from "react-router-dom";
-import authApi from "../../api/endpoints/auth.api";
+import { completeSessionLogout } from "../../app/completeSessionLogout";
 import { useAppDispatch, useAppSelector } from "../../store";
-import {
-  clearCredentials,
-  clearSessionExpirationMessage,
-  setLoading,
-} from "../../store/slices/authSlice";
-import { clearCompany } from "../../store/slices/companySlice";
 import NotificationBell from "./NotificationBell";
 import ImageAvatar from "../common/ImageAvatar";
 
@@ -25,17 +19,7 @@ export default function Navbar({
   const { user, isLoading } = useAppSelector((state) => state.auth);
 
   async function handleLogout() {
-    dispatch(setLoading(true));
-    try {
-      await authApi.logout();
-    } catch {
-      // Erro recuperável no backend não deve deixar a UI fingindo autenticada.
-    } finally {
-      dispatch(clearCredentials());
-      dispatch(clearSessionExpirationMessage());
-      dispatch(clearCompany());
-      navigate("/login", { replace: true });
-    }
+    await completeSessionLogout(dispatch, navigate);
   }
 
   const menuToggleLabel = isSidebarOpen ? "Fechar menu" : "Abrir menu";

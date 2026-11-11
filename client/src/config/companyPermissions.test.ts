@@ -8,6 +8,7 @@ describe("getCompanyAbilities", () => {
       canUpdate: false,
       canActivate: false,
       canDeactivate: false,
+      canDelete: false,
     });
   });
 
@@ -17,6 +18,7 @@ describe("getCompanyAbilities", () => {
       canUpdate: true,
       canActivate: true,
       canDeactivate: true,
+      canDelete: true,
     });
   });
 
@@ -26,6 +28,7 @@ describe("getCompanyAbilities", () => {
       canUpdate: true,
       canActivate: false,
       canDeactivate: false,
+      canDelete: false,
     });
   });
 
@@ -35,6 +38,7 @@ describe("getCompanyAbilities", () => {
       canUpdate: false,
       canActivate: false,
       canDeactivate: false,
+      canDelete: false,
     });
   });
 
@@ -44,6 +48,7 @@ describe("getCompanyAbilities", () => {
       canUpdate: false,
       canActivate: false,
       canDeactivate: false,
+      canDelete: false,
     });
   });
 
@@ -53,6 +58,7 @@ describe("getCompanyAbilities", () => {
       canUpdate: false,
       canActivate: false,
       canDeactivate: false,
+      canDelete: false,
     });
   });
 });
