@@ -222,10 +222,27 @@ describe("O6 — visibilidade de agendamentos (integração HTTP)", () => {
         {},
         undefined,
       );
-      expect(appointmentRepository.cancelOverdueScheduled).toHaveBeenCalledWith(
-        ids.companyA,
-        expect.any(Date),
-      );
+      expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled();
+    });
+
+    it("GET não altera scheduled vencido na resposta nem chama expiração", async () => {
+      stubSessionUser(Role.OWNER, ids.employee1);
+      const overdueStart = new Date("2020-01-01T10:00:00.000Z");
+      appointmentRepository.findByCompanyId.mockResolvedValue([
+        {
+          ...appointmentDoc(ids.appointment1, ids.employee1),
+          startAt: overdueStart,
+          endAt: new Date("2020-01-01T10:30:00.000Z"),
+          status: AppointmentStatus.SCHEDULED,
+        },
+      ]);
+
+      const response = await request(app).get("/api/appointments");
+
+      expect(response.status).toBe(200);
+      expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled();
+      expect(response.body.data[0].status).toBe(AppointmentStatus.SCHEDULED);
+      expect(new Date(response.body.data[0].startAt)).toEqual(overdueStart);
     });
 
     it("EMPLOYEE lista apenas com employeeId da sessão", async () => {

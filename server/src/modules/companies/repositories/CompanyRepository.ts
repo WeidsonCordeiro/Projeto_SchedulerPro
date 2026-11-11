@@ -67,6 +67,20 @@ class CompanyRepository {
 
   /**
    * ==========================================================
+   * Lista empresas operacionais (ativas e não eliminadas).
+   *
+   * Usado por processamentos em lote multi-tenant.
+   * ==========================================================
+   */
+  public async findAllActiveNotDeleted(): Promise<CompanyDocument[]> {
+    return Company.find({
+      deletedAt: null,
+      isActive: true,
+    });
+  }
+
+  /**
+   * ==========================================================
    * Ativa uma empresa.
    * ==========================================================
    */
