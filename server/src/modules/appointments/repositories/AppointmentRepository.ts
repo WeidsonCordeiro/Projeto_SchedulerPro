@@ -190,6 +190,36 @@ class AppointmentRepository {
   }
 
   /**
+   * Atualização com filtro de tenant e escopo opcional (defesa em profundidade).
+   */
+  public async updateInCompany(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    data: UpdateAppointmentData,
+    scope?: AppointmentListScope,
+    options?: RepositorySessionOptions,
+  ): Promise<AppointmentDocument | null> {
+    const filter: Record<string, unknown> = {
+      _id: id,
+      companyId,
+      deletedAt: null,
+    };
+
+    if (scope?.clientId) {
+      filter.clientId = scope.clientId;
+    }
+    if (scope?.employeeId) {
+      filter.employeeId = scope.employeeId;
+    }
+
+    return Appointment.findOneAndUpdate(filter, data, {
+      new: true,
+      runValidators: true,
+      session: options?.session,
+    });
+  }
+
+  /**
 
 * ==========================================================
 * Atualiza o status de um agendamento.
@@ -207,6 +237,34 @@ class AppointmentRepository {
         runValidators: true,
       },
     );
+  }
+
+  /**
+   * Atualização de status com filtro de tenant e escopo opcional.
+   */
+  public async updateStatusInCompany(
+    id: string | Types.ObjectId,
+    companyId: string | Types.ObjectId,
+    status: AppointmentStatus,
+    scope?: AppointmentListScope,
+  ): Promise<AppointmentDocument | null> {
+    const filter: Record<string, unknown> = {
+      _id: id,
+      companyId,
+      deletedAt: null,
+    };
+
+    if (scope?.clientId) {
+      filter.clientId = scope.clientId;
+    }
+    if (scope?.employeeId) {
+      filter.employeeId = scope.employeeId;
+    }
+
+    return Appointment.findOneAndUpdate(filter, { status }, {
+      new: true,
+      runValidators: true,
+    });
   }
 
   /**

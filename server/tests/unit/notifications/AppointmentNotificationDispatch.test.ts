@@ -11,9 +11,12 @@ const {
 } = vi.hoisted(() => ({
   appointmentRepository: {
     findById: vi.fn(),
+    findByIdInCompany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateInCompany: vi.fn(),
     updateStatus: vi.fn(),
+    updateStatusInCompany: vi.fn(),
     hasEmployeeConflict: vi.fn(),
     hasClientConflict: vi.fn(),
     softDelete: vi.fn(),
@@ -47,8 +50,14 @@ vi.mock("../../../src/modules/appointments/services/appointment-booking-transact
 import AppointmentService from "../../../src/modules/appointments/services/AppointmentService";
 import { AppointmentStatus } from "../../../src/constants/appointment-status";
 import { NotificationType } from "../../../src/modules/notifications";
+import { Role } from "../../../src/constants/roles";
 
 const companyId = "507f1f77bcf86cd799439011";
+const ownerSession = {
+  userId: "507f1f77bcf86cd799439014",
+  companyId,
+  role: Role.OWNER,
+};
 const clientId = "507f1f77bcf86cd799439012";
 const serviceId = "507f1f77bcf86cd799439013";
 const employeeId = "507f1f77bcf86cd799439014";
@@ -93,10 +102,15 @@ beforeEach(() => {
   appointmentRepository.hasClientConflict.mockResolvedValue(false);
   appointmentRepository.create.mockResolvedValue(entity());
   appointmentRepository.update.mockResolvedValue(entity());
+  appointmentRepository.updateInCompany.mockResolvedValue(entity());
   appointmentRepository.updateStatus.mockResolvedValue(
     entity({ status: AppointmentStatus.CONFIRMED }),
   );
+  appointmentRepository.updateStatusInCompany.mockResolvedValue(
+    entity({ status: AppointmentStatus.CONFIRMED }),
+  );
   appointmentRepository.findById.mockResolvedValue(entity());
+  appointmentRepository.findByIdInCompany.mockResolvedValue(entity());
   appointmentRepository.cancelOverdueScheduled.mockResolvedValue(0);
   appointmentRepository.findByCompanyId.mockResolvedValue([entity()]);
 
@@ -130,12 +144,13 @@ describe("AppointmentService -> notificações", () => {
   });
 
   it("dispara APPOINTMENT_UPDATED ao atualizar", async () => {
-    appointmentRepository.findById.mockResolvedValue(entity());
+    appointmentRepository.findByIdInCompany.mockResolvedValue(entity());
 
     await AppointmentService.update(
       id,
       { notes: "Janela" },
       companyId,
+      ownerSession,
       new Date("2026-08-29T00:00:00.000Z"),
     );
 
@@ -148,11 +163,11 @@ describe("AppointmentService -> notificações", () => {
   });
 
   it("dispara APPOINTMENT_CANCELLED ao cancelar", async () => {
-    appointmentRepository.updateStatus.mockResolvedValue(
+    appointmentRepository.updateStatusInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.CANCELLED }),
     );
 
-    await AppointmentService.cancel(id, companyId);
+    await AppointmentService.cancel(id, companyId, ownerSession);
 
     expect(notificationDispatcher.dispatchAppointmentEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -163,25 +178,25 @@ describe("AppointmentService -> notificações", () => {
   });
 
   it("não dispara notificações em confirm/complete/no-show/delete", async () => {
-    appointmentRepository.updateStatus.mockResolvedValue(
+    appointmentRepository.updateStatusInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.CONFIRMED }),
     );
-    await AppointmentService.confirm(id, companyId);
+    await AppointmentService.confirm(id, companyId, ownerSession);
 
-    appointmentRepository.findById.mockResolvedValue(
+    appointmentRepository.findByIdInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.CONFIRMED }),
     );
-    appointmentRepository.updateStatus.mockResolvedValue(
+    appointmentRepository.updateStatusInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.COMPLETED }),
     );
-    await AppointmentService.complete(id, companyId);
+    await AppointmentService.complete(id, companyId, ownerSession);
 
-    appointmentRepository.updateStatus.mockResolvedValue(
+    appointmentRepository.updateStatusInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.NO_SHOW }),
     );
-    await AppointmentService.markAsNoShow(id, companyId);
+    await AppointmentService.markAsNoShow(id, companyId, ownerSession);
 
-    await AppointmentService.delete(id, companyId);
+    await AppointmentService.delete(id, companyId, ownerSession);
 
     expect(notificationDispatcher.dispatchAppointmentEvent).not.toHaveBeenCalled();
   });
@@ -297,7 +312,7 @@ describe("AppointmentService → token público na notificação", () => {
     });
 
     it("não envia token no cancelamento administrativo", async () => {
-      await AppointmentService.cancel(id, companyId);
+      await AppointmentService.cancel(id, companyId, ownerSession);
 
       expect(dispatched()).not.toHaveProperty("publicAccessToken");
     });

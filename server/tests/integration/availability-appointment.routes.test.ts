@@ -24,8 +24,8 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
   },
   appointmentRepository: {
     findById: vi.fn(), findByIdInCompany: vi.fn(), findByCompanyId: vi.fn(), create: vi.fn(), update: vi.fn(),
-    updateStatus: vi.fn(), softDelete: vi.fn(), hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(),
-    cancelOverdueScheduled: vi.fn(),
+    updateInCompany: vi.fn(), updateStatus: vi.fn(), updateStatusInCompany: vi.fn(), softDelete: vi.fn(),
+    hasEmployeeConflict: vi.fn(), hasClientConflict: vi.fn(), cancelOverdueScheduled: vi.fn(),
   },
   userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
   clientRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
@@ -111,7 +111,9 @@ beforeEach(() => {
   appointmentRepository.cancelOverdueScheduled.mockResolvedValue(0);
   appointmentRepository.create.mockImplementation(async (data: any) => ({ ...appointmentA(), ...data }));
   appointmentRepository.update.mockImplementation(async (_id: string, data: any) => ({ ...appointmentA(), ...data }));
+  appointmentRepository.updateInCompany.mockImplementation(async (_id: string, _cid: string, data: any) => ({ ...appointmentA(), ...data }));
   appointmentRepository.updateStatus.mockImplementation(async (_id: string, status: AppointmentStatus) => appointmentA({ status }));
+  appointmentRepository.updateStatusInCompany.mockImplementation(async (_id: string, _cid: string, status: AppointmentStatus) => appointmentA({ status }));
 });
 
 describe("Availability HTTP integration", () => {
@@ -298,7 +300,7 @@ describe("Appointment HTTP integration", () => {
       .patch(`/api/appointments/${ids.appointment}`)
       .send({ startAt: "2027-08-29T08:00:00" });
     expect(response.status).toBe(400);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("rejeita conflitos de employee/client e permite horários adjacentes", async () => {
@@ -330,7 +332,7 @@ describe("Appointment HTTP integration", () => {
   it("não permite mover appointment para o passado na atualização", async () => {
     const response = await request(app).patch(`/api/appointments/${ids.appointment}`).send({ startAt: "2020-01-15T10:00:00.000Z" });
     expect(response.status).toBe(400);
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 
   it("cancela scheduled vencidos antes de listar appointments", async () => {
@@ -346,14 +348,19 @@ describe("Appointment HTTP integration", () => {
       ["cancel", AppointmentStatus.SCHEDULED, AppointmentStatus.CANCELLED],
       ["no-show", AppointmentStatus.CONFIRMED, AppointmentStatus.NO_SHOW],
     ] as const) {
-      appointmentRepository.findById.mockResolvedValue(appointmentA({ status: from }));
+      appointmentRepository.findByIdInCompany.mockResolvedValue(appointmentA({ status: from }));
       const response = await request(app).patch(`/api/appointments/${ids.appointment}/${path}`);
       expect(response.status).toBe(200);
-      expect(appointmentRepository.updateStatus).toHaveBeenCalledWith(ids.appointment, to);
+      expect(appointmentRepository.updateStatusInCompany).toHaveBeenCalledWith(
+        ids.appointment,
+        ids.companyA,
+        to,
+        undefined,
+      );
     }
-    appointmentRepository.findById.mockResolvedValue(appointmentA({ status: AppointmentStatus.COMPLETED }));
+    appointmentRepository.findByIdInCompany.mockResolvedValue(appointmentA({ status: AppointmentStatus.COMPLETED }));
     expect((await request(app).patch(`/api/appointments/${ids.appointment}/confirm`)).status).toBe(400);
-    appointmentRepository.findById.mockResolvedValue(null);
+    appointmentRepository.findByIdInCompany.mockResolvedValue(null);
     expect((await request(app).patch(`/api/appointments/${ids.appointment}/cancel`)).status).toBe(404);
   });
 

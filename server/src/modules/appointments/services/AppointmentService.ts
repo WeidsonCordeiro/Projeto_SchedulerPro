@@ -16,9 +16,17 @@ import { Types, ClientSession } from "mongoose";
 import AppointmentRepository from "../repositories/AppointmentRepository";
 import {
   type AppointmentReadScope,
+  type AppointmentListScope,
   isCompanyWideAppointmentReadScope,
   toAppointmentListScope,
+  type SessionUserForReadScope,
 } from "../utils/appointment-read-scope";
+import {
+  assertEmployeePatchAllowed,
+  isEmployeeRole,
+  listScopeForWriteUser,
+  loadAppointmentForStaffWrite,
+} from "../utils/appointment-write-access";
 import { withBookingTransaction } from "./appointment-booking-transaction";
 import AppointmentMapper from "../mappers/AppointmentMapper";
 import PublicAppointmentMapper from "../mappers/PublicAppointmentMapper";
@@ -197,6 +205,7 @@ class AppointmentService {
       priceAtTime: number | null;
     };
     notFoundError?: () => AppError;
+    listScope?: AppointmentListScope;
   }): Promise<AppointmentDocument> {
     return withBookingTransaction(async (session) => {
       await this.userRepository.touchBookingSerialization(
@@ -254,14 +263,18 @@ class AppointmentService {
       }
 
       const updated = session
-        ? await this.appointmentRepository.update(
+        ? await this.appointmentRepository.updateInCompany(
             input.appointmentId,
+            input.companyId,
             input.updateData,
+            input.listScope,
             { session },
           )
-        : await this.appointmentRepository.update(
+        : await this.appointmentRepository.updateInCompany(
             input.appointmentId,
+            input.companyId,
             input.updateData,
+            input.listScope,
           );
 
       if (!updated) {
@@ -825,13 +838,16 @@ class AppointmentService {
     id: string,
     dto: UpdateAppointmentDto,
     companyId: string,
+    sessionUser: SessionUserForReadScope,
     now: Date = new Date(),
   ) {
-    const appointment = await this.appointmentRepository.findById(id);
-
-    if (!appointment || appointment.companyId.toString() !== companyId) {
-      throw new AppError("Agendamento não encontrado.", HttpStatus.NOT_FOUND);
+    if (isEmployeeRole(sessionUser.role)) {
+      assertEmployeePatchAllowed(dto);
     }
+
+    const appointment = await loadAppointmentForStaffWrite(id, sessionUser);
+    const listScope = listScopeForWriteUser(sessionUser);
+    const employeeScoped = isEmployeeRole(sessionUser.role);
 
     /**
      * ----------------------------------------------------------
@@ -856,52 +872,60 @@ class AppointmentService {
      */
     let priceAtTime = appointment.priceAtTime ?? null;
 
-    /**
-     * ----------------------------------------------------------
-     * Atualiza e valida o cliente.
-     * ----------------------------------------------------------
-     */
-    if (dto.clientId) {
-      await this.requireActiveClient(dto.clientId, companyId);
-
-      clientId = new Types.ObjectId(dto.clientId);
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * Atualiza e valida o serviço.
-     * ----------------------------------------------------------
-     */
     let service = await this.serviceRepository.findById(serviceId);
 
-    if (dto.serviceId) {
-      service = await PublicBookingEligibility.requireActiveService(dto.serviceId, companyId);
+    if (!employeeScoped) {
+      /**
+       * ----------------------------------------------------------
+       * Atualiza e valida o cliente.
+       * ----------------------------------------------------------
+       */
+      if (dto.clientId) {
+        await this.requireActiveClient(dto.clientId, companyId);
 
-      serviceId = new Types.ObjectId(dto.serviceId);
+        clientId = new Types.ObjectId(dto.clientId);
+      }
 
       /**
        * ----------------------------------------------------------
-       * Regra de alteração de serviço: só quando o serviço muda de
-       * facto é que o preço histórico é recalculado para o preço
-       * atual do novo serviço. Reenviar o MESMO `serviceId` é
-       * tratado como não-alteração, pelo que o snapshot original
-       * permanece.
+       * Atualiza e valida o serviço.
        * ----------------------------------------------------------
        */
-      if (serviceId.toString() !== appointment.serviceId.toString()) {
-        priceAtTime = service.price;
+      if (dto.serviceId) {
+        service = await PublicBookingEligibility.requireActiveService(
+          dto.serviceId,
+          companyId,
+        );
+
+        serviceId = new Types.ObjectId(dto.serviceId);
+
+        /**
+         * ----------------------------------------------------------
+         * Regra de alteração de serviço: só quando o serviço muda de
+         * facto é que o preço histórico é recalculado para o preço
+         * atual do novo serviço. Reenviar o MESMO `serviceId` é
+         * tratado como não-alteração, pelo que o snapshot original
+         * permanece.
+         * ----------------------------------------------------------
+         */
+        if (serviceId.toString() !== appointment.serviceId.toString()) {
+          priceAtTime = service.price;
+        }
       }
-    }
 
-    /**
-     * ----------------------------------------------------------
-     * Atualiza e valida o funcionário.
-     * ----------------------------------------------------------
-     */
-    if (dto.employeeId) {
-      await PublicBookingEligibility.requireActiveEmployee(dto.employeeId, companyId);
+      /**
+       * ----------------------------------------------------------
+       * Atualiza e valida o funcionário.
+       * ----------------------------------------------------------
+       */
+      if (dto.employeeId) {
+        await PublicBookingEligibility.requireActiveEmployee(
+          dto.employeeId,
+          companyId,
+        );
 
-      employeeId = new Types.ObjectId(dto.employeeId);
+        employeeId = new Types.ObjectId(dto.employeeId);
+      }
     }
 
     /**
@@ -955,6 +979,7 @@ class AppointmentService {
       employeeId,
       startAt,
       endAt,
+      listScope,
       updateData: {
         clientId,
         serviceId,
@@ -1359,6 +1384,7 @@ class AppointmentService {
     await this.cancel(
       appointment._id.toString(),
       appointment.companyId.toString(),
+      undefined,
       /**
        * Token puro apresentado na URL, para o e-mail de
        * cancelamento poder repetir o link de gestão.
@@ -1390,15 +1416,24 @@ class AppointmentService {
     companyId: string,
     allowedCurrentStatuses: AppointmentStatus[],
     newStatus: AppointmentStatus,
+    sessionUser?: SessionUserForReadScope,
     publicManageToken?: string,
   ) {
-    const appointment = await this.appointmentRepository.findById(id);
+    let appointment;
 
-    if (!appointment || appointment.companyId.toString() !== companyId) {
-      throw new AppError(
-        HttpMessages.APPOINTMENT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
+    if (sessionUser) {
+      appointment = await loadAppointmentForStaffWrite(id, sessionUser);
+    } else {
+      const found = await this.appointmentRepository.findById(id);
+
+      if (!found || found.companyId.toString() !== companyId) {
+        throw new AppError(
+          HttpMessages.APPOINTMENT_NOT_FOUND,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+      appointment = found;
     }
 
     if (!allowedCurrentStatuses.includes(appointment.status)) {
@@ -1408,10 +1443,18 @@ class AppointmentService {
       );
     }
 
-    const updatedAppointment = await this.appointmentRepository.updateStatus(
-      id,
-      newStatus,
-    );
+    const listScope = sessionUser
+      ? listScopeForWriteUser(sessionUser)
+      : undefined;
+
+    const updatedAppointment = sessionUser
+      ? await this.appointmentRepository.updateStatusInCompany(
+          id,
+          companyId,
+          newStatus,
+          listScope,
+        )
+      : await this.appointmentRepository.updateStatus(id, newStatus);
 
     if (!updatedAppointment) {
       throw new AppError(
@@ -1436,12 +1479,17 @@ class AppointmentService {
    * Confirma um agendamento.
    * ==========================================================
    */
-  public async confirm(id: string, companyId: string) {
+  public async confirm(
+    id: string,
+    companyId: string,
+    sessionUser: SessionUserForReadScope,
+  ) {
     return this.changeStatus(
       id,
       companyId,
       [AppointmentStatus.SCHEDULED],
       AppointmentStatus.CONFIRMED,
+      sessionUser,
     );
   }
 
@@ -1450,12 +1498,17 @@ class AppointmentService {
    * Conclui um agendamento.
    * ==========================================================
    */
-  public async complete(id: string, companyId: string) {
+  public async complete(
+    id: string,
+    companyId: string,
+    sessionUser: SessionUserForReadScope,
+  ) {
     return this.changeStatus(
       id,
       companyId,
       [AppointmentStatus.CONFIRMED],
       AppointmentStatus.COMPLETED,
+      sessionUser,
     );
   }
 
@@ -1473,6 +1526,7 @@ class AppointmentService {
   public async cancel(
     id: string,
     companyId: string,
+    sessionUser?: SessionUserForReadScope,
     publicManageToken?: string,
   ) {
     return this.changeStatus(
@@ -1480,6 +1534,7 @@ class AppointmentService {
       companyId,
       [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
       AppointmentStatus.CANCELLED,
+      sessionUser,
       publicManageToken,
     );
   }
@@ -1489,12 +1544,17 @@ class AppointmentService {
    * Marca um agendamento como não comparecido.
    * ==========================================================
    */
-  public async markAsNoShow(id: string, companyId: string) {
+  public async markAsNoShow(
+    id: string,
+    companyId: string,
+    sessionUser: SessionUserForReadScope,
+  ) {
     return this.changeStatus(
       id,
       companyId,
       [AppointmentStatus.CONFIRMED],
       AppointmentStatus.NO_SHOW,
+      sessionUser,
     );
   }
 
@@ -1506,15 +1566,12 @@ class AppointmentService {
 * Soft delete.
 * ==========================================================
   */
-  public async delete(id: string, companyId: string): Promise<void> {
-    const appointment = await this.appointmentRepository.findById(id);
-
-    if (!appointment || appointment.companyId.toString() !== companyId) {
-      throw new AppError(
-        HttpMessages.APPOINTMENT_NOT_FOUND,
-        HttpStatus.NOT_FOUND,
-      );
-    }
+  public async delete(
+    id: string,
+    _companyId: string,
+    sessionUser: SessionUserForReadScope,
+  ): Promise<void> {
+    await loadAppointmentForStaffWrite(id, sessionUser);
 
     await this.appointmentRepository.softDelete(id);
   }

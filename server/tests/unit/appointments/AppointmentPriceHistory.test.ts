@@ -11,9 +11,12 @@ const {
 } = vi.hoisted(() => ({
   appointmentRepository: {
     findById: vi.fn(),
+    findByIdInCompany: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
+    updateInCompany: vi.fn(),
     updateStatus: vi.fn(),
+    updateStatusInCompany: vi.fn(),
     hasEmployeeConflict: vi.fn(),
     hasClientConflict: vi.fn(),
     softDelete: vi.fn(),
@@ -77,6 +80,7 @@ const serviceId = "507f1f77bcf86cd799439013";
 const otherServiceId = "507f1f77bcf86cd799439018";
 const employeeId = "507f1f77bcf86cd799439014";
 const appointmentId = "507f1f77bcf86cd799439015";
+const ownerSession = { userId: employeeId, companyId, role: Role.OWNER };
 
 const START_AT = new Date("2027-08-29T08:00:00.000Z");
 const NOW = new Date("2027-08-28T00:00:00.000Z");
@@ -172,7 +176,14 @@ beforeEach(() => {
   appointmentRepository.update.mockImplementation(
     async (_id: unknown, data: object) => appointment({ ...data }),
   );
+  appointmentRepository.updateInCompany.mockImplementation(
+    async (_id: unknown, _cid: unknown, data: object) => appointment({ ...data }),
+  );
+  appointmentRepository.findByIdInCompany.mockResolvedValue(appointment());
   appointmentRepository.updateStatus.mockResolvedValue(
+    appointment({ status: AppointmentStatus.CONFIRMED }),
+  );
+  appointmentRepository.updateStatusInCompany.mockResolvedValue(
     appointment({ status: AppointmentStatus.CONFIRMED }),
   );
   appointmentRepository.findByPublicAccessTokenHash.mockImplementation(
@@ -254,18 +265,21 @@ describe("AppointmentService — preservação do preço histórico na alteraç�
       async (id: string) =>
         id === serviceId ? originalService({ price: 99 }) : otherService(),
     );
-    appointmentRepository.findById.mockResolvedValue(appointment());
+    appointmentRepository.findByIdInCompany.mockResolvedValue(appointment());
 
     await AppointmentService.update(
       appointmentId,
       { notes: "Nova nota", startAt: new Date("2027-08-30T11:00:00.000Z") },
       companyId,
+      ownerSession,
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       appointmentId,
+      companyId,
       expect.objectContaining({ priceAtTime: ORIGINAL_PRICE }),
+      undefined,
     );
   });
 
@@ -273,50 +287,58 @@ describe("AppointmentService — preservação do preço histórico na alteraç�
     serviceRepository.findById.mockImplementation(async () =>
       originalService({ price: 99 }),
     );
-    appointmentRepository.findById.mockResolvedValue(appointment());
+    appointmentRepository.findByIdInCompany.mockResolvedValue(appointment());
 
     await AppointmentService.update(
       appointmentId,
       { serviceId },
       companyId,
+      ownerSession,
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       appointmentId,
+      companyId,
       expect.objectContaining({ priceAtTime: ORIGINAL_PRICE }),
+      undefined,
     );
   });
 
   it("alterar para OUTRO serviço recalcula o preço histórico com o preço atual do novo serviço", async () => {
-    appointmentRepository.findById.mockResolvedValue(appointment());
+    appointmentRepository.findByIdInCompany.mockResolvedValue(appointment());
 
     await AppointmentService.update(
       appointmentId,
       { serviceId: otherServiceId },
       companyId,
+      ownerSession,
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       appointmentId,
+      companyId,
       expect.objectContaining({
         priceAtTime: NEW_PRICE,
         serviceId: expect.anything(),
       }),
+      undefined,
     );
   });
 
   it("alterar o estado (confirmar) não toca no preço histórico", async () => {
-    appointmentRepository.findById.mockResolvedValue(appointment());
+    appointmentRepository.findByIdInCompany.mockResolvedValue(appointment());
 
-    await AppointmentService.confirm(appointmentId, companyId);
+    await AppointmentService.confirm(appointmentId, companyId, ownerSession);
 
-    expect(appointmentRepository.updateStatus).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateStatusInCompany).toHaveBeenCalledWith(
       appointmentId,
+      companyId,
       AppointmentStatus.CONFIRMED,
+      undefined,
     );
-    expect(appointmentRepository.update).not.toHaveBeenCalled();
+    expect(appointmentRepository.updateInCompany).not.toHaveBeenCalled();
   });
 });
 
@@ -332,9 +354,11 @@ describe("AppointmentService — preço histórico na alteração pública", () 
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({ priceAtTime: ORIGINAL_PRICE }),
+      undefined,
     );
   });
 
@@ -345,9 +369,11 @@ describe("AppointmentService — preço histórico na alteração pública", () 
       NOW,
     );
 
-    expect(appointmentRepository.update).toHaveBeenCalledWith(
+    expect(appointmentRepository.updateInCompany).toHaveBeenCalledWith(
       expect.anything(),
+      companyId,
       expect.objectContaining({ priceAtTime: NEW_PRICE }),
+      undefined,
     );
   });
 
@@ -362,7 +388,7 @@ describe("AppointmentService — preço histórico na alteração pública", () 
       NOW,
     );
 
-    const persisted = appointmentRepository.update.mock.calls[0][1];
+    const persisted = appointmentRepository.updateInCompany.mock.calls[0][2];
     expect(persisted.priceAtTime).toBe(ORIGINAL_PRICE);
   });
 });

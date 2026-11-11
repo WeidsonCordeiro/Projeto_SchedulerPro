@@ -144,6 +144,8 @@ export const HttpMessages = {
     "Não é possível alterar o status deste agendamento.",
   STATUS_UPDATE_FAILED: "Não foi possível atualizar o status do agendamento.",
   APPOINTMENT_START_IN_PAST: "Não é possível agendar em um horário que já passou.",
+  APPOINTMENT_UPDATE_FIELD_NOT_ALLOWED:
+    "Este perfil não pode alterar cliente, serviço ou funcionário do agendamento.",
 
   /*Agendamento público (sem autenticação)*/
   TOO_MANY_REQUESTS:
