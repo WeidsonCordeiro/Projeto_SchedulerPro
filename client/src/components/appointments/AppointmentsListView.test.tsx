@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { DateTime } from "luxon";
 import { describe, expect, it, vi } from "vitest";
 import AppointmentsListView from "./AppointmentsListView";
 import type { Appointment } from "../../types/appointment";
@@ -18,6 +19,16 @@ function makeAppointment(overrides: Partial<Appointment> = {}): Appointment {
     createdAt: "2026-07-01T10:00:00.000Z",
     updatedAt: "2026-07-01T10:00:00.000Z",
     ...overrides,
+  };
+}
+
+/** Instantes futuros relativos a DateTime.now() para cenários que exigem Editar. */
+function futureAppointmentTimes(): { startAt: string; endAt: string } {
+  const start = DateTime.now().plus({ days: 30 }).toUTC();
+  const end = start.plus({ minutes: 30 });
+  return {
+    startAt: start.toISO()!,
+    endAt: end.toISO()!,
   };
 }
 
@@ -124,7 +135,9 @@ describe("AppointmentsListView", () => {
   });
 
   it("invokes edit, status and delete callbacks from the action row", () => {
-    const { onEdit, onStatusAction, onDeleteRequest } = renderList();
+    const { onEdit, onStatusAction, onDeleteRequest } = renderList({
+      appointments: [makeAppointment(futureAppointmentTimes())],
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Editar" }));
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: "appt1" }));
@@ -169,6 +182,7 @@ describe("AppointmentsListView", () => {
 
   it("disables action buttons and shows Aguarde for the pending status action", () => {
     renderList({
+      appointments: [makeAppointment(futureAppointmentTimes())],
       pendingStatusAction: { id: "appt1", action: "confirm" },
     });
 
