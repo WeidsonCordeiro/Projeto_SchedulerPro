@@ -1,0 +1,140 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v4.1.11 C:/Users/Weidson Cordeiro/Desktop/Front-End/Projetos/Projeto_SchedulerPro/client
+
+ ❯ src/pages/dashboard/DashboardPage.test.tsx (48 tests | 1 failed | 47 skipped) 2223ms
+       × ignores stale summary responses that complete after a newer load cycle 2212ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/dashboard/DashboardPage.test.tsx > DashboardPage > automatic refresh (O5) > ignores stale summary responses that complete after a newer load cycle
+TestingLibraryElementError: Unable to find role="heading" and name "Resumo do dia"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"dashboard-page"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"page-header"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-eyebrow"[39m
+          [36m>[39m
+            [0mVisão geral[0m
+          [36m</p>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"page-title"[39m
+          [36m>[39m
+            [0mBem-vindo ao SchedulerPro[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-description"[39m
+          [36m>[39m
+            [0mOlá, Owner Teste[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"page-actions"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn btn-primary"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"dashboard-open-agenda"[39m
+            [33mhref[39m=[32m"/appointments"[39m
+          [36m>[39m
+            [0mAbrir agenda[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"loading-state "[39m
+        [33mrole[39m=[32m"status"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"spinner-border spinner-border-sm text-primary"[39m
+        [36m/>[39m
+        [36m<span>[39m
+          [0mA carregar o painel…[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"dashboard-page"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"page-header"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-eyebrow"[39m
+          [36m>[39m
+            [0mVisão geral[0m
+          [36m</p>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"page-title"[39m
+          [36m>[39m
+            [0mBem-vindo ao SchedulerPro[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-description"[39m
+          [36m>[39m
+            [0mOlá, Owner Teste[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"page-actions"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn btn-primary"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"dashboard-open-agenda"[39m
+            [33mhref[39m=[32m"/appointments"[39m
+          [36m>[39m
+            [0mAbrir agenda[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"loading-state "[39m
+        [33mrole[39m=[32m"status"[39m
+      [36m>[39m
+        [36m<span[39m
+          [33maria-hidden[39m=[32m"true"[39m
+          [33mclass[39m=[32m"spinner-border spinner-border-sm text-primary"[39m
+        [36m/>[39m
+        [36m<span>[39m
+          [0mA carregar o painel…[0m
+        [36m</span>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ waitForDashboardLoaded src/pages/dashboard/DashboardPage.test.tsx:245:16
+    243|
+    244| async function waitForDashboardLoaded() {
+    245|   await screen.findByRole("heading", { name: "Resumo do dia" });
+       |                ^
+    246| }
+    247|
+ ❯ src/pages/dashboard/DashboardPage.test.tsx:1324:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 47 skipped (48)
+   Start at  12:03:02
+   Duration  17.61s (transform 1.06s, setup 1.10s, import 2.77s, tests 2.22s, environment 10.11s)
+

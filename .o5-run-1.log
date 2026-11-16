@@ -1,0 +1,88 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+ RUN  v4.1.11 C:/Users/Weidson Cordeiro/Desktop/Front-End/Projetos/Projeto_SchedulerPro/client
+
+ ❯ src/pages/dashboard/DashboardPage.test.tsx (48 tests | 1 failed | 47 skipped) 2834ms
+       × ignores stale summary responses that complete after a newer load cycle 2748ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/dashboard/DashboardPage.test.tsx > DashboardPage > automatic refresh (O5) > ignores stale summary responses that complete after a newer load cycle
+AssertionError: expected "vi.fn()" to be called 3 times, but got 2 times
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body>[39m
+    [36m<div>[39m
+      [36m<section[39m
+        [33mclass[39m=[32m"dashboard-page"[39m
+      [36m>[39m
+        [36m<header[39m
+          [33mclass[39m=[32m"page-header"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"page-eyebrow"[39m
+            [36m>[39m
+              [0mVisão geral[0m
+            [36m</p>[39m
+            [36m<h1[39m
+              [33mclass[39m=[32m"page-title"[39m
+            [36m>[39m
+              [0mBem-vindo ao SchedulerPro[0m
+            [36m</h1>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"page-description"[39m
+            [36m>[39m
+              [0mOlá, Owner Teste[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"page-actions"[39m
+          [36m>[39m
+            [36m<a[39m
+              [33mclass[39m=[32m"btn btn-primary"[39m
+              [33mdata-discover[39m=[32m"true"[39m
+              [33mdata-testid[39m=[32m"dashboard-open-agenda"[39m
+              [33mhref[39m=[32m"/appointments"[39m
+            [36m>[39m
+              [0mAbrir agenda[0m
+            [36m</a>[39m
+          [36m</div>[39m
+        [36m</header>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"loading-state "[39m
+          [33mrole[39m=[32m"status"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"spinner-border spinner-border-sm text-primary"[39m
+          [36m/>[39m
+          [36m<span>[39m
+            [0mA carregar o painel…[0m
+          [36m</span>[39m
+        [36m</div>[39m
+      [36m</section>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+ ❯ src/pages/dashboard/DashboardPage.test.tsx:1317:41
+    1315|
+    1316|       await waitFor(() => {
+    1317|         expect(dashboardApi.getSummary).toHaveBeenCalledTimes(3);
+       |                                         ^
+    1318|       });
+    1319|
+ ❯ runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ❯ checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ❯ Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 47 skipped (48)
+   Start at  12:05:02
+   Duration  35.70s (transform 1.79s, setup 1.19s, import 4.36s, tests 2.83s, environment 23.48s)
+
