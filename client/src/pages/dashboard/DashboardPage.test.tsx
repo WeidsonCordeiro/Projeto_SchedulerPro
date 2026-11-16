@@ -245,6 +245,17 @@ async function waitForDashboardLoaded() {
   await screen.findByRole("heading", { name: "Resumo do dia" });
 }
 
+/** Garante carga inicial concluída (UI + 1.ª getSummary) antes de refresh O5. */
+async function waitForDashboardReady() {
+  await waitForDashboardLoaded();
+  await waitFor(() => {
+    expect(dashboardApi.getSummary).toHaveBeenCalledTimes(1);
+  });
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
 function setDocumentVisibility(state: DocumentVisibilityState) {
   Object.defineProperty(document, "visibilityState", {
     configurable: true,
@@ -274,6 +285,7 @@ const NOW = "2026-09-10T12:00:00.000Z";
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(dashboardApi.getSummary).mockReset();
     mockRelatedData();
     mockSummaryResponse(makeSummary());
     setDocumentVisibility("visible");
@@ -1102,7 +1114,7 @@ describe("DashboardPage", () => {
 
     it("throttles rapid visible events to one extra call per interval", async () => {
       renderDashboard();
-      await waitForDashboardLoaded();
+      await waitForDashboardReady();
 
       act(() => {
         vi.advanceTimersByTime(45_000);
@@ -1110,7 +1122,7 @@ describe("DashboardPage", () => {
       dispatchVisibilityVisible();
       dispatchVisibilityVisible();
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
         expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
       });
       await act(async () => {
@@ -1175,20 +1187,31 @@ describe("DashboardPage", () => {
     });
 
     it("keeps existing KPIs and shows a warning when a silent refresh fails", async () => {
-      mockSummaryResponse(makeSummary({ activeClientsCount: 11 }));
-      renderDashboard();
-      await waitForDashboardLoaded();
+      let summaryCalls = 0;
+      vi.mocked(dashboardApi.getSummary).mockImplementation(async () => {
+        summaryCalls += 1;
+        if (summaryCalls === 1) {
+          return {
+            success: true,
+            message: "ok",
+            data: makeSummary({ activeClientsCount: 11 }),
+          } satisfies ApiResponse<DashboardSummary>;
+        }
+        throw httpError(500, { message: "Erro interno do servidor." });
+      });
 
-      vi.mocked(dashboardApi.getSummary).mockRejectedValueOnce(
-        httpError(500, { message: "Erro interno do servidor." }),
-      );
+      renderDashboard();
+      await waitForDashboardReady();
 
       act(() => {
         vi.advanceTimersByTime(45_000);
       });
       dispatchVisibilityVisible();
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
+      await waitFor(() => {
         expect(screen.getByTestId("dashboard-refresh-warning")).toHaveTextContent(
           DASHBOARD_REFRESH_WARNING_MESSAGE,
         );
@@ -1201,6 +1224,7 @@ describe("DashboardPage", () => {
 
     it("does not show fullscreen loading during a silent refresh", async () => {
       const hanging = deferred<ApiResponse<DashboardSummary>>();
+      vi.mocked(dashboardApi.getSummary).mockReset();
       vi.mocked(dashboardApi.getSummary)
         .mockResolvedValueOnce({
           success: true,
@@ -1212,13 +1236,17 @@ describe("DashboardPage", () => {
         .mockImplementationOnce(() => hanging.promise);
 
       renderDashboard();
-      await waitForDashboardLoaded();
+      await waitForDashboardReady();
       expect(screen.getByTestId("dashboard-today-agenda-desktop")).toBeInTheDocument();
 
       act(() => {
         vi.advanceTimersByTime(45_000);
       });
       dispatchVisibilityVisible();
+
+      await waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
 
       expect(screen.queryByText("A carregar o painel…")).not.toBeInTheDocument();
       expect(screen.getByTestId("dashboard-today-agenda-desktop")).toBeInTheDocument();
@@ -1261,14 +1289,17 @@ describe("DashboardPage", () => {
       });
 
       renderDashboard();
-      await waitForDashboardLoaded();
+      await waitForDashboardReady();
 
       act(() => {
         vi.advanceTimersByTime(45_000);
       });
       dispatchVisibilityVisible();
 
-      await vi.waitFor(() => {
+      await waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
+      await waitFor(() => {
         expect(screen.getByTestId("dashboard-status-count-completed")).toHaveTextContent(
           "1",
         );
