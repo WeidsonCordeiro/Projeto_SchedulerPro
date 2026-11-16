@@ -1,0 +1,673 @@
+npm warn Unknown env config "devdir". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> schedulerpro-frontend@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 C:/Users/Weidson Cordeiro/Desktop/Front-End/Projetos/Projeto_SchedulerPro/client
+
+ ❯ src/pages/dashboard/DashboardPage.test.tsx (48 tests | 4 failed) 11920ms
+       × throttles rapid visible events to one extra call per interval 1254ms
+       × keeps existing KPIs and shows a warning when a silent refresh fails 1093ms
+       × does not show fullscreen loading during a silent refresh 1118ms
+       × preserves O2 distribution after a successful silent refresh 1452ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/pages/dashboard/DashboardPage.test.tsx > DashboardPage > automatic refresh (O5) > throttles rapid visible events to one extra call per interval
+AssertionError: expected "vi.fn()" to be called 2 times, but got 1 times
+ ❯ src/pages/dashboard/DashboardPage.test.tsx:1114:41
+    1112|
+    1113|       await vi.waitFor(() => {
+    1114|         expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+       |                                         ^
+    1115|       });
+    1116|       await act(async () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/pages/dashboard/DashboardPage.test.tsx > DashboardPage > automatic refresh (O5) > keeps existing KPIs and shows a warning when a silent refresh fails
+TestingLibraryElementError: Unable to find an element by: [data-testid="dashboard-refresh-warning"]
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"dashboard-page"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"page-header"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-eyebrow"[39m
+          [36m>[39m
+            [0mVisão geral[0m
+          [36m</p>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"page-title"[39m
+          [36m>[39m
+            [0mBem-vindo ao SchedulerPro[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-description"[39m
+          [36m>[39m
+            [0mOlá, Owner Teste[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"page-actions"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn btn-primary"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"dashboard-open-agenda"[39m
+            [33mhref[39m=[32m"/appointments"[39m
+          [36m>[39m
+            [0mAbrir agenda[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"dashboard-section-heading"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"section-kicker mb-2"[39m
+          [36m>[39m
+            [0mOperação[0m
+          [36m</span>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"h5 mb-2"[39m
+          [36m>[39m
+            [0mResumo do dia[0m
+          [36m</h2>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"text-muted small"[39m
+          [36m>[39m
+            [0mAtualizado com os dados da sua agenda[0m
+          [36m</span>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"row g-3 dashboard-kpis"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"col-12 col-md-6 col-lg-3"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card dashboard-kpi h-100"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-start"[39m
+              [36m>[39m
+                [36m<div>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"card-title h6 mb-1"[39m
+                  [36m>[39m
+                    [0mHoje[0m
+                  [36m</h3>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"card-text fs-4 mb-0"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mdata-testid[39m=[32m"card-value"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</span>[39m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<i[39m
+                  [33mclass[39m=[32m"bi bi-calendar-check text-muted fs-4"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"col-12 col-md-6 col-lg-3"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card dashboard-kpi h-100"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-start"[39m
+              [36m>[39m
+                [36m<div>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"card-title h6 mb-1"[39m
+                  [36m>[39m
+                    [0mPendentes[0m
+                  [36m</h3>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"card-text fs-4 mb-0"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mdata-testid[39m=[32m"card-value"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</span>[39m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<i[39m
+                  [33mclass[39m=[32m"bi bi-clock text-muted fs-4"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"col-12 col-md-6 col-lg-3"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card dashboard-kpi h-100"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-start"[39m
+              [36m>[39m
+                [36m<div>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"card-title h6 mb-1"[39m
+                  [36m>[39m
+                    [0mConfirmados[0m
+                  [36m</h3>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"card-text fs-4 mb-0"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mdata-testid[39m=[32m"card-value"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</span>[39m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<i[39m
+                  [33mclass[39m=[32m"bi bi-check-circle text-muted fs-4"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"col-12 col-md-6 col-lg-3"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card dashboard-kpi h-100"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"card-body"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-start"[39m
+              [36m>[39m
+                [36m<div>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"card-title h6 mb-1"[39m
+                  [36m>[39m
+                    [0mClientes ativos[0m
+                  [36m</h3>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"card-text fs-4 mb-0"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mdata-testid[39m=[32m"card-value"[39m
+                    [36m>[39m
+                      [0m11[0m
+                    [36m</span>[39m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<i[39m
+                  [33mclass[39m=[32m"bi bi-people text-muted fs-4"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"card dashboard-status-distribution"[39m
+        [33mdata-testid[39m=[32m"dashboard-status-distribution"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"card-body"[39m
+        [36m>[39m
+          [36m<h3[39m
+            [33mclass[39m=[32m"h6 mb-1"[39m
+          [36m>[39m
+            [0mDistribuição por estado[0m
+          [36m</h3>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-muted small mb-3"[39m
+          [36m>[39m
+            [0mContagens do dia no período reportado pela API.[0m
+          [36m</p>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-muted small mb-3 mb-md-2"[39m
+            [33mdata-testid[39m=[32m"dashboard-status-distribution-empty"[39m
+          [36m>[39m
+            [0mSem agendamentos no período.[0m
+          [36m</p>[39m
+          [36m<ul[39m
+            [33mclass[39m=[32m"list-unstyled dashboard-status-distribution-list mb-0"[39m
+          [36m>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"dashboard-status-distribution-row"[39m
+              [33mdata-testid[39m=[32m"dashboard-status-row-scheduled"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-center gap-2 mb-1"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-label"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"badge status-badge-80 text-bg-primary"[39m
+                    [33mdata-testid[39m=[32m"dashboard-status-label-scheduled"[39m
+                  [36m>[39m
+                    [0mAgendado[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-count fw-semibold"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-count-scheduled"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"progress dashboard-status-distribution-progress"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33maria-label[39m=[32m"Agendado: 0"[39m
+                  [33maria-valuemax[39m=[32m"0"[39m
+                  [33maria-valuemin[39m=[32m"0"[39m
+                  [33maria-valuenow[39m=[32m"0"[39m
+                  [33mclass[39m=[32m"progress-bar bg-primary"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-bar-scheduled"[39m
+                  [33mrole[39m=[32m"progressbar"[39m
+                  [33mstyle[39m=[32m"width: 0%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"dashboard-status-distribution-row"[39m
+              [33mdata-testid[39m=[32m"dashboard-status-row-confirmed"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-center gap-2 mb-1"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-label"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"badge status-badge-80 text-bg-info"[39m
+                    [33mdata-testid[39m=[32m"dashboard-status-label-confirmed"[39m
+                  [36m>[39m
+                    [0mConfirmado[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-count fw-semibold"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-count-confirmed"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"progress dashboard-status-distribution-progress"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33maria-label[39m=[32m"Confirmado: 0"[39m
+                  [33maria-valuemax[39m=[32m"0"[39m
+                  [33maria-valuemin[39m=[32m"0"[39m
+                  [33maria-valuenow[39m=[32m"0"[39m
+                  [33mclass[39m=[32m"progress-bar bg-info"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-bar-confirmed"[39m
+                  [33mrole[39m=[32m"progressbar"[39m
+                  [33mstyle[39m=[32m"width: 0%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"dashboard-status-distribution-row"[39m
+              [33mdata-testid[39m=[32m"dashboard-status-row-completed"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-center gap-2 mb-1"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-label"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"badge status-badge-80 text-bg-success"[39m
+                    [33mdata-testid[39m=[32m"dashboard-status-label-completed"[39m
+                  [36m>[39m
+                    [0mConcluído[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-count fw-semibold"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-count-completed"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"progress dashboard-status-distribution-progress"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33maria-label[39m=[32m"Concluído: 0"[39m
+                  [33maria-valuemax[39m=[32m"0"[39m
+                  [33maria-valuemin[39m=[32m"0"[39m
+                  [33maria-valuenow[39m=[32m"0"[39m
+                  [33mclass[39m=[32m"progress-bar bg-success"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-bar-completed"[39m
+                  [33mrole[39m=[32m"progressbar"[39m
+                  [33mstyle[39m=[32m"width: 0%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"dashboard-status-distribution-row"[39m
+              [33mdata-testid[39m=[32m"dashboard-status-row-cancelled"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-center gap-2 mb-1"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-label"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"badge status-badge-80 text-bg-secondary"[39m
+                    [33mdata-testid[39m=[32m"dashboard-status-label-cancelled"[39m
+                  [36m>[39m
+                    [0mCancelado[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-count fw-semibold"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-count-cancelled"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"progress dashboard-status-distribution-progress"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33maria-label[39m=[32m"Cancelado: 0"[39m
+                  [33maria-valuemax[39m=[32m"0"[39m
+                  [33maria-valuemin[39m=[32m"0"[39m
+                  [33maria-valuenow[39m=[32m"0"[39m
+                  [33mclass[39m=[32m"progress-bar bg-secondary"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-bar-cancelled"[39m
+                  [33mrole[39m=[32m"progressbar"[39m
+                  [33mstyle[39m=[32m"width: 0%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+            [36m<li[39m
+              [33mclass[39m=[32m"dashboard-status-distribution-row"[39m
+              [33mdata-testid[39m=[32m"dashboard-status-row-no-show"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"d-flex justify-content-between align-items-center gap-2 mb-1"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-label"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"badge status-badge-80 text-bg-warning"[39m
+                    [33mdata-testid[39m=[32m"dashboard-status-label-no-show"[39m
+                  [36m>[39m
+                    [0mNão compareceu[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"dashboard-status-distribution-count fw-semibold"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-count-no-show"[39m
+                [36m>[39m
+                  [0m0[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"progress dashboard-status-distribution-progress"[39m
+                [33mrole[39m=[32m"presentation"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33maria-label[39m=[32m"Não compareceu: 0"[39m
+                  [33maria-valuemax[39m=[32m"0"[39m
+                  [33maria-valuemin[39m=[32m"0"[39m
+                  [33maria-valuenow[39m=[32m"0"[39m
+                  [33mclass[39m=[32m"progress-bar bg-warning"[39m
+                  [33mdata-testid[39m=[32m"dashboard-status-bar-no-show"[39m
+                  [33mrole[39m=[32m"progressbar"[39m
+                  [33mstyle[39m=[32m"width: 0%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</li>[39m
+          [36m</ul>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"dashboard-agenda-grid"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"card dashboard-agenda-card table-card mb-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card-header"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"h6 mb-0"[39m
+            [36m>[39m
+              [0mAgenda do dia[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card-body text-center text-muted py-5"[39m
+          [36m>[39m
+            [0mNenhum agendamento para hoje.[0m
+          [36m</div>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"card dashboard-agenda-card table-card mb-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card-header"[39m
+          [36m>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"h6 mb-0"[39m
+            [36m>[39m
+              [0mPróximos agendamentos[0m
+            [36m</h2>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"card-body text-center text-muted py-5"[39m
+          [36m>[39m
+            [0mNenhum agendamento próximo.[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ Object.getElementError node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ src/pages/dashboard/DashboardPage.test.tsx:1192:23
+    1190|
+    1191|       await vi.waitFor(() => {
+    1192|         expect(screen.getByTestId("dashboard-refresh-warning")).toHave…
+       |                       ^
+    1193|           DASHBOARD_REFRESH_WARNING_MESSAGE,
+    1194|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/pages/dashboard/DashboardPage.test.tsx > DashboardPage > automatic refresh (O5) > does not show fullscreen loading during a silent refresh
+TestingLibraryElementError: Unable to find role="heading" and name "Resumo do dia"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"dashboard-page"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"page-header"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-eyebrow"[39m
+          [36m>[39m
+            [0mVisão geral[0m
+          [36m</p>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"page-title"[39m
+          [36m>[39m
+            [0mBem-vindo ao SchedulerPro[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-description"[39m
+          [36m>[39m
+            [0mOlá, Owner Teste[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"page-actions"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn btn-primary"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"dashboard-open-agenda"[39m
+            [33mhref[39m=[32m"/appointments"[39m
+          [36m>[39m
+            [0mAbrir agenda[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"alert alert-danger app-error"[39m
+        [33mrole[39m=[32m"alert"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [0mErro interno do servidor.[0m
+        [36m</div>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn btn-outline-danger btn-sm mt-3"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mTentar novamente[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div>[39m
+    [36m<section[39m
+      [33mclass[39m=[32m"dashboard-page"[39m
+    [36m>[39m
+      [36m<header[39m
+        [33mclass[39m=[32m"page-header"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-eyebrow"[39m
+          [36m>[39m
+            [0mVisão geral[0m
+          [36m</p>[39m
+          [36m<h1[39m
+            [33mclass[39m=[32m"page-title"[39m
+          [36m>[39m
+            [0mBem-vindo ao SchedulerPro[0m
+          [36m</h1>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"page-description"[39m
+          [36m>[39m
+            [0mOlá, Owner Teste[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"page-actions"[39m
+        [36m>[39m
+          [36m<a[39m
+            [33mclass[39m=[32m"btn btn-primary"[39m
+            [33mdata-discover[39m=[32m"true"[39m
+            [33mdata-testid[39m=[32m"dashboard-open-agenda"[39m
+            [33mhref[39m=[32m"/appointments"[39m
+          [36m>[39m
+            [0mAbrir agenda[0m
+          [36m</a>[39m
+        [36m</div>[39m
+      [36m</header>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"alert alert-danger app-error"[39m
+        [33mrole[39m=[32m"alert"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [0mErro interno do servidor.[0m
+        [36m</div>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"btn btn-outline-danger btn-sm mt-3"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [0mTentar novamente[0m
+        [36m</button>[39m
+      [36m</div>[39m
+    [36m</section>[39m
+  [36m</div>[39m
+[36m</body>[39m
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ waitForDashboardLoaded src/pages/dashboard/DashboardPage.test.tsx:245:16
+    243|
+    244| async function waitForDashboardLoaded() {
+    245|   await screen.findByRole("heading", { name: "Resumo do dia" });
+       |                ^
+    246| }
+    247|
+ ❯ src/pages/dashboard/DashboardPage.test.tsx:1215:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/pages/dashboard/DashboardPage.test.tsx > DashboardPage > automatic refresh (O5) > preserves O2 distribution after a successful silent refresh
+Error: expect(element).toHaveTextContent()
+
+Expected element to have text content:
+  1
+Received:
+  0
+ ❯ src/pages/dashboard/DashboardPage.test.tsx:1272:72
+    1270|
+    1271|       await vi.waitFor(() => {
+    1272|         expect(screen.getByTestId("dashboard-status-count-completed"))…
+       |                                                                        ^
+    1273|           "1",
+    1274|         );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed | 135 passed (136)
+      Tests  4 failed | 1606 passed (1610)
+   Start at  15:46:14
+   Duration  493.25s (transform 13.09s, setup 121.81s, import 124.86s, tests 204.06s, environment 890.65s)
+
