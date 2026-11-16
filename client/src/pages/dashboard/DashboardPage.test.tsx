@@ -1311,7 +1311,15 @@ describe("DashboardPage", () => {
       });
       dispatchVisibilityVisible();
 
+      await vi.waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(2);
+      });
+
       rerender(view("America/Sao_Paulo"));
+
+      await vi.waitFor(() => {
+        expect(dashboardApi.getSummary).toHaveBeenCalledTimes(3);
+      });
 
       await act(async () => {
         fresh.resolve({
@@ -1319,13 +1327,16 @@ describe("DashboardPage", () => {
           message: "ok",
           data: makeSummary({ activeClientsCount: 50 }),
         });
+        await Promise.resolve();
       });
 
-      await vi.waitFor(() => {
+      await waitForDashboardLoaded();
+
+      await waitFor(() =>
         expect(within(activeClientsCard()).getByTestId("card-value")).toHaveTextContent(
           "50",
-        );
-      });
+        ),
+      );
 
       await act(async () => {
         slow.resolve({
