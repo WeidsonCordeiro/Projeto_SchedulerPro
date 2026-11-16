@@ -5,6 +5,8 @@
 **Estado:** **Fases A, B e C concluídas** — Fases D–H pendentes  
 **Linha de base do repositório:** ver secção 2.
 
+> **Contexto pós-E4.1:** Menções a expiração em `findAll` ou `expireOverdueScheduled` na listagem reflectem o comportamento **à data deste relatório**, não o estado actual. **Fonte actual:** [appointment-expiration-audit.md](../audits/appointment-expiration-audit.md) (secção Estado actual).
+
 ---
 
 ## 1. Objetivo e âmbito

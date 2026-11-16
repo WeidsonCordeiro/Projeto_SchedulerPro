@@ -5,6 +5,8 @@
 
 **Referências:** [dashboard-o5-refresh-audit.md](./dashboard-o5-refresh-audit.md), [schedulerpro-dashboard-functional-evolution-audit.md](../reports/schedulerpro-dashboard-functional-evolution-audit.md) (O6 bloqueado à data da auditoria funcional).
 
+**Contexto documental (pós-E4.1):** Este ficheiro é uma análise **histórica** (pré-implementação O6 e pré-E4/E4.1). Expiração automática de agendamentos: ver **Estado actual** em [appointment-expiration-audit.md](./appointment-expiration-audit.md) (scheduler-only desde [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md)).
+
 ---
 
 ## 1. Estado inicial Git
@@ -87,6 +89,8 @@ Prefixo API: `/api/appointments` ([`routes/index.ts`](../../server/src/routes/in
 | PATCH | `/:id/confirm\|complete\|cancel\|no-show` | `APPOINTMENT_UPDATE` | status | sessão | Idem | Idem |
 
 **Query `GET /`:** apenas `startAt`, `endAt` ([`list-appointments.validator.ts`](../../server/src/modules/appointments/validators/list-appointments.validator.ts)) — **não** aceita `employeeId` / `companyId` do cliente para escopo (correto para tenant; falta escopo derivado do role).
+
+**Nota (pós-E4):** Desde a remoção do side-effect na listagem, `GET /` **não** executa expiração — apenas leitura. A tabela acima descreve **escopo de visibilidade** O6 à data desta auditoria, não efeitos colaterais actuais.
 
 **Frontend:** [`appointments.api.ts`](../../client/src/api/endpoints/appointments.api.ts) — `getAppointments({ startAt, endAt })` sem `employeeId`; agenda via [`useAppointmentsSchedule.ts`](../../client/src/hooks/useAppointmentsSchedule.ts).
 
@@ -188,11 +192,11 @@ flowchart TB
 
 ## 7. Comportamento lateral relevante
 
-### 7.1 `expireOverdueScheduled`
+### 7.1 `expireOverdueScheduled` — comportamento histórico (pré-E4)
 
-Em [`AppointmentService.findAll`](../../server/src/modules/appointments/services/AppointmentService.ts) L718–719, quando **não** há `clientScope`, corre cancelamento global da empresa antes da listagem.
+Em [`AppointmentService.findAll`](../../server/src/modules/appointments/services/AppointmentService.ts) L718–719, **na data desta auditoria**, quando **não** há `clientScope`, corria cancelamento global da empresa antes da listagem. Esse fluxo foi **removido na [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md)**. **Comportamento actual:** `AppointmentExpirationScheduler` → `AppointmentExpirationService` → `cancelOverdueScheduled` (ver [appointment-expiration-audit.md](./appointment-expiration-audit.md)).
 
-**Risco O6:** EMPLOYEE com listagem escopada não deve cancelar agendamentos **de outros** ao consultar a agenda. Avaliar: não correr expiração global quando `employeeScope` presente, ou extrair job dedicado.
+**Risco O6 (análise histórica):** EMPLOYEE com listagem escopada não devia cancelar agendamentos **de outros** ao consultar a agenda. Avaliar: não correr expiração global quando `employeeScope` presente, ou extrair job dedicado — o job dedicado foi implementado (E1–E2); a política de escopo employee em leitura permanece relevante para O6, independentemente do motor de expiração.
 
 ### 7.2 Mutações (escopo além da leitura O6)
 
@@ -326,7 +330,7 @@ Fixtures: empresa A, employee1, employee2, appointments com `employeeId` distint
 | 12 | CLIENT continua `/mine` inalterado | Regressão |
 | 13 | OWNER dashboard inalterado (regressão O1/O2) | Integração |
 | 14 | Relatórios EMPLOYEE 403 | Regressão |
-| 15 | `expireOverdueScheduled` não afecta outros (se política adoptada) | Unit/service |
+| 15 | **(Pré-E4 / histórico)** Se expiração voltasse a correr no read com escopo employee: não afectar agendamentos de outros — hoje expiração é por scheduler (empresa inteira), não via listagem | Unit/service |
 
 **Frontend (opcional pós-backend):** testes de agenda EMPLOYEE com mock API filtrado — **não substitui** testes server.
 
@@ -353,7 +357,7 @@ Fixtures: empresa A, employee1, employee2, appointments com `employeeId` distint
 | --- | --- |
 | **Novo** `server/src/modules/appointments/utils/appointment-read-scope.ts` | Resolver scope |
 | [`AppointmentController.ts`](../../server/src/modules/appointments/controllers/AppointmentController.ts) | Passar scope |
-| [`AppointmentService.ts`](../../server/src/modules/appointments/services/AppointmentService.ts) | `findAll`, `findById`, expiração |
+| [`AppointmentService.ts`](../../server/src/modules/appointments/services/AppointmentService.ts) | `findAll`, `findById` (expiração: §7.1 histórica; actual: scheduler — ver [expiration audit](./appointment-expiration-audit.md)) |
 | [`AppointmentRepository.ts`](../../server/src/modules/appointments/repositories/AppointmentRepository.ts) | Filtro `employeeId` opcional |
 | [`DashboardController.ts`](../../server/src/modules/dashboard/controllers/DashboardController.ts) | Passar `req.user` |
 | [`DashboardService.ts`](../../server/src/modules/dashboard/services/DashboardService.ts) | Propagar scope |

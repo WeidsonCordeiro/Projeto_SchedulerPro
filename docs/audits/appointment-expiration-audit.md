@@ -4,11 +4,65 @@
 **Tipo:** Somente leitura — nenhum ficheiro de implementação (`server/`, `client/`, configs) alterado. Nenhuma dependência instalada.  
 **Âmbito:** Backend (mecanismo actual de “expiração” / cancelamento de `scheduled` vencidos), testes, infraestrutura existente e proposta de evolução **sem implementação**.
 
-**Veredicto sumário:** No SchedulerPro, **não existe status `expired`**. O comportamento actual equivale a **cancelar automaticamente** agendamentos com status `scheduled` cujo **`startAt` já passou**, via `AppointmentRepository.cancelOverdueScheduled`. A expiração **não é periódica**: só corre como **efeito colateral** de `GET /api/appointments` quando o escopo de leitura é **empresa inteira** (OWNER, ADMIN, MANAGER). Não há cron, worker nem fila dedicados. O precedente arquitectural mais próximo para um job automático é o **`ReminderScheduler`** (`setInterval` no mesmo processo Node).
+**Veredicto sumário (arquitectura anterior à E4 — ver estado actual abaixo):** No SchedulerPro, **não existe status `expired`**. Antes da E4, o cancelamento de `scheduled` vencidos via `AppointmentRepository.cancelOverdueScheduled` corria sobretudo como **efeito colateral** de `GET /api/appointments` em escopo empresa inteira. Esse desenho **foi substituído** pelo scheduler (E1–E2.1) e pela remoção do side-effect (E4).
+
+**Referência canónica do projeto:** [ROADMAP auditoria geral](../tasks/ROADMAP_AUDIT_2026-11-11.md) (entrada: [stub em `docs/audits`](ROADMAP_AUDIT_2026-11-11.md)).
 
 ---
 
-## Estado Git — início
+## Estado actual (pós-E4.1 — integrado em `develop`)
+
+**Data de sincronização documental:** 11/11/2026
+
+| Tópico | Comportamento actual |
+|--------|----------------------|
+| Motor de expiração | **`AppointmentExpirationScheduler`** → **`AppointmentExpirationService`** → **`AppointmentRepository.cancelOverdueScheduled()`** |
+| Arranque | [`server.ts`](../../server/src/server.ts) — após `Database.connect()`, em paralelo com `ReminderScheduler` |
+| `GET /api/appointments` | **Apenas leitura** — [`AppointmentService.findAll`](../../server/src/modules/appointments/services/AppointmentService.ts) não chama expiração (E4) |
+| Critérios | Só `scheduled`; `startAt < now`; resultado `cancelled`; sem status `expired`; sem tolerância; `confirmed` não é alterado |
+| Empresas | `isActive: true` e `deletedAt: null`; falha numa empresa não bloqueia as outras |
+| Encerramento | E2.1 — `stop()` aguarda execução em curso antes de `Database.disconnect()` |
+| Multi-instância | **Sem** lock distribuído; operação idempotente; limitação para escala horizontal |
+| Visibilidade | `scheduled` vencido pode aparecer na listagem até ao próximo tick do scheduler (intencional pós-E4) |
+| `updatedAt` | **Esperado** via `timestamps: true` no schema com `updateMany` que só faz `$set: { status }` — **não comprovado** por testes de integração E3 (fora do contrato assertado) |
+
+```mermaid
+flowchart LR
+  serverTs[server.ts]
+  sched[AppointmentExpirationScheduler]
+  svc[AppointmentExpirationService]
+  repo[cancelOverdueScheduled]
+  serverTs --> sched
+  sched --> svc
+  svc --> repo
+```
+
+### Entregas E1–E4.1 (concluídas)
+
+| Etapa | Documento |
+|-------|-----------|
+| E1 | [Multi-company service](../tasks/appointment-expiration-e1-multi-company-service.md) |
+| E2 | [Scheduler](../tasks/appointment-expiration-e2-scheduler.md) |
+| E2.1 | [Shutdown hardening](../tasks/appointment-expiration-e2-1-shutdown-hardening.md) |
+| E3 | [Mongo `cancelOverdueScheduled`](../tasks/appointment-expiration-e3-mongodb-integration-tests.md) |
+| E4 | [Remover side-effect do GET](../tasks/appointment-expiration-e4-remove-get-side-effect.md) |
+| E4.1 | [Ciclo completo GET → scheduler](../tasks/appointment-expiration-e4-1-full-integration-test.md) |
+
+### Testes de integração Mongo (referência)
+
+- [`cancel-overdue-scheduled.mongo.test.ts`](../../server/tests/integration/appointments/cancel-overdue-scheduled.mongo.test.ts)
+- [`find-all-no-expiration.mongo.test.ts`](../../server/tests/integration/appointments/find-all-no-expiration.mongo.test.ts)
+- [`appointment-expiration-full-cycle.mongo.test.ts`](../../server/tests/integration/appointments/appointment-expiration-full-cycle.mongo.test.ts)
+
+---
+
+## Registo histórico (pré-E4)
+
+O conteúdo das secções seguintes descreve o sistema **tal como existia na data da auditoria inicial** (antes das etapas E1–E4.1). Mantém valor para decisões de produto, riscos identificados e planeamento que originou o scheduler.
+
+---
+
+## Estado Git — início (auditoria inicial)
 
 | Item | Valor |
 |------|--------|
@@ -374,7 +428,9 @@ Update:
 
 ---
 
-## 13. Handoff — implementação em etapas pequenas (não iniciadas)
+## 13. Handoff — implementação em etapas pequenas (plano histórico)
+
+**Actualização 11/11/2026:** O plano abaixo originou o trabalho **já entregue** como [E1](../tasks/appointment-expiration-e1-multi-company-service.md)–[E4.1](../tasks/appointment-expiration-e4-1-full-integration-test.md) (numeração das **tasks**, não idêntica à coluna «Etapa» desta tabela antiga). Ver **Estado actual** no topo deste ficheiro.
 
 | Etapa | Entrega | Testes |
 |-------|---------|--------|
@@ -400,10 +456,8 @@ Update:
 
 ---
 
-## Referências rápidas para outra IA
+## Referências rápidas para outra IA (pré-E4 — ver secção «Estado actual»)
 
-- **Método canónico de persistência:** `AppointmentRepository.cancelOverdueScheduled(companyId, now)`.
-- **Gatilho actual:** `AppointmentService.findAll` → `isCompanyWideAppointmentReadScope`.
-- **Roles que disparam via HTTP:** OWNER, ADMIN, MANAGER em `GET /api/appointments`.
-- **Precedente de job:** `ReminderScheduler` + `server.ts`.
-- **Estado alvo da regra actual:** `cancelled`, não `expired`.
+- **Método canónico de persistência:** `AppointmentRepository.cancelOverdueScheduled(companyId, now)` — **inalterado**.
+- **Gatilho na data desta auditoria:** `AppointmentService.findAll` → `isCompanyWideAppointmentReadScope`. **Gatilho actual (pós-E4):** `AppointmentExpirationScheduler` apenas.
+- **Estado alvo da regra:** `cancelled`, não `expired`.

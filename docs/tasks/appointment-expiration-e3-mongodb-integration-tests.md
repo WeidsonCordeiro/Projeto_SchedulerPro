@@ -92,7 +92,7 @@ npm run build
 | Item | Nota |
 |------|------|
 | `updatedAt` | Não assertado (fora do contrato atual do método) |
-| GET `/api/appointments` | Side-effect de expiração **mantido** — remoção fica para E4 (não autorizado aqui) |
+| GET `/api/appointments` | **Contexto E3:** side-effect mantido; **removido na [E4](appointment-expiration-e4-remove-get-side-effect.md)** |
 | Helper global Mongo | Não extraído; bloco `connectTestDatabase` copiado do padrão O7/GW3 |
 | Falha MMS (CI/rede) | Documentar falha; usar `GW3_TEST_MONGO_URI` em vez de mocks |
 
@@ -130,5 +130,5 @@ sequenceDiagram
 
 ## Handoff E4 (não feito nesta etapa)
 
-- Remover expiração implícita no `GET` de appointments quando o produto autorizar.
+- ~~Remover expiração implícita no `GET`~~ — **feito em [E4](appointment-expiration-e4-remove-get-side-effect.md)**; ciclo completo em [E4.1](appointment-expiration-e4-1-full-integration-test.md).
 - Manter este ficheiro de integração como regressão do repositório após qualquer refactor.

@@ -1,5 +1,7 @@
 # SchedulerPro — Auditoria geral do roadmap
 
+**Entrada canónica em `docs/audits`:** [ROADMAP_AUDIT_2026-11-11.md](../audits/ROADMAP_AUDIT_2026-11-11.md) (stub que aponta para este ficheiro).
+
 **Data:** 11/11/2026  
 **Tipo:** Somente leitura (código + validação alvo). **Único artefacto criado:** este ficheiro.  
 **Branch auditada:** `develop` @ `527a6230f9d535547ff4cc9151146fe690674d9c`  
@@ -106,7 +108,7 @@ flowchart LR
 |------|-----------|--------|---------|------------|
 | UX `scheduled` no passado | E4 removeu cancelamento no GET | Utilizador pode ver `scheduled` vencido até o scheduler | Confusão operacional leve | P2 |
 | Integração HTTP + Mongo | E4.1 full-cycle; maioria rotas mockam repo | Regressões só no boundary real em poucos testes | Médio para mudanças em middleware | P2 |
-| Documentação roadmap | `docs/audits/roadmap-audit-post-o6.md` L99 ainda cita expiração em `findAll` | Desalinhamento com E4 | Confusão para IAs/devs | P1 (só docs) |
+| ~~Documentação roadmap post-O6~~ | **Resolvido (11/2026)** — sync pós-E4.1: [`roadmap-audit-post-o6.md`](../audits/roadmap-audit-post-o6.md); ver [sync](appointment-expiration-documentation-sync.md), [validation](appointment-expiration-documentation-validation.md), [cleanup](appointment-expiration-documentation-cleanup.md) | — | — | — |
 
 ---
 
@@ -204,7 +206,7 @@ flowchart LR
 
 | ID | Problema | Severidade | Evidência |
 |----|----------|------------|-----------|
-| P-DOC-01 | Auditoria pós-O6 desactualizada na expiração | Baixa | `docs/audits/roadmap-audit-post-o6.md` ~L99 |
+| P-DOC-01 | Auditoria pós-O6 desactualizada na expiração | **Mitigado (sync 11/2026)** | Estado actual: [`appointment-expiration-audit.md`](../audits/appointment-expiration-audit.md); post-O6 actualizado em sync |
 | P-DOC-02 | Auditoria inicial expiration descreve GET side-effect | Baixa | `docs/audits/appointment-expiration-audit.md` (pré-E4) |
 | P-CODE-01 | `expireOverdueScheduled` órfão | Baixa | `AppointmentService.ts` L747; grep sem callers |
 | P-UX-01 | `scheduled` passado visível até job | Baixa | Comportamento pós-E4; teste E4.1 comprova não-cancelamento no GET |
@@ -250,7 +252,7 @@ cd server && npm run build
 | Prioridade | Item | Categoria |
 |------------|------|-----------|
 | — | Dashboard O1–O6, O7, Expiration E1–E4.1, Company tenant | **A** |
-| P1 | Sincronizar documentação expiration/roadmap com E4 | **C** (só docs) |
+| P1 | Sincronizar documentação expiration/roadmap com E4 | **C** — **concluído** (sync + validação); resíduos em [cleanup](appointment-expiration-documentation-cleanup.md) |
 | P2 | UX copy para `scheduled` vencido (client) | **C** |
 | P2 | Expandir smoke integração real (opcional, pós-E4.1) | **C** |
 | P3 | Remover método órfão `expireOverdueScheduled` | **E** |
@@ -262,7 +264,7 @@ cd server && npm run build
 
 ## 12. Recomendação — próximas tarefas (3–5)
 
-1. **P1 — Sincronização documental do roadmap (primeira)** — Actualizar `appointment-expiration-audit.md` e `roadmap-audit-post-o6.md` para reflectir E4/E4.1 ou adicionar aviso “canónico: ROADMAP_AUDIT_2026-11-11 + tasks E4”.
+1. **P1 — Sincronização documental do roadmap (primeira)** — **Realizada** (sync/validação 11/2026). Resíduos O6/relatórios antigos: [cleanup](appointment-expiration-documentation-cleanup.md).
 2. **P2 — UX: estado `scheduled` no passado** — Badge ou tooltip no calendário/listagem (“será cancelado automaticamente”).
 3. **P2 — CI visibility** — Confirmar na prática que PRs executam suítes mongo (já na suite `npm test`; documentar tempo/falhas intermitentes se surgirem).
 4. **P3 — Limpeza `expireOverdueScheduled`** — Remover método público sem callers após confirmação produto.

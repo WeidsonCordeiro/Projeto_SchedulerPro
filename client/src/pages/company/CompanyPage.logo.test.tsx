@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import CompanyPage from "./CompanyPage";
 import companyApi from "../../api/endpoints/company.api";
@@ -51,7 +52,12 @@ function renderPage() {
   const store = makeStore();
   render(
     <Provider store={store}>
-      <CompanyPage />
+      <MemoryRouter initialEntries={["/company"]}>
+        <Routes>
+          <Route path="/company" element={<CompanyPage />} />
+          <Route path="/login" element={<div>Login page</div>} />
+        </Routes>
+      </MemoryRouter>
     </Provider>,
   );
   return store;

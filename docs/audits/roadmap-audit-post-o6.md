@@ -1,6 +1,9 @@
 # SchedulerPro — Auditoria geral do roadmap (pós-O6)
 
 **Data da auditoria:** 10/11/2026  
+**Actualização documental:** 11/11/2026 — pós-integração **Appointment Expiration E1–E4.1** e [sincronização documental](../tasks/appointment-expiration-documentation-sync.md). Secções sobre expiração em `findAll` reflectem o estado **pré-E4** salvo indicação contrária na actualização abaixo.  
+**Referência canónica actual:** [ROADMAP_AUDIT_2026-11-11](ROADMAP_AUDIT_2026-11-11.md) → [relatório completo](../tasks/ROADMAP_AUDIT_2026-11-11.md).
+
 **Tipo:** Somente leitura — nenhum ficheiro de implementação (`server/`, `client/`) foi alterado nesta tarefa.  
 **Objectivo:** Confirmar o estado real de `develop` após O6 e fundamentar o roadmap futuro com evidências no código e nos testes.
 
@@ -41,16 +44,18 @@ O SchedulerPro em `develop` @ `970d850` integra o dashboard operacional (O1, O2,
 
 **Dashboard:** KPI de clientes ativos, distribuição por estado e refresh ao regressar à aba (45 s de throttle, proteção por geração de carga e aviso em falha) estão implementados no backend e no frontend com testes dedicados.
 
-**O6:** Escopo de leitura centralizado em `resolveAppointmentReadScope`; EMPLOYEE vê apenas agendamentos com `employeeId === userId`; dashboard filtra agregações pelo mesmo critério; `activeClientsCount` omitido para EMPLOYEE na API e oculto na UI. A expiração automática de `scheduled` vencidos continua acoplada a listagens de empresa inteira e deixa de correr em listagens de EMPLOYEE e CLIENT.
+**O6:** Escopo de leitura centralizado em `resolveAppointmentReadScope`; EMPLOYEE vê apenas agendamentos com `employeeId === userId`; dashboard filtra agregações pelo mesmo critério; `activeClientsCount` omitido para EMPLOYEE na API e oculto na UI.
 
-**Lacunas prioritárias para o roadmap:**
+**Expiração (actualização 11/11/2026):** **E1–E4.1 concluídas.** O `GET /api/appointments` **não** executa expiração (E4). O **`AppointmentExpirationScheduler`** processa todas as empresas activas; listagens EMPLOYEE/CLIENT nunca foram o motor de expiração global — o job cobre a empresa inteira incluindo agendamentos de qualquer funcionário.
 
-1. **Escrita de agendamentos:** O6 não restringe mutações; EMPLOYEE com `APPOINTMENT_UPDATE` pode, em teoria, alterar agendamentos de colegas se souber o ID (leitura escopada, escrita não).
-2. **Expiração:** `scheduled` vencidos atribuídos a EMPLOYEE podem persistir até uma acção com escopo de empresa ou um job futuro.
-3. **Company Management:** backend maduro (incl. activate/deactivate, logo); UI sem soft-delete de empresa; `CompanyService.create()` vazio (registo só via auth).
-4. **Testes:** integração HTTP dominada por mocks; Mongo em memória limitado a cenários de concorrência (GW); sem E2E browser.
+**Lacunas prioritárias para o roadmap (revisão pós-E4.1):**
 
-A sequência de roadmap proposta pelo produto permanece válida, com **ajuste recomendado**: subir **expiração automática (job)** e **RBAC de escrita em appointments** para prioridade alta, antes de polish de timezone e E2E.
+1. **Escrita de agendamentos:** O7 endereçou grande parte do escopo de escrita; rever doc O7 para estado actual.
+2. **Expiração:** **fechada** como lacuna de job HTTP-coupled — ver [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md) e [E4.1](../tasks/appointment-expiration-e4-1-full-integration-test.md).
+3. **Company Management:** evolução contínua (soft-delete UI integrada desde E2); ver [ROADMAP 11/11](../tasks/ROADMAP_AUDIT_2026-11-11.md).
+4. **Testes:** integração Mongo alargada (expiration E3/E4.1); sem E2E browser.
+
+A sequência histórica que priorizava **job de expiração** foi **realizada** (E1–E4.1). Próximas prioridades: documentação alinhada, UX de `scheduled` vencido, E2E — ver roadmap canónico.
 
 ---
 
@@ -96,7 +101,7 @@ A sequência de roadmap proposta pelo produto permanece válida, com **ajuste re
 | CLIENT | **CONCLUÍDO** | `clientId` na sessão; `/appointments/mine` inalterado em intenção |
 | KPI `activeClientsCount` EMPLOYEE | **CONCLUÍDO** | Ver O1 |
 | Consulta por ID | **CONCLUÍDO** | Colega → 404 (`findByIdInCompany`) — [`appointment-visibility.routes.test.ts`](../../server/tests/integration/routes/appointment-visibility.routes.test.ts) |
-| Expiração em listagem | **CONCLUÍDO** | `expireOverdueScheduled` só se `isCompanyWideAppointmentReadScope` ([`AppointmentService.findAll`](../../server/src/modules/appointments/services/AppointmentService.ts)) |
+| Expiração em listagem | **OBSOLETO (pré-E4)** | Histórico: side-effect em `findAll` escopo empresa; **actual:** listagem não expira — [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md) |
 | Escrita (fora O6) | **PARCIAL** | Mutations não usam read scope — ver secção 6 |
 | Testes / doc | **CONCLUÍDO** | 17 testes integração O6; `appointment-read-scope.test.ts`; [`docs/tasks/o6-appointment-visibility-by-role.md`](../tasks/o6-appointment-visibility-by-role.md) |
 
@@ -186,25 +191,23 @@ Documentação histórica: [`docs/reports/schedulerpro-companies-management-audi
 
 ### 4.D Expiração automática de agendamentos
 
-**Estado global:** **PARCIALMENTE IMPLEMENTADO** (lógica existe; acoplamento e gap EMPLOYEE).
+**Estado global (actualização 11/11/2026):** **CONCLUÍDO** (E1–E4.1 integrados em `develop`).
 
 | Aspecto | Estado | Evidência |
 |---------|--------|-----------|
-| Implementação | **CONCLUÍDO** | `AppointmentRepository.cancelOverdueScheduled` — `updateMany`, `scheduled`, `startAt < now` |
-| Onde corre | **CONCLUÍDO** | `AppointmentService.findAll` se escopo empresa inteira |
-| Onde não corre | **CONCLUÍDO** | CLIENT, EMPLOYEE list; dashboard (sem side-effects documentados) |
-| Impacto O6 | **CONCLUÍDO** | EMPLOYEE não dispara expiração global |
-| Gap dados | **CONCLUÍDO** | Próprios `scheduled` vencidos do EMPLOYEE podem permanecer |
+| Implementação | **CONCLUÍDO** | `AppointmentRepository.cancelOverdueScheduled` |
+| Motor | **CONCLUÍDO** | `AppointmentExpirationScheduler` + `AppointmentExpirationService` — [`server.ts`](../../server/src/server.ts) |
+| `GET /api/appointments` | **CONCLUÍDO (read-only)** | E4 — `findAll` sem expiração |
+| Cobertura EMPLOYEE | **CONCLUÍDO** | Job multiempresa; não depende de listagem por perfil |
+| Teste ciclo completo | **CONCLUÍDO** | E4.1 — [`appointment-expiration-full-cycle.mongo.test.ts`](../../server/tests/integration/appointments/appointment-expiration-full-cycle.mongo.test.ts) |
+| Multi-instância | **LIMITAÇÃO** | Sem lock distribuído; idempotência no repositório |
 
-**Alternativas (recomendação técnica):**
+**Registo histórico (pré-E4):** A tabela abaixo descrevia acoplamento a `findAll` e job como recomendação futura — **já implementada**.
 
-| Opção | Vantagens | Riscos |
-|-------|-----------|--------|
-| Job periódico (cron/worker) company-wide | Desacopla GET; cobre todos os perfis | Operação infra; notificações; idempotência |
-| Expiração escopada em `findAll` EMPLOYEE | Mitigação rápida | Side-effect em read; duplica regra |
-| Status quo | Sem custo imediato | Inconsistência operacional para EMPLOYEE |
-
-**Recomendação:** job periódico como solução alvo; opcional mitigação escopada para EMPLOYEE até o job existir.
+| Opção (histórico) | Resultado |
+|-------------------|-----------|
+| Job periódico company-wide | **Implementado** (E2) |
+| Side-effect em `findAll` | **Removido** (E4) |
 
 ### 4.E Testes E2E com MongoDB real
 
@@ -230,7 +233,7 @@ Documentação histórica: [`docs/reports/schedulerpro-companies-management-audi
 | Item | Categoria | Estado |
 |------|-----------|--------|
 | Escrita appointments EMPLOYEE sem escopo | Correção / segurança | **PARCIAL** |
-| Expiração `scheduled` para EMPLOYEE | Melhoria técnica / produto | **PARCIAL** |
+| Expiração `scheduled` (job) | Melhoria técnica | **CONCLUÍDO** (E1–E4.1) |
 | UI soft-delete empresa | Funcionalidade produto | **NÃO IMPLEMENTADO** |
 | `CompanyService.create` | Débito / desenho | **NÃO IMPLEMENTADO** (by design: auth) |
 | GW-3 booking transaction retry | Infra reservas | **CONCLUÍDO** (docs `docs/tasks/gw3-*`; não re-auditado linha a linha) |
@@ -245,7 +248,7 @@ Documentação histórica: [`docs/reports/schedulerpro-companies-management-audi
 | Risco | Severidade | Dependência |
 |-------|------------|-------------|
 | IDOR escrita appointments (EMPLOYEE) | Alta | RBAC review + O6 follow-up |
-| `scheduled` vencidos persistentes (EMPLOYEE) | Média | Job expiração ou escopo read |
+| `scheduled` vencidos visíveis até tick scheduler | Baixa (UX) | Copy/UI opcional; não é falha de expiração |
 | Testes integração não provam Mongo | Média | E2E Mongo |
 | Mudança timezone com histórico | Baixa–média | Testes regressão TZ |
 | Flaky O5 em CI | Baixa | Estabilizar fake timers / timeout |
@@ -269,7 +272,7 @@ Documentação histórica: [`docs/reports/schedulerpro-companies-management-audi
 | Prio | Item | Justificação |
 |------|------|----------------|
 | **P1** | Company Management (fechar UI delete + doc) | Produto visível; API já existe |
-| **P1–P2** | Expiração automática (job) | Gap pós-O6 + acoplamento a GET |
+| ~~**P1–P2**~~ | Expiração automática (job) | **CONCLUÍDO** E1–E4.1 — ver [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md) |
 | **P2** | RBAC escrita appointments (alinhamento O6) | Fecha risco IDOR com permissão existente |
 | **P2** | Fuso horário (hardening + testes mudança TZ) | Já dinâmico; reduz risco edge |
 | **P3** | Testes E2E Mongo multi-tenant | Confiança isolamento; custo CI |

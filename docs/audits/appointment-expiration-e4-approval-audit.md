@@ -188,7 +188,21 @@ Para **APROVADA** no sentido do **ciclo completo de cinco passos**, seria necess
 
 ---
 
-## 7. Segurança Git
+## 7. Actualização pós-E4.1 (sem alterar parecer histórico acima)
+
+**Data:** 11/11/2026
+
+A etapa **[E4.1 — teste de integração ponta a ponta](../tasks/appointment-expiration-e4-1-full-integration-test.md)** é **distinta** da E4: não substitui este relatório nem reexecuta a auditoria de aprovação da E4.
+
+| Item | Estado após E4.1 |
+|------|------------------|
+| Lacuna L1 (ciclo completo num único teste) | **Endereçada** por [`appointment-expiration-full-cycle.mongo.test.ts`](../../server/tests/integration/appointments/appointment-expiration-full-cycle.mongo.test.ts): Mongo `scheduled` vencido → `GET /api/appointments` → persiste `scheduled` → `scheduler.run()` → `cancelled` |
+| Parecer §6 (PENDENTE DE VALIDAÇÃO do ciclo E2E) | Mantém-se como **registo histórico** do momento da auditoria E4; aprovação do ciclo completo documenta-se na tarefa E4.1 |
+| E4 (remoção GET side-effect) | Continua válida e independente — [task E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md) |
+
+---
+
+## 8. Segurança Git
 
 Nenhum commit, push, pull, merge, rebase, stash, reset, clean, checkout ou switch foi executado na elaboração deste relatório.
 
@@ -197,4 +211,4 @@ Nenhum commit, push, pull, merge, rebase, stash, reset, clean, checkout ou switc
 ## Referências
 
 - [Auditoria inicial — appointment expiration](appointment-expiration-audit.md)
-- [E1](../tasks/appointment-expiration-e1-multi-company-service.md) · [E2](../tasks/appointment-expiration-e2-scheduler.md) · [E2.1](../tasks/appointment-expiration-e2-1-shutdown-hardening.md) · [E3](../tasks/appointment-expiration-e3-mongodb-integration-tests.md) · [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md)
+- [E1](../tasks/appointment-expiration-e1-multi-company-service.md) · [E2](../tasks/appointment-expiration-e2-scheduler.md) · [E2.1](../tasks/appointment-expiration-e2-1-shutdown-hardening.md) · [E3](../tasks/appointment-expiration-e3-mongodb-integration-tests.md) · [E4](../tasks/appointment-expiration-e4-remove-get-side-effect.md) · [E4.1](../tasks/appointment-expiration-e4-1-full-integration-test.md)

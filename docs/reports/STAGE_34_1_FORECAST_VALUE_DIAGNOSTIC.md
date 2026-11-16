@@ -3,6 +3,8 @@
 > **Natureza:** diagnóstico apenas leitura. Nenhum ficheiro de produção, teste,
 > modelo, DTO, API ou configuração foi alterado. Nenhum documento da base de
 > dados foi modificado. Nenhum backfill, commit, merge ou push foi feito.
+>
+> **Contexto pós-E4.1:** Menções incidentais a `expireOverdueScheduled` não descrevem o motor actual de expiração — ver [appointment-expiration-audit.md](../audits/appointment-expiration-audit.md).
 
 ## 1. Resumo executivo
 

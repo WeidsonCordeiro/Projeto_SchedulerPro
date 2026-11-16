@@ -40,7 +40,9 @@ Executar periodicamente `AppointmentExpirationService.processOverdueForAllCompan
 | [`server/src/config/env.ts`](../../server/src/config/env.ts) | `jobs.APPOINTMENT_EXPIRATION_INTERVAL_MS` |
 | [`server/src/config/validateEnv.ts`](../../server/src/config/validateEnv.ts) | Validação opcional > 0 |
 
-**Inalterados (confirmado):** `AppointmentExpirationService`, `AppointmentRepository.cancelOverdueScheduled`, `AppointmentService.findAll` / `GET /api/appointments`.
+**Inalterados na E2:** `AppointmentExpirationService`, `AppointmentRepository.cancelOverdueScheduled`.
+
+**Nota pós-E4:** O side-effect de expiração em `AppointmentService.findAll` / `GET /api/appointments` existia ao concluir a E2 e foi **removido na [E4](appointment-expiration-e4-remove-get-side-effect.md)**. O scheduler permanece o motor de expiração.
 
 ---
 

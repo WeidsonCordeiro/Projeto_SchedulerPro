@@ -13,6 +13,8 @@
 - [`schedulerpro-phase-g-infrastructure-audit.md`](schedulerpro-phase-g-infrastructure-audit.md)
 - [`stage-37-frontend-audit-setmore-comparison.md`](stage-37-frontend-audit-setmore-comparison.md) (definições FE-*)
 
+> **Contexto pós-E4.1:** Entradas como AUD-004 (`findAll`) reflectem o comportamento **à data da consolidação**, não o estado actual. **Fonte actual:** [appointment-expiration-audit.md](../audits/appointment-expiration-audit.md) (secção Estado actual).
+
 ---
 
 ## 1. Resumo executivo

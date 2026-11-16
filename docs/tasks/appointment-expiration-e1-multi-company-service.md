@@ -34,7 +34,7 @@ Disponibilizar `processOverdueForAllCompanies(now?)` para cancelar agendamentos 
 - Isolamento por `companyId` em cada chamada ao repositório.
 - Empresas: `deletedAt: null` e `isActive: true`.
 
-O comportamento em `AppointmentService.findAll` (expiração antes do `GET` para escopo empresa) **não foi modificado**.
+**Nota histórica (momento da E1):** `AppointmentService.findAll` ainda disparava expiração no escopo empresa. **Removido na [E4](appointment-expiration-e4-remove-get-side-effect.md).**
 
 ---
 

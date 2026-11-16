@@ -46,16 +46,17 @@ function openTimezonePicker() {
   fireEvent.click(getTimezoneCombobox());
 }
 
-function selectTimezoneBySearch(iana: string) {
+async function selectTimezoneBySearch(iana: string) {
   openTimezonePicker();
-  fireEvent.change(screen.getByRole("searchbox"), {
+  const searchbox = await screen.findByRole("searchbox");
+  fireEvent.change(searchbox, {
     target: { value: iana },
   });
-  fireEvent.click(
-    screen.getByRole("option", {
-      name: formatTimezoneOptionLabel(iana),
-    }),
-  );
+  const listbox = screen.getByRole("listbox");
+  const option = await within(listbox).findByRole("option", {
+    name: formatTimezoneOptionLabel(iana),
+  });
+  fireEvent.click(option);
 }
 
 describe("CompanyForm", () => {
@@ -92,12 +93,14 @@ describe("CompanyForm", () => {
     );
   });
 
-  it("updates form state when a different timezone is selected", () => {
+  it("updates form state when a different timezone is selected", async () => {
     renderForm();
-    selectTimezoneBySearch("America/New_York");
+    await selectTimezoneBySearch("America/New_York");
 
-    expect(getTimezoneCombobox()).toHaveTextContent(
-      formatTimezoneOptionLabel("America/New_York"),
+    await waitFor(() =>
+      expect(getTimezoneCombobox()).toHaveTextContent(
+        formatTimezoneOptionLabel("America/New_York"),
+      ),
     );
   });
 
@@ -159,7 +162,7 @@ describe("CompanyForm", () => {
     fireEvent.change(screen.getByLabelText("Nome"), {
       target: { value: "  Salão Novo Centro  " },
     });
-    selectTimezoneBySearch("America/Sao_Paulo");
+    await selectTimezoneBySearch("America/Sao_Paulo");
     fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
 
     await waitFor(() => expect(onSaved).toHaveBeenCalled());

@@ -6,6 +6,8 @@
 **Contexto:** Pós-merge do lifecycle de empresas (`RequireOperationalCompanyMiddleware`, auth com empresa inactiva, suspensão de staff).
 **Relacionado:** [schedulerpro-companies-lifecycle-auth.md](./schedulerpro-companies-lifecycle-auth.md)
 
+> **Contexto pós-E4.1:** Menções a expiração em `findAll` ou `expireOverdueScheduled` na listagem reflectem o comportamento **à data deste relatório**, não o estado actual. **Fonte actual:** [appointment-expiration-audit.md](../audits/appointment-expiration-audit.md) (secção Estado actual).
+
 ---
 
 ## Verificação Git (início da auditoria)

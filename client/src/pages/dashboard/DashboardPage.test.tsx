@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
@@ -328,9 +329,9 @@ describe("DashboardPage", () => {
       await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/olá, owner teste/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Resumo do dia" })).toBeInTheDocument();
+    await waitForDashboardLoaded();
 
-    expect(cardValues()).toEqual(["1", "2", "1", "0"]);
+    await waitFor(() => expect(cardValues()).toEqual(["1", "2", "1", "0"]));
 
     const todayDesktop = todayAgendaDesktop();
     expect(todayDesktop.getAllByRole("row")).toHaveLength(2);

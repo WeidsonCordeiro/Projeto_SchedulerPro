@@ -2,6 +2,8 @@
 
 > **Natureza:** auditoria apenas. Nenhum ficheiro de produção, teste, modelo, DTO, API
 > ou contrato foi alterado. Nenhum commit/merge/push foi feito.
+>
+> **Contexto pós-E4.1:** O fluxo `expireOverdueScheduled` → repositório neste relatório é **histórico** (entrypoint por listagem). **Estado actual:** [appointment-expiration-audit.md](../audits/appointment-expiration-audit.md) (scheduler).
 
 ## 1. Resumo executivo
 
