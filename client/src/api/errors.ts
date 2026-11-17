@@ -257,8 +257,22 @@ export function getFriendlyErrorMessage(failure: ApiFailure): string {
     return companyInactiveMessage;
   }
 
-  return failure.message?.trim() ? failure.message : FRIENDLY_MESSAGES[failure.kind];
+  if (failure.code === APPOINTMENT_CONFIRM_GUARD_ERROR_CODE) {
+    return APPOINTMENT_CONFIRM_GUARD_FRIENDLY_MESSAGE;
+  }
+
+  const message = failure.message?.trim() ?? "";
+  if (message === APPOINTMENT_CONFIRM_GUARD_FRIENDLY_MESSAGE) {
+    return APPOINTMENT_CONFIRM_GUARD_FRIENDLY_MESSAGE;
+  }
+
+  return message ? message : FRIENDLY_MESSAGES[failure.kind];
 }
+
+export const APPOINTMENT_CONFIRM_GUARD_ERROR_CODE = "APPOINTMENT_CONFIRM_START_PASSED";
+
+export const APPOINTMENT_CONFIRM_GUARD_FRIENDLY_MESSAGE =
+  "O horário deste agendamento já foi ultrapassado. Não é possível confirmá-lo. Aguarda o processamento automático.";
 
 export const SESSION_ERROR_CODES = {
   INVALID_SESSION: "INVALID_SESSION",

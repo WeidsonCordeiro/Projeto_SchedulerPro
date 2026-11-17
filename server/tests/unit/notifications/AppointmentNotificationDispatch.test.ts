@@ -181,7 +181,12 @@ describe("AppointmentService -> notificações", () => {
     appointmentRepository.updateStatusInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.CONFIRMED }),
     );
-    await AppointmentService.confirm(id, companyId, ownerSession);
+    await AppointmentService.confirm(
+      id,
+      companyId,
+      ownerSession,
+      new Date("2026-08-30T16:00:00.000Z"),
+    );
 
     appointmentRepository.findByIdInCompany.mockResolvedValue(
       entity({ status: AppointmentStatus.CONFIRMED }),

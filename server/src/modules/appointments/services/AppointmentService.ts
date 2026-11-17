@@ -51,6 +51,7 @@ import { HttpStatus } from "../../../constants/http-status";
 import Logger from "../../../providers/logger/Logger";
 
 import { AppointmentStatus } from "../../../constants/appointment-status";
+import { ErrorCode } from "../../../constants/error-codes";
 import AvailabilityService from "../../availability/services/AvailabilityService";
 import PublicBookingEligibility from "../../public-booking/services/PublicBookingEligibility";
 import NotificationDispatcher from "../../notifications/services/NotificationDispatcher";
@@ -1470,7 +1471,19 @@ class AppointmentService {
     id: string,
     companyId: string,
     sessionUser: SessionUserForReadScope,
+    now: Date = new Date(),
   ) {
+    const appointment = await loadAppointmentForStaffWrite(id, sessionUser);
+
+    if (appointment.startAt.getTime() < now.getTime()) {
+      throw new AppError(
+        HttpMessages.APPOINTMENT_CONFIRM_START_PASSED,
+        HttpStatus.BAD_REQUEST,
+        undefined,
+        ErrorCode.APPOINTMENT_CONFIRM_START_PASSED,
+      );
+    }
+
     return this.changeStatus(
       id,
       companyId,

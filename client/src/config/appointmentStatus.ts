@@ -1,3 +1,4 @@
+import { isConfirmStartPassed } from "./appointmentCalendar";
 import type { AppointmentStatus } from "../types/appointment";
 
 /**
@@ -56,6 +57,10 @@ export const APPOINTMENT_ACTION_LABELS: Record<AppointmentStatusAction, string> 
   "no-show": "Não compareceu",
 };
 
+/** Explicação quando a confirmação não está disponível (horário ultrapassado, ainda scheduled). */
+export const APPOINTMENT_CONFIRM_GUARD_MESSAGE =
+  "O horário deste agendamento já foi ultrapassado. Não é possível confirmá-lo. Aguarda o processamento automático.";
+
 export const APPOINTMENT_ACTION_SUCCESS_MESSAGES: Record<AppointmentStatusAction, string> = {
   confirm: "Agendamento confirmado com sucesso.",
   complete: "Agendamento concluído com sucesso.",
@@ -75,9 +80,14 @@ export const APPOINTMENT_ACTION_SUCCESS_MESSAGES: Record<AppointmentStatusAction
  */
 export function getAppointmentStatusActions(
   status: AppointmentStatus,
+  startAt?: string,
+  nowISO?: string,
 ): AppointmentStatusAction[] {
   switch (status) {
     case "scheduled":
+      if (startAt && isConfirmStartPassed(startAt, nowISO)) {
+        return ["cancel"];
+      }
       return ["confirm", "cancel"];
     case "confirmed":
       return ["complete", "cancel", "no-show"];

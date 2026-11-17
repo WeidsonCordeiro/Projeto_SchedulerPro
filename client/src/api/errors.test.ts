@@ -175,6 +175,18 @@ describe("getFriendlyErrorMessage", () => {
     );
     expect(getFriendlyErrorMessage(failure)).toBe(USER_INACTIVE_FRIENDLY_MESSAGE);
   });
+
+  it("maps APPOINTMENT_CONFIRM_START_PASSED by code", () => {
+    const failure = getApiError(
+      httpError(400, {
+        code: "APPOINTMENT_CONFIRM_START_PASSED",
+        message: "raw",
+      }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      "O horário deste agendamento já foi ultrapassado. Não é possível confirmá-lo. Aguarda o processamento automático.",
+    );
+  });
 });
 
 describe("collapseDuplicateMessages", () => {

@@ -152,6 +152,86 @@ describe("AppointmentsListView", () => {
     expect(onDeleteRequest).toHaveBeenCalledWith(expect.objectContaining({ id: "appt1" }));
   });
 
+  it("shows Confirmar before startAt and removes it when uiNowISO advances past start", () => {
+    const appointment = makeAppointment({
+      startAt: "2026-09-10T12:00:00.000Z",
+      endAt: "2026-09-10T12:30:00.000Z",
+      status: "scheduled",
+    });
+    const { rerender } = renderList({
+      appointments: [appointment],
+      uiNowISO: "2026-09-10T11:59:00.000Z",
+    });
+
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+    expect(screen.queryByText(/horário deste agendamento já foi ultrapassado/i)).not.toBeInTheDocument();
+
+    rerender(
+      <AppointmentsListView
+        {...{
+          isLoading: false,
+          loadError: null,
+          onRetry: vi.fn(),
+          appointments: [appointment],
+          timezone: "Europe/Lisbon",
+          clientNames,
+          serviceNames,
+          employeeNames,
+          canCreate: true,
+          canUpdate: true,
+          canStatus: true,
+          canDelete: true,
+          pendingStatusAction: null,
+          onCreate: vi.fn(),
+          onViewDetails: vi.fn(),
+          onEdit: vi.fn(),
+          onStatusAction: vi.fn(),
+          onDeleteRequest: vi.fn(),
+          uiNowISO: "2026-09-10T12:00:01.000Z",
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/horário deste agendamento já foi ultrapassado/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps Confirmar when uiNowISO equals startAt", () => {
+    renderList({
+      appointments: [
+        makeAppointment({
+          startAt: "2026-09-10T12:00:00.000Z",
+          endAt: "2026-09-10T12:30:00.000Z",
+          status: "scheduled",
+        }),
+      ],
+      uiNowISO: "2026-09-10T12:00:00.000Z",
+    });
+
+    expect(screen.getByRole("button", { name: "Confirmar" })).toBeInTheDocument();
+  });
+
+  it("hides Confirmar but keeps Cancelar for past scheduled appointments", () => {
+    renderList({
+      appointments: [
+        makeAppointment({
+          startAt: "2026-07-15T09:00:00.000Z",
+          endAt: "2026-07-15T09:30:00.000Z",
+          status: "scheduled",
+        }),
+      ],
+    });
+
+    expect(screen.queryByRole("button", { name: "Confirmar" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/horário deste agendamento já foi ultrapassado/i),
+    ).toBeInTheDocument();
+  });
+
   it("shows Visualizar instead of Editar for past appointments", () => {
     const { onViewDetails } = renderList({
       appointments: [

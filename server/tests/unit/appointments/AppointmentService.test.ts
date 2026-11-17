@@ -16,6 +16,7 @@ import { AppointmentStatus } from "../../../src/constants/appointment-status";
 import { AppError } from "../../../src/errors/AppError";
 import { Role } from "../../../src/constants/roles";
 import { HttpMessages } from "../../../src/constants/http-messages";
+import { ErrorCode } from "../../../src/constants/error-codes";
 
 const companyId = "507f1f77bcf86cd799439011"; const clientId = "507f1f77bcf86cd799439012"; const serviceId = "507f1f77bcf86cd799439013"; const employeeId = "507f1f77bcf86cd799439014";
 const ownerSession = { userId: employeeId, companyId, role: Role.OWNER };
@@ -28,7 +29,53 @@ describe("AppointmentService", () => {
   it("cria appointment e valida disponibilidade", async () => { await AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId, new Date("2026-08-29T00:00:00.000Z")); expect(availabilityService.ensureEmployeeAvailable).toHaveBeenCalled(); });
   it("rejeita conflito de funcionário e cliente", async () => { availabilityService.ensureEmployeeAvailable.mockResolvedValue(undefined); appointmentRepository.hasEmployeeConflict.mockResolvedValue(true); await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId, new Date("2026-08-29T00:00:00.000Z"))).rejects.toBeInstanceOf(AppError); appointmentRepository.hasEmployeeConflict.mockResolvedValue(false); appointmentRepository.hasClientConflict.mockResolvedValue(true); await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId, new Date("2026-08-29T00:00:00.000Z"))).rejects.toBeInstanceOf(AppError); });
   it("propaga indisponibilidade do funcionário", async () => { availabilityService.ensureEmployeeAvailable.mockRejectedValue(new AppError("indisponível", 409)); await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId, new Date("2026-08-29T00:00:00.000Z"))).rejects.toThrow("indisponível"); });
-  it("permite transição válida e rejeita inválida", async () => { const id = "507f1f77bcf86cd799439015"; appointmentRepository.findByIdInCompany.mockResolvedValue(entity()); await expect(AppointmentService.confirm(id, companyId, ownerSession)).resolves.toBeTruthy(); appointmentRepository.findByIdInCompany.mockResolvedValue(entity({ status: AppointmentStatus.COMPLETED })); await expect(AppointmentService.confirm(id, companyId, ownerSession)).rejects.toBeInstanceOf(AppError); });
+  it("permite transição válida e rejeita inválida", async () => { const id = "507f1f77bcf86cd799439015"; const beforeStart = new Date("2026-08-30T16:00:00.000Z"); appointmentRepository.findByIdInCompany.mockResolvedValue(entity()); await expect(AppointmentService.confirm(id, companyId, ownerSession, beforeStart)).resolves.toBeTruthy(); appointmentRepository.findByIdInCompany.mockResolvedValue(entity({ status: AppointmentStatus.COMPLETED })); await expect(AppointmentService.confirm(id, companyId, ownerSession, beforeStart)).rejects.toBeInstanceOf(AppError); });
+  it("confirma scheduled com horário futuro", async () => {
+    const id = "507f1f77bcf86cd799439015";
+    const now = new Date("2026-08-30T16:00:00.000Z");
+    appointmentRepository.findByIdInCompany.mockResolvedValue(
+      entity({ startAt: new Date("2026-08-30T17:00:00Z") }),
+    );
+    await expect(
+      AppointmentService.confirm(id, companyId, ownerSession, now),
+    ).resolves.toBeTruthy();
+  });
+  it("rejeita confirmação de scheduled com horário ultrapassado", async () => {
+    const id = "507f1f77bcf86cd799439015";
+    const now = new Date("2026-08-30T18:00:00.000Z");
+    appointmentRepository.findByIdInCompany.mockResolvedValue(
+      entity({ startAt: new Date("2026-08-30T17:00:00Z") }),
+    );
+    await expect(
+      AppointmentService.confirm(id, companyId, ownerSession, now),
+    ).rejects.toMatchObject({
+      message: HttpMessages.APPOINTMENT_CONFIRM_START_PASSED,
+      statusCode: 400,
+      code: ErrorCode.APPOINTMENT_CONFIRM_START_PASSED,
+    });
+    expect(appointmentRepository.updateStatusInCompany).not.toHaveBeenCalled();
+  });
+  it("permite confirmar scheduled quando startAt é exatamente now", async () => {
+    const id = "507f1f77bcf86cd799439015";
+    const now = new Date("2026-08-30T17:00:00.000Z");
+    appointmentRepository.findByIdInCompany.mockResolvedValue(
+      entity({ startAt: new Date("2026-08-30T17:00:00.000Z") }),
+    );
+    await expect(
+      AppointmentService.confirm(id, companyId, ownerSession, now),
+    ).resolves.toBeTruthy();
+  });
+  it("permite cancelar scheduled vencido", async () => {
+    const id = "507f1f77bcf86cd799439015";
+    const now = new Date("2026-08-30T18:00:00.000Z");
+    appointmentRepository.findByIdInCompany.mockResolvedValue(
+      entity({ startAt: new Date("2026-08-30T17:00:00Z") }),
+    );
+    await expect(
+      AppointmentService.cancel(id, companyId, ownerSession),
+    ).resolves.toBeTruthy();
+    void now;
+  });
   it("impede acesso a appointment de outra empresa", async () => { appointmentRepository.findByIdInCompany.mockResolvedValue(null); await expect(AppointmentService.findById("507f1f77bcf86cd799439015", companyId)).rejects.toBeInstanceOf(AppError); });
   it("rejeita criação de appointment no passado", async () => { await expect(AppointmentService.create({ clientId, serviceId, employeeId, startAt: new Date("2026-08-30T17:00:00Z") }, companyId, new Date("2026-09-01T00:00:00.000Z"))).rejects.toMatchObject({ message: "Não é possível agendar em um horário que já passou." }); expect(appointmentRepository.create).not.toHaveBeenCalled(); });
   it("não cancela scheduled vencidos ao listar com escopo de empresa", async () => { const now = new Date("2026-09-01T00:00:00.000Z"); await AppointmentService.findAll(companyId, {}, { companyId }, now); expect(appointmentRepository.cancelOverdueScheduled).not.toHaveBeenCalled(); expect(appointmentRepository.findByCompanyId).toHaveBeenCalledWith(companyId, {}, undefined); });

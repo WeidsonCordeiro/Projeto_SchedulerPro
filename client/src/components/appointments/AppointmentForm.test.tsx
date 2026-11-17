@@ -714,6 +714,33 @@ describe("AppointmentForm", () => {
 
       expect(getEmployeeOption(getDialog(), "Ana Lima")).toBeDisabled();
     });
+
+    it("shows the current status badge when editing an existing appointment", () => {
+      renderForm({
+        appointment: makeAppointment({ status: "scheduled", startAt: "2020-01-01T09:00:00.000Z" }),
+      });
+
+      expect(screen.getByText("Estado")).toBeInTheDocument();
+      expect(within(getDialog()).getByText("Agendado")).toBeInTheDocument();
+      expect(
+        screen.getByText(/horário deste agendamento já foi ultrapassado/i),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show the confirm guard note when startAt equals uiNowISO", () => {
+      renderForm({
+        appointment: makeAppointment({
+          status: "scheduled",
+          startAt: "2026-09-10T12:00:00.000Z",
+        }),
+        uiNowISO: "2026-09-10T12:00:00.000Z",
+      });
+
+      expect(screen.getByText("Estado")).toBeInTheDocument();
+      expect(
+        screen.queryByText(/horário deste agendamento já foi ultrapassado/i),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("timezone da empresa", () => {
