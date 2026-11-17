@@ -17,6 +17,7 @@ import { getAppointmentAbilities } from "../../config/appointmentPermissions";
 import { isInstantInPast } from "../../config/appointmentCalendar";
 import { useAppointmentsNavigation } from "../../hooks/useAppointmentsNavigation";
 import { useAppointmentsSchedule } from "../../hooks/useAppointmentsSchedule";
+import { useAppointmentsUiTick } from "../../hooks/useAppointmentsUiTick";
 import { APPOINTMENT_ACTION_SUCCESS_MESSAGES } from "../../config/appointmentStatus";
 import type { AppointmentStatusAction } from "../../config/appointmentStatus";
 import { useAppSelector } from "../../store";
@@ -115,6 +116,8 @@ export default function AppointmentsPage() {
     actorRole,
     canListEmployees,
   });
+
+  const uiNowISO = useAppointmentsUiTick(canList);
 
   const visibleAppointments = useMemo(
     () => filterAppointments(appointments, filterCriteria),
@@ -330,6 +333,7 @@ export default function AppointmentsPage() {
             void handleStatusAction(appointment, action)
           }
           onDeleteRequest={setDeletingAppointment}
+          uiNowISO={uiNowISO}
         />
       )}
 
@@ -385,6 +389,7 @@ export default function AppointmentsPage() {
           initialTime={prefillTime}
           initialEmployeeId={prefillEmployeeId}
           readOnly={formReadOnly}
+          uiNowISO={uiNowISO}
         />
       )}
 

@@ -16,6 +16,12 @@ import {
   toLocalDateTimeInputValue,
 } from "../../config/appointmentTime";
 import { getAvailableSlots } from "../../config/appointmentSlots";
+import { isConfirmStartPassed } from "../../config/appointmentCalendar";
+import {
+  APPOINTMENT_CONFIRM_GUARD_MESSAGE,
+  APPOINTMENT_STATUS_BADGE_CLASS,
+  APPOINTMENT_STATUS_LABELS,
+} from "../../config/appointmentStatus";
 import type { Appointment } from "../../types/appointment";
 import type { Availability } from "../../types/availability";
 import type { AvailabilityException } from "../../types/availabilityException";
@@ -69,6 +75,8 @@ interface AppointmentFormProps {
    * requisições de criação/edição — apenas apresenta os dados.
    */
   readOnly?: boolean;
+  /** Instante de referência da página de agendamentos (tick UI); opcional em testes. */
+  uiNowISO?: string;
 }
 
 function validate(
@@ -133,6 +141,7 @@ export default function AppointmentForm({
   initialTime,
   initialEmployeeId,
   readOnly = false,
+  uiNowISO,
 }: AppointmentFormProps) {
   const isEdit = Boolean(appointment);
   const readOnlyView = readOnly;
@@ -410,6 +419,23 @@ export default function AppointmentForm({
           </div>
 
           <div className="modal-body">
+            {isEdit && appointment && (
+              <div className="mb-3">
+                <span className="form-label d-block">Estado</span>
+                <span
+                  className={`badge ${APPOINTMENT_STATUS_BADGE_CLASS[appointment.status]}`}
+                >
+                  {APPOINTMENT_STATUS_LABELS[appointment.status]}
+                </span>
+                {appointment.status === "scheduled" &&
+                  isConfirmStartPassed(appointment.startAt, uiNowISO) && (
+                    <p className="form-text mb-0 mt-2">
+                      {APPOINTMENT_CONFIRM_GUARD_MESSAGE}
+                    </p>
+                  )}
+              </div>
+            )}
+
             {readOnlyView && (
               <div className="alert alert-secondary py-2" role="alert">
                 Este agendamento já ocorreu e está em modo somente leitura.

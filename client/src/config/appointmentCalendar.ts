@@ -84,6 +84,22 @@ export function isInstantInPast(startAt: string, nowISO?: string): boolean {
 }
 
 /**
+ * Espelha AppointmentService.confirm(): o início já passou quando startAt < now
+ * (estrito). No instante startAt === now a confirmação continua permitida.
+ */
+export function isConfirmStartPassed(startAt: string, nowISO?: string): boolean {
+  const start = DateTime.fromISO(startAt);
+  if (!start.isValid) {
+    return false;
+  }
+  const now = nowISO ? DateTime.fromISO(nowISO) : DateTime.now();
+  if (!now.isValid) {
+    return false;
+  }
+  return start.toMillis() < now.toMillis();
+}
+
+/**
  * Informa se o intervalo "dateKey HH:00" (hora cheia, como as células dos
  * calendários Semana/Dia) já passou. Usa o fuso local da empresa para montar
  * o instante do slot. O slot é considerado passado quando seu início não é

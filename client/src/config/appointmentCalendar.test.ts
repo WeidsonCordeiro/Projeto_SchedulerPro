@@ -12,6 +12,7 @@ import {
   computeDayLayout,
   computeDayHourRange,
   isInstantInPast,
+  isConfirmStartPassed,
   isSlotHourInPast,
 } from "./appointmentCalendar";
 import type { Appointment } from "../types/appointment";
@@ -203,6 +204,30 @@ describe("isInstantInPast", () => {
 
   it("returns false for invalid ISO strings", () => {
     expect(isInstantInPast("not-a-date", "2026-09-10T12:00:00.000Z")).toBe(false);
+  });
+});
+
+describe("isConfirmStartPassed", () => {
+  it("returns false when startAt is after now", () => {
+    expect(
+      isConfirmStartPassed("2026-09-10T13:00:00.000Z", "2026-09-10T12:00:00.000Z"),
+    ).toBe(false);
+  });
+
+  it("returns false when startAt equals now", () => {
+    expect(
+      isConfirmStartPassed("2026-09-10T12:00:00.000Z", "2026-09-10T12:00:00.000Z"),
+    ).toBe(false);
+  });
+
+  it("returns true when startAt is before now", () => {
+    expect(
+      isConfirmStartPassed("2026-09-10T11:00:00.000Z", "2026-09-10T12:00:00.000Z"),
+    ).toBe(true);
+  });
+
+  it("returns false for invalid ISO strings", () => {
+    expect(isConfirmStartPassed("not-a-date", "2026-09-10T12:00:00.000Z")).toBe(false);
   });
 });
 

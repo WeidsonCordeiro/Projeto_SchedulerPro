@@ -55,6 +55,36 @@ describe("appointmentStatus", () => {
     ]);
   });
 
+  it("omits confirm for scheduled appointments whose startAt is in the past", () => {
+    expect(
+      getAppointmentStatusActions(
+        "scheduled",
+        "2026-09-10T11:00:00.000Z",
+        "2026-09-10T12:00:00.000Z",
+      ),
+    ).toEqual(["cancel"]);
+  });
+
+  it("keeps confirm for scheduled appointments still in the future", () => {
+    expect(
+      getAppointmentStatusActions(
+        "scheduled",
+        "2026-09-10T13:00:00.000Z",
+        "2026-09-10T12:00:00.000Z",
+      ),
+    ).toEqual(["confirm", "cancel"]);
+  });
+
+  it("keeps confirm for scheduled appointments when startAt equals now", () => {
+    expect(
+      getAppointmentStatusActions(
+        "scheduled",
+        "2026-09-10T12:00:00.000Z",
+        "2026-09-10T12:00:00.000Z",
+      ),
+    ).toEqual(["confirm", "cancel"]);
+  });
+
   it("allows complete, cancel and no-show for confirmed appointments", () => {
     expect(getAppointmentStatusActions("confirmed")).toEqual([
       "complete",

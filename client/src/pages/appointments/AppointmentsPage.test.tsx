@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router-dom";
@@ -745,6 +745,102 @@ describe("AppointmentsPage", () => {
     expect(
       within(table).queryByRole("button", { name: /não compareceu/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not call getAppointments again when only the UI tick advances", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date("2026-09-10T11:59:00.000Z"));
+    try {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({
+            startAt: "2026-09-10T12:00:00.000Z",
+            endAt: "2026-09-10T12:30:00.000Z",
+            status: "scheduled",
+          }),
+        ],
+      });
+      mockRelatedData();
+
+      await renderPageList();
+      await screen.findByRole("table");
+
+      const callsAfterMount = vi.mocked(appointmentsApi.getAppointments).mock.calls.length;
+
+      await act(async () => {
+        vi.advanceTimersByTime(90_000);
+      });
+
+      expect(vi.mocked(appointmentsApi.getAppointments).mock.calls.length).toBe(
+        callsAfterMount,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("hides Confirmar after the UI tick passes startAt while the list stays open", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date("2026-09-10T11:59:00.000Z"));
+    try {
+      vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+        success: true,
+        message: "ok",
+        data: [
+          makeAppointment({
+            startAt: "2026-09-10T12:00:00.000Z",
+            endAt: "2026-09-10T12:30:00.000Z",
+            status: "scheduled",
+          }),
+        ],
+      });
+      mockRelatedData();
+
+      await renderPageList();
+      const table = await screen.findByRole("table");
+
+      expect(
+        within(table).getByRole("button", { name: /^confirmar$/i }),
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(90_000);
+      });
+
+      expect(
+        within(table).queryByRole("button", { name: /^confirmar$/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(table).getByText(/horário deste agendamento já foi ultrapassado/i),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not offer Confirmar for past scheduled appointments in the list", async () => {
+    vi.mocked(appointmentsApi.getAppointments).mockResolvedValue({
+      success: true,
+      message: "ok",
+      data: [
+        makeAppointment({
+          id: "past-scheduled",
+          status: "scheduled",
+          startAt: "2020-01-01T09:00:00.000Z",
+          endAt: "2020-01-01T09:30:00.000Z",
+        }),
+      ],
+    });
+
+    await renderPageList();
+    const table = await screen.findByRole("table");
+
+    expect(
+      within(table).queryByRole("button", { name: /^confirmar$/i }),
+    ).not.toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: /^cancelar$/i })).toBeInTheDocument();
   });
 
   it("shows a friendly error when the backend rejects a status transition", async () => {

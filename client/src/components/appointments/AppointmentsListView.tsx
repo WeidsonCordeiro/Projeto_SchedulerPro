@@ -1,6 +1,7 @@
 import { isInstantInPast } from "../../config/appointmentCalendar";
 import {
   APPOINTMENT_ACTION_LABELS,
+  APPOINTMENT_CONFIRM_GUARD_MESSAGE,
   APPOINTMENT_STATUS_BADGE_CLASS,
   APPOINTMENT_STATUS_LABELS,
   getAppointmentStatusActions,
@@ -37,6 +38,8 @@ export interface AppointmentsListViewProps {
   onDeleteRequest: (appointment: Appointment) => void;
   emptyVariant?: "period" | "filters";
   onClearFilters?: () => void;
+  /** Instante de referência (UTC ISO) para reavaliar ações temporais sem refetch. */
+  uiNowISO?: string;
 }
 
 function nameFor(map: Map<string, string>, id: string): string {
@@ -64,6 +67,7 @@ export default function AppointmentsListView({
   onDeleteRequest,
   emptyVariant = "period",
   onClearFilters,
+  uiNowISO,
 }: AppointmentsListViewProps) {
   const hasActions = canUpdate || canStatus || canDelete;
 
@@ -129,8 +133,16 @@ export default function AppointmentsListView({
           <tbody>
             {appointments.map((appointment) => {
               const statusActions = canStatus
-                ? getAppointmentStatusActions(appointment.status)
+                ? getAppointmentStatusActions(
+                    appointment.status,
+                    appointment.startAt,
+                    uiNowISO,
+                  )
                 : [];
+              const confirmBlocked =
+                appointment.status === "scheduled" &&
+                statusActions.length > 0 &&
+                !statusActions.includes("confirm");
               const pending =
                 pendingStatusAction?.id === appointment.id
                   ? pendingStatusAction.action
@@ -218,6 +230,11 @@ export default function AppointmentsListView({
                           </button>
                         )}
                       </div>
+                      {confirmBlocked && (
+                        <p className="form-text mb-0 mt-1">
+                          {APPOINTMENT_CONFIRM_GUARD_MESSAGE}
+                        </p>
+                      )}
                     </td>
                   )}
                 </tr>

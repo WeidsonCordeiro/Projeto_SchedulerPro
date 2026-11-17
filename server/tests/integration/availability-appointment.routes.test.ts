@@ -57,6 +57,7 @@ vi.mock("../../src/modules/appointments/services/appointment-booking-transaction
 import app from "../../src/app";
 import { Role } from "../../src/constants/roles";
 import { AppointmentStatus } from "../../src/constants/appointment-status";
+import { HttpMessages } from "../../src/constants/http-messages";
 
 const ref = (id: string) => ({ toString: () => id });
 const companyA = { _id: ref(ids.companyA), timezone: "Europe/Lisbon", isActive: true };
@@ -362,6 +363,22 @@ describe("Appointment HTTP integration", () => {
     expect((await request(app).patch(`/api/appointments/${ids.appointment}/confirm`)).status).toBe(400);
     appointmentRepository.findByIdInCompany.mockResolvedValue(null);
     expect((await request(app).patch(`/api/appointments/${ids.appointment}/cancel`)).status).toBe(404);
+  });
+
+  it("rejeita confirm quando o horário de início já passou", async () => {
+    appointmentRepository.findByIdInCompany.mockResolvedValue(
+      appointmentA({
+        status: AppointmentStatus.SCHEDULED,
+        startAt: new Date("2020-01-15T10:00:00.000Z"),
+        endAt: new Date("2020-01-15T10:30:00.000Z"),
+      }),
+    );
+    const response = await request(app).patch(
+      `/api/appointments/${ids.appointment}/confirm`,
+    );
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe(HttpMessages.APPOINTMENT_CONFIRM_START_PASSED);
+    expect(appointmentRepository.updateStatusInCompany).not.toHaveBeenCalled();
   });
 
   it("aplica autorização real por role no Appointment", async () => {
