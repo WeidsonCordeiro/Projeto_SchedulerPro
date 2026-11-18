@@ -737,22 +737,6 @@ class AppointmentService {
   }
 
   /**
-   * ==========================================================
-   * Cancela agendamentos com status "scheduled" e início no
-   * passado.
-   *
-   * Apenas o status "scheduled" é afetado; os demais
-   * permanecem inalterados.
-   * ==========================================================
-   */
-  public async expireOverdueScheduled(
-    companyId: string,
-    now: Date = new Date(),
-  ): Promise<number> {
-    return this.appointmentRepository.cancelOverdueScheduled(companyId, now);
-  }
-
-  /**
 
 * ==========================================================
 * Busca um agendamento pelo ID.
