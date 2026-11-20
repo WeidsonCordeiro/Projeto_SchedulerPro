@@ -58,7 +58,6 @@ router.delete(
   AuthMiddleware.authenticate,
   validateObjectId("id"),
   PasswordChangeMiddleware.requirePasswordChangeCompleted,
-  RequireOperationalCompanyMiddleware.requireOperationalCompany,
   hasPermission(Permission.COMPANY_DELETE),
   CompanyController.delete,
 );

@@ -93,6 +93,12 @@ export const COMPANY_INACTIVE_FRIENDLY_MESSAGES: Record<string, string> = {
     "O acesso está limitado porque a empresa está suspensa. Contacte o OWNER da empresa para reativar a conta.",
 };
 
+export const COMPANY_DELETE_BLOCKED_ERROR_CODE =
+  "COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS";
+
+export const COMPANY_DELETE_BLOCKED_FRIENDLY_MESSAGE =
+  "Não é possível eliminar a empresa enquanto existirem agendamentos futuros ou em curso. Conclua ou cancele esses agendamentos antes de continuar.";
+
 const BACKEND_MESSAGE_TO_INACTIVE_CODE: Record<string, string> = {
   [BACKEND_COMPANY_INACTIVE_OPERATION_MESSAGE]:
     COMPANY_INACTIVE_ERROR_CODES.COMPANY_INACTIVE_OPERATION,
@@ -255,6 +261,16 @@ export function getFriendlyErrorMessage(failure: ApiFailure): string {
   const companyInactiveMessage = resolveCompanyInactiveFriendlyMessage(failure);
   if (companyInactiveMessage) {
     return companyInactiveMessage;
+  }
+
+  if (failure.code === COMPANY_DELETE_BLOCKED_ERROR_CODE) {
+    return COMPANY_DELETE_BLOCKED_FRIENDLY_MESSAGE;
+  }
+
+  if (
+    failure.message?.trim() === COMPANY_DELETE_BLOCKED_FRIENDLY_MESSAGE
+  ) {
+    return COMPANY_DELETE_BLOCKED_FRIENDLY_MESSAGE;
   }
 
   if (failure.code === APPOINTMENT_CONFIRM_GUARD_ERROR_CODE) {

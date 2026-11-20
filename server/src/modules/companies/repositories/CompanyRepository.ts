@@ -30,11 +30,18 @@ class CompanyRepository {
    */
   public async findById(
     id: string | Types.ObjectId,
+    options?: { session?: ClientSession },
   ): Promise<CompanyDocument | null> {
-    return Company.findOne({
+    let query = Company.findOne({
       _id: id,
       deletedAt: null,
     });
+
+    if (options?.session) {
+      query = query.session(options.session);
+    }
+
+    return query;
   }
 
   /**
@@ -161,16 +168,32 @@ class CompanyRepository {
   }
 
   /**
+   * Serializa reservas e exclusão lógica que partilham a mesma empresa.
+   */
+  public async touchBookingSerialization(
+    id: string | Types.ObjectId,
+    session: ClientSession,
+  ): Promise<CompanyDocument | null> {
+    return Company.findOneAndUpdate(
+      { _id: id, deletedAt: null },
+      { $inc: { bookingSerializationVersion: 1 } },
+      { session, new: true },
+    );
+  }
+
+  /**
    * ==========================================================
    * Remove logicamente uma empresa.
    * ==========================================================
    */
   public async softDelete(
     id: string,
-  ): Promise<void> {
-    await Company.findOneAndUpdate(
+    session?: ClientSession,
+  ): Promise<CompanyDocument | null> {
+    return Company.findOneAndUpdate(
       { _id: id, deletedAt: null },
-      { deletedAt: new Date() },
+      { deletedAt: new Date(), isActive: false },
+      { new: true, ...(session ? { session } : {}) },
     );
   }
 }

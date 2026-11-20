@@ -87,10 +87,24 @@ describe("CompanyRepository", () => {
     );
   });
 
-  it("softDelete filtra a empresa ativa e grava deletedAt", async () => {
+  it("touchBookingSerialization incrementa bookingSerializationVersion com filtro deletedAt nulo", async () => {
+    const session = {} as never;
+    company.findOneAndUpdate.mockResolvedValue({});
+    await CompanyRepository.touchBookingSerialization(id, session);
+    expect(company.findOneAndUpdate).toHaveBeenCalledWith(
+      activeFilter,
+      { $inc: { bookingSerializationVersion: 1 } },
+      { session, new: true },
+    );
+  });
+
+  it("softDelete filtra a empresa ativa e grava deletedAt e isActive false", async () => {
+    company.findOneAndUpdate.mockResolvedValue({});
     await CompanyRepository.softDelete(id);
-    const [filter, update] = company.findOneAndUpdate.mock.calls[0];
+    const [filter, update, options] = company.findOneAndUpdate.mock.calls[0];
     expect(filter).toEqual(activeFilter);
     expect(update.deletedAt).toBeInstanceOf(Date);
+    expect(update.isActive).toBe(false);
+    expect(options).toEqual({ new: true });
   });
 });

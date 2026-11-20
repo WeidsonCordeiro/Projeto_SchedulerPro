@@ -524,6 +524,34 @@ class AppointmentRepository {
    * (confirmed, completed, cancelled, no-show) permanecem.
    * ==========================================================
    */
+  /**
+   * Verifica se a empresa possui agendamentos em aberto que impedem
+   * o soft delete (SCHEDULED/CONFIRMED com endAt > now).
+   */
+  public async hasOpenAppointmentsForCompany(
+    companyId: string | Types.ObjectId,
+    now: Date,
+    options?: RepositorySessionOptions,
+  ): Promise<boolean> {
+    const query = {
+      companyId,
+      deletedAt: null,
+      status: {
+        $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED],
+      },
+      endAt: { $gt: now },
+    };
+
+    let existsQuery = Appointment.exists(query);
+
+    if (options?.session) {
+      existsQuery = existsQuery.session(options.session);
+    }
+
+    const result = await existsQuery;
+    return result !== null;
+  }
+
   public async cancelOverdueScheduled(
     companyId: string | Types.ObjectId,
     now: Date,

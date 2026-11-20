@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { companyRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
+const { companyRepository, appointmentRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
   companyRepository: {
     findById: vi.fn(),
     findAll: vi.fn(),
     update: vi.fn(),
     softDelete: vi.fn(),
+    touchBookingSerialization: vi.fn(),
     activate: vi.fn(),
     deactivate: vi.fn(),
+  },
+  appointmentRepository: {
+    hasOpenAppointmentsForCompany: vi.fn(),
   },
   userRepository: {
     suspendActiveNonOwnerStaffForCompanyDeactivation: vi.fn(),
@@ -20,6 +24,10 @@ const { companyRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
 
 vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({
   default: companyRepository,
+}));
+
+vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({
+  default: appointmentRepository,
 }));
 
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
@@ -60,6 +68,13 @@ beforeEach(() => {
   companyRepository.update.mockResolvedValue(companyDocument);
   companyRepository.activate.mockResolvedValue(companyDocument);
   companyRepository.deactivate.mockResolvedValue({ ...companyDocument, isActive: false });
+  appointmentRepository.hasOpenAppointmentsForCompany.mockResolvedValue(false);
+  companyRepository.touchBookingSerialization.mockResolvedValue(companyDocument);
+  companyRepository.softDelete.mockResolvedValue({
+    ...companyDocument,
+    isActive: false,
+    deletedAt: new Date(),
+  });
 });
 
 describe("CompanyService - isolamento multiempresa", () => {
@@ -87,7 +102,7 @@ describe("CompanyService - isolamento multiempresa", () => {
 
   it("permite remover a própria empresa", async () => {
     await expect(CompanyService.delete(companyA, companyA)).resolves.toBeUndefined();
-    expect(companyRepository.softDelete).toHaveBeenCalledWith(companyA);
+    expect(companyRepository.softDelete).toHaveBeenCalledWith(companyA, expect.anything());
   });
 
   it("não permite remover empresa de outro tenant", async () => {

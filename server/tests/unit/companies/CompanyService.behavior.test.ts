@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { companyRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
+const { companyRepository, appointmentRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
   companyRepository: {
     findById: vi.fn(),
     update: vi.fn(),
     softDelete: vi.fn(),
+    touchBookingSerialization: vi.fn(),
     activate: vi.fn(),
     deactivate: vi.fn(),
+  },
+  appointmentRepository: {
+    hasOpenAppointmentsForCompany: vi.fn(),
   },
   userRepository: {
     suspendActiveNonOwnerStaffForCompanyDeactivation: vi.fn(),
@@ -18,6 +22,10 @@ const { companyRepository, userRepository, lifecycleTx } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../src/modules/companies/repositories/CompanyRepository", () => ({ default: companyRepository }));
+
+vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({
+  default: appointmentRepository,
+}));
 
 vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
@@ -56,6 +64,9 @@ beforeEach(() => {
   companyRepository.update.mockResolvedValue(company);
   companyRepository.activate.mockResolvedValue(company);
   companyRepository.deactivate.mockResolvedValue({ ...company, isActive: false });
+  appointmentRepository.hasOpenAppointmentsForCompany.mockResolvedValue(false);
+  companyRepository.touchBookingSerialization.mockResolvedValue(company);
+  companyRepository.softDelete.mockResolvedValue({ ...company, isActive: false, deletedAt: new Date() });
 });
 
 describe("CompanyService", () => {
@@ -94,6 +105,6 @@ describe("CompanyService", () => {
     expect(lifecycleTx.withCompanyLifecycleTransaction).toHaveBeenCalled();
     expect(companyRepository.activate).toHaveBeenCalledWith(id, expect.anything());
     expect(companyRepository.deactivate).toHaveBeenCalledWith(id, expect.anything());
-    expect(companyRepository.softDelete).toHaveBeenCalledWith(id);
+    expect(companyRepository.softDelete).toHaveBeenCalledWith(id, expect.anything());
   });
 });

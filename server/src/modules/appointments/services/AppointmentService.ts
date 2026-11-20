@@ -171,6 +171,44 @@ class AppointmentService {
    */
 
   /**
+   * Garante, dentro da transação de reserva, que a empresa existe
+   * e está ativa para receber agendamentos.
+   */
+  private async assertCompanyBookableForBooking(
+    companyId: string,
+    session: ClientSession,
+  ): Promise<void> {
+    const company = await CompanyRepository.touchBookingSerialization(
+      companyId,
+      session,
+    );
+
+    if (!company) {
+      throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!company.isActive) {
+      throw new AppError(HttpMessages.COMPANY_INACTIVE, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /**
+   * Confirma o estado actual da empresa fora do snapshot da transação
+   * de reserva (leitura majority) imediatamente antes da persistência.
+   */
+  private async assertCompanyLiveForBooking(companyId: string): Promise<void> {
+    const company = await CompanyRepository.findById(companyId);
+
+    if (!company) {
+      throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+    }
+
+    if (!company.isActive) {
+      throw new AppError(HttpMessages.COMPANY_INACTIVE, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  /**
    * Disponibilidade semanal e exceções — fora de transacções de
    * reserva (fail-fast antes do protocolo transacional).
    */
@@ -208,6 +246,8 @@ class AppointmentService {
     listScope?: AppointmentListScope;
   }): Promise<AppointmentDocument> {
     return withBookingTransaction(async (session) => {
+      await this.assertCompanyBookableForBooking(input.companyId, session);
+
       await this.userRepository.touchBookingSerialization(
         input.employeeId,
         input.companyId,
@@ -261,6 +301,11 @@ class AppointmentService {
       if (hasClientConflict) {
         throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
       }
+
+      await this.assertCompanyLiveForBooking(input.companyId);
+      await this.assertCompanyBookableForBooking(input.companyId, session);
+      await this.assertCompanyLiveForBooking(input.companyId);
+      await this.assertCompanyBookableForBooking(input.companyId, session);
 
       const updated = session
         ? await this.appointmentRepository.updateInCompany(
@@ -343,6 +388,8 @@ class AppointmentService {
     });
 
     const appointment = await withBookingTransaction(async (session) => {
+      await this.assertCompanyBookableForBooking(companyId, session);
+
       await this.userRepository.touchBookingSerialization(
         employeeId,
         companyId,
@@ -398,6 +445,10 @@ class AppointmentService {
       if (hasClientConflict) {
         throw new AppError(HttpMessages.CLIENT_CONFLICT, HttpStatus.CONFLICT);
       }
+
+      await this.assertCompanyLiveForBooking(companyId);
+      await this.assertCompanyBookableForBooking(companyId, session);
+      await this.assertCompanyLiveForBooking(companyId);
 
       const createPayload = {
         companyId: new Types.ObjectId(companyId),
@@ -944,6 +995,8 @@ class AppointmentService {
       endAt,
     });
 
+    await this.assertCompanyLiveForBooking(companyId);
+
     const updatedAppointment = await this.persistReschedule({
       companyId,
       appointmentId: id,
@@ -1272,6 +1325,8 @@ class AppointmentService {
       startAt,
       endAt,
     });
+
+    await this.assertCompanyLiveForBooking(companyId);
 
     const updated = await this.persistReschedule({
       companyId,

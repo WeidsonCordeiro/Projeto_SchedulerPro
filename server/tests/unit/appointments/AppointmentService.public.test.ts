@@ -42,7 +42,10 @@ const {
     findById: vi.fn(),
     touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
-  companyRepository: { findById: vi.fn() },
+  companyRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn(),
+  },
   availabilityService: { ensureEmployeeAvailable: vi.fn() },
   notificationDispatcher: { dispatchAppointmentEvent: vi.fn() },
   userCreate: vi.fn(),
@@ -117,6 +120,11 @@ beforeEach(() => {
     isActive: true,
     timezone: "Europe/Lisbon",
   });
+  companyRepository.touchBookingSerialization.mockResolvedValue({
+    _id: ref(companyId),
+    isActive: true,
+    timezone: "Europe/Lisbon",
+  });
   serviceRepository.findById.mockResolvedValue({
     _id: ref(serviceId),
     companyId: ref(companyId),
@@ -172,7 +180,7 @@ describe("AppointmentService.createPublic — empresa", () => {
   it("aceita empresa válida e usa o companyId da URL como tenant", async () => {
     await AppointmentService.createPublic(publicDto(), companyId, NOW);
 
-    expect(companyRepository.findById).toHaveBeenCalledWith(companyId);
+    expect(companyRepository.touchBookingSerialization).toHaveBeenCalled();
     expect(clientRepository.findByEmailAndCompany).toHaveBeenCalledWith(
       "ana@exemplo.com",
       companyId,
