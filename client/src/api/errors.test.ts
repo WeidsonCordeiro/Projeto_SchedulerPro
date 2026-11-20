@@ -4,6 +4,8 @@ import {
   BACKEND_COMPANY_INACTIVE_ACCESS_MESSAGE,
   BACKEND_COMPANY_INACTIVE_OPERATION_MESSAGE,
   AVAILABILITY_EMPLOYEES_LIST_SUSPENDED_MESSAGE,
+  COMPANY_DELETE_BLOCKED_ERROR_CODE,
+  COMPANY_DELETE_BLOCKED_FRIENDLY_MESSAGE,
   COMPANY_INACTIVE_ERROR_CODES,
   COMPANY_INACTIVE_FRIENDLY_MESSAGES,
   DEFAULT_SESSION_EXPIRY_MESSAGE,
@@ -174,6 +176,18 @@ describe("getFriendlyErrorMessage", () => {
       }),
     );
     expect(getFriendlyErrorMessage(failure)).toBe(USER_INACTIVE_FRIENDLY_MESSAGE);
+  });
+
+  it("maps COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS on 409", () => {
+    const failure = getApiError(
+      httpError(409, {
+        code: COMPANY_DELETE_BLOCKED_ERROR_CODE,
+        message: "raw",
+      }),
+    );
+    expect(getFriendlyErrorMessage(failure)).toBe(
+      COMPANY_DELETE_BLOCKED_FRIENDLY_MESSAGE,
+    );
   });
 
   it("maps APPOINTMENT_CONFIRM_START_PASSED by code", () => {

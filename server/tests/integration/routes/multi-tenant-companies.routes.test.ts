@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ref } from "../helpers/tenant-ids";
 
-const { ids, authUser, companyRepository, userRepository } = vi.hoisted(() => {
+const { ids, authUser, companyRepository, appointmentRepository, userRepository, lifecycleTx } = vi.hoisted(() => {
   const { TENANT_IDS: tenantIds } =
     require("../helpers/tenant-ids.cjs") as typeof import("../helpers/tenant-ids");
   return {
@@ -25,9 +25,16 @@ const { ids, authUser, companyRepository, userRepository } = vi.hoisted(() => {
       findAll: vi.fn(),
       update: vi.fn(),
       softDelete: vi.fn(),
+      touchBookingSerialization: vi.fn(),
+    },
+    appointmentRepository: {
+      hasOpenAppointmentsForCompany: vi.fn(),
     },
     userRepository: {
       findByIdForAccessControl: vi.fn(),
+    },
+    lifecycleTx: {
+      withCompanyLifecycleTransaction: vi.fn(),
     },
   };
 });
@@ -53,9 +60,21 @@ vi.mock("../../../src/modules/users/repositories/UserRepository", () => ({
   default: userRepository,
 }));
 
+vi.mock("../../../src/modules/appointments/repositories/AppointmentRepository", () => ({
+  default: appointmentRepository,
+}));
+
+vi.mock(
+  "../../../src/modules/companies/services/company-lifecycle-transaction",
+  () => ({
+    withCompanyLifecycleTransaction: lifecycleTx.withCompanyLifecycleTransaction,
+  }),
+);
+
 import app from "../../../src/app";
 import { Role } from "../../../src/constants/roles";
 import { HttpStatus } from "../../../src/constants/http-status";
+import { HttpMessages } from "../../../src/constants/http-messages";
 
 function companyDoc(companyId: string, name: string) {
   return {
@@ -108,13 +127,27 @@ function wireDefaultCompanyMocks() {
     },
   );
 
-  companyRepository.softDelete.mockResolvedValue(undefined);
+  companyRepository.touchBookingSerialization.mockImplementation(async (id: string) => {
+    const key = id.toString();
+    if (key === ids.companyA) return companyA;
+    if (key === ids.companyB) return companyB;
+    return null;
+  });
+
+  companyRepository.softDelete.mockImplementation(async (id: string) => {
+    const base = id.toString() === ids.companyB ? companyB : companyA;
+    return { ...base, isActive: false, deletedAt: new Date() };
+  });
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   sessionAs(ids.companyA, ids.userA, Role.OWNER);
   wireDefaultCompanyMocks();
+  lifecycleTx.withCompanyLifecycleTransaction.mockImplementation(
+    async (operation: (session: object) => Promise<unknown>) => operation({}),
+  );
+  appointmentRepository.hasOpenAppointmentsForCompany.mockResolvedValue(false);
 
   userRepository.findByIdForAccessControl.mockResolvedValue({
     mustChangePassword: false,
@@ -251,8 +284,39 @@ describe("Multi-tenant — Companies HTTP (Task B1)", () => {
       const response = await request(app).delete(`/api/companies/${ids.companyA}`);
 
       expect(response.status).toBe(HttpStatus.OK);
-      expect(companyRepository.softDelete).toHaveBeenCalledWith(ids.companyA);
+      expect(appointmentRepository.hasOpenAppointmentsForCompany).toHaveBeenCalled();
+      expect(companyRepository.softDelete).toHaveBeenCalledWith(
+        ids.companyA,
+        expect.anything(),
+      );
       expect(companyRepository.softDelete).not.toHaveBeenCalledWith(ids.companyB);
+    });
+
+    it("devolve 409 quando existem agendamentos abertos", async () => {
+      appointmentRepository.hasOpenAppointmentsForCompany.mockResolvedValue(true);
+
+      const response = await request(app).delete(`/api/companies/${ids.companyA}`);
+
+      expect(response.status).toBe(HttpStatus.CONFLICT);
+      expect(response.body.message).toBe(
+        HttpMessages.COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS,
+      );
+      expect(response.body.code).toBe("COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS");
+      expect(companyRepository.softDelete).not.toHaveBeenCalled();
+    });
+
+    it("permite DELETE com empresa inactiva (sem middleware operacional)", async () => {
+      companyRepository.findById.mockImplementation(async (id: string) => {
+        const key = id.toString();
+        if (key === ids.companyA) return { ...companyA, isActive: false };
+        if (key === ids.companyB) return companyB;
+        return null;
+      });
+
+      const response = await request(app).delete(`/api/companies/${ids.companyA}`);
+
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(companyRepository.softDelete).toHaveBeenCalled();
     });
 
     it("não elimina empresa de outro tenant (404)", async () => {

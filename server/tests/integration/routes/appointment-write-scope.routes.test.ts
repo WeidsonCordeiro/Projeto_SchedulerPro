@@ -46,7 +46,10 @@ const {
     findByIdForAccessControl: vi.fn(),
     touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
-  companyRepository: { findById: vi.fn() },
+  companyRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn(),
+  },
   clientRepository: {
     findById: vi.fn(),
     touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
@@ -134,6 +137,12 @@ import { AppError } from "../../../src/errors/AppError";
 
 const ref = (id: string) => ({ toString: () => id });
 
+const activeCompanyDoc = {
+  _id: ref(ids.companyA),
+  isActive: true,
+  timezone: "Europe/Lisbon",
+};
+
 const appointmentDoc = (
   appointmentId: string,
   employeeId: string,
@@ -210,7 +219,8 @@ function installScopedFindByIdInCompany() {
 beforeEach(() => {
   vi.clearAllMocks();
   stubSessionUser(Role.EMPLOYEE, ids.employee1);
-  companyRepository.findById.mockResolvedValue({ isActive: true });
+  companyRepository.findById.mockResolvedValue(activeCompanyDoc);
+  companyRepository.touchBookingSerialization.mockResolvedValue(activeCompanyDoc);
   clientRepository.findById.mockResolvedValue({
     _id: ref(ids.client),
     companyId: ref(ids.companyA),

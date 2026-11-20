@@ -38,7 +38,10 @@ const {
     findById: vi.fn(),
     touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
-  companyRepository: { findById: vi.fn() },
+  companyRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn(),
+  },
   availabilityService: { ensureEmployeeAvailable: vi.fn() },
   notificationDispatcher: { dispatchAppointmentEvent: vi.fn() },
   loggerInfo: vi.fn(),
@@ -160,6 +163,16 @@ beforeEach(() => {
     role: Role.EMPLOYEE,
     name: "Carlos",
     avatar: null,
+  });
+  companyRepository.findById.mockResolvedValue({
+    _id: ref(companyId),
+    isActive: true,
+    timezone: "Europe/Lisbon",
+  });
+  companyRepository.touchBookingSerialization.mockResolvedValue({
+    _id: ref(companyId),
+    isActive: true,
+    timezone: "Europe/Lisbon",
   });
 
   availabilityService.ensureEmployeeAvailable.mockResolvedValue(undefined);

@@ -588,6 +588,28 @@ describe("CompanyPage", () => {
       expect(store.getState().auth.isAuthenticated).toBe(true);
     });
 
+    it("keeps the session when delete is blocked by open appointments (409)", async () => {
+      vi.mocked(companyApi.deleteCompany).mockRejectedValue(
+        httpError(409, {
+          code: "COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS",
+          message:
+            "Não é possível eliminar a empresa enquanto existirem agendamentos futuros ou em curso. Conclua ou cancele esses agendamentos antes de continuar.",
+        }),
+      );
+
+      const store = renderPage("OWNER");
+      fireEvent.click(
+        await screen.findByRole("button", { name: /eliminar empresa/i }),
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^eliminar$/i }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /agendamentos futuros ou em curso/i,
+      );
+      expect(authApi.logout).not.toHaveBeenCalled();
+      expect(store.getState().auth.isAuthenticated).toBe(true);
+    });
+
     it("disables confirm while delete is in progress", async () => {
       let resolveDelete!: (
         value: Awaited<ReturnType<typeof companyApi.deleteCompany>>,

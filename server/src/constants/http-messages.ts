@@ -64,6 +64,8 @@ export const HttpMessages = {
   COMPANY_CREATED: "Empresa criada com sucesso.",
   COMPANY_UPDATED: "Empresa atualizada com sucesso.",
   COMPANY_REMOVED: "Empresa removida com sucesso.",
+  COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS:
+    "Não é possível eliminar a empresa enquanto existirem agendamentos futuros ou em curso. Conclua ou cancele esses agendamentos antes de continuar.",
   COMPANY_ACTIVATED: "Empresa ativada com sucesso.",
   COMPANY_DEACTIVATED: "Empresa desativada com sucesso.",
   COMPANY_ALREADY_EXISTS: "Já existe uma empresa com este nome.",

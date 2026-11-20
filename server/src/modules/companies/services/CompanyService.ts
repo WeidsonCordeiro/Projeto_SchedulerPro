@@ -22,7 +22,9 @@ import { CompanyDocument } from "../models/Company.model";
 import imageProvider from "../../../providers/images/CloudinaryImageProvider";
 import Logger from "../../../providers/logger";
 import UserRepository from "../../users/repositories/UserRepository";
+import AppointmentRepository from "../../appointments/repositories/AppointmentRepository";
 import { withCompanyLifecycleTransaction } from "./company-lifecycle-transaction";
+import type { ClientSession } from "mongoose";
 import {
   ImageEntity,
   type StoredImage,
@@ -249,7 +251,91 @@ class CompanyService {
       throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
     }
 
-    await CompanyRepository.softDelete(id);
+    await withCompanyLifecycleTransaction(async (session: ClientSession) => {
+      const referenceNow = new Date();
+
+      const locked = await CompanyRepository.touchBookingSerialization(id, session);
+
+      if (!locked) {
+        throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+      }
+
+      const hasOpen = await AppointmentRepository.hasOpenAppointmentsForCompany(
+        id,
+        referenceNow,
+        { session },
+      );
+
+      if (hasOpen) {
+        throw new AppError(
+          HttpMessages.COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS,
+          HttpStatus.CONFLICT,
+          undefined,
+          "COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS",
+        );
+      }
+
+      const stillActive = await CompanyRepository.touchBookingSerialization(
+        id,
+        session,
+      );
+
+      if (!stillActive) {
+        throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+      }
+
+      const stillHasOpen =
+        await AppointmentRepository.hasOpenAppointmentsForCompany(
+          id,
+          referenceNow,
+          { session },
+        );
+
+      if (stillHasOpen) {
+        throw new AppError(
+          HttpMessages.COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS,
+          HttpStatus.CONFLICT,
+          undefined,
+          "COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS",
+        );
+      }
+
+      const hasOpenCommitted =
+        await AppointmentRepository.hasOpenAppointmentsForCompany(
+          id,
+          referenceNow,
+        );
+
+      if (hasOpenCommitted) {
+        throw new AppError(
+          HttpMessages.COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS,
+          HttpStatus.CONFLICT,
+          undefined,
+          "COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS",
+        );
+      }
+
+      const hasOpenCommittedFinal =
+        await AppointmentRepository.hasOpenAppointmentsForCompany(
+          id,
+          referenceNow,
+        );
+
+      if (hasOpenCommittedFinal) {
+        throw new AppError(
+          HttpMessages.COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS,
+          HttpStatus.CONFLICT,
+          undefined,
+          "COMPANY_DELETE_BLOCKED_OPEN_APPOINTMENTS",
+        );
+      }
+
+      const closed = await CompanyRepository.softDelete(id, session);
+
+      if (!closed) {
+        throw new AppError(HttpMessages.COMPANY_NOT_FOUND, HttpStatus.NOT_FOUND);
+      }
+    });
   }
 
   /**

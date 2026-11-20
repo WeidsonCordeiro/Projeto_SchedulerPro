@@ -143,7 +143,10 @@ describe("withBookingTransaction", () => {
     expect(result).toBe("ok");
     expect(operation).toHaveBeenCalledTimes(1);
     expect(startSessionMock).toHaveBeenCalledTimes(1);
+    expect(sessions[0]?.startTransaction).toHaveBeenCalledTimes(1);
     expect(sessions[0]?.commitTransaction).toHaveBeenCalledTimes(1);
+    expect(sessions[0]?.endSession).toHaveBeenCalledTimes(1);
+    expect(sessions[0]?.abortTransaction).not.toHaveBeenCalled();
   });
 
   // Cenário 2 — UnknownTransactionCommitResult seguido de sucesso
@@ -276,6 +279,58 @@ describe("withBookingTransaction", () => {
       "Falha ao encerrar sessão de agendamento",
       expect.any(Object),
     );
+  });
+
+  it("retries the full transaction when commit fails with TransientTransactionError", async () => {
+    const err = transientError();
+    const operation = vi.fn().mockResolvedValue("ok");
+
+    startSessionMock.mockImplementationOnce(async () => {
+      const session = createSession();
+      session.commitTransaction.mockRejectedValueOnce(err);
+      sessions.push(session);
+      return session;
+    });
+
+    const result = await runWithTimers(() => withBookingTransaction(operation));
+
+    expect(result).toBe("ok");
+    expect(operation).toHaveBeenCalledTimes(2);
+    expect(startSessionMock).toHaveBeenCalledTimes(2);
+    expect(sessions[0]?.abortTransaction).toHaveBeenCalledTimes(1);
+    expect(sessions[0]?.endSession).toHaveBeenCalledTimes(1);
+    expect(sessions[0]?.commitTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it("exhausts integral transaction retries and propagates", async () => {
+    vi.useRealTimers();
+    const err = transientError();
+    const operation = vi.fn().mockRejectedValue(err);
+
+    await expect(withBookingTransaction(operation)).rejects.toBe(err);
+
+    expect(operation).toHaveBeenCalledTimes(BOOKING_TRANSACTION_MAX_ATTEMPTS);
+    expect(startSessionMock).toHaveBeenCalledTimes(
+      BOOKING_TRANSACTION_MAX_ATTEMPTS,
+    );
+    expect(logger.error).toHaveBeenCalledWith(
+      "Transação de agendamento esgotou reintentos",
+      expect.objectContaining({ exhausted: true, retryScope: "transaction" }),
+    );
+  });
+
+  it("aborts and ends the first session before starting an integral retry", async () => {
+    const err = transientError(112);
+    const operation = vi
+      .fn()
+      .mockRejectedValueOnce(err)
+      .mockResolvedValueOnce("ok");
+
+    await runWithTimers(() => withBookingTransaction(operation));
+
+    expect(sessions[0]?.abortTransaction).toHaveBeenCalledTimes(1);
+    expect(sessions[0]?.endSession).toHaveBeenCalledTimes(1);
+    expect(sessions[1]?.startTransaction).toHaveBeenCalledTimes(1);
   });
 });
 

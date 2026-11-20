@@ -239,6 +239,23 @@ appointmentSchema.index(
 );
 
 /**
+ * Gate de soft delete da empresa: `hasOpenAppointmentsForCompany`.
+ */
+appointmentSchema.index(
+  {
+    companyId: 1,
+    status: 1,
+    endAt: 1,
+  },
+  {
+    partialFilterExpression: {
+      deletedAt: null,
+      status: { $in: [AppointmentStatus.SCHEDULED, AppointmentStatus.CONFIRMED] },
+    },
+  },
+);
+
+/**
 
 * ==========================================================
 * Lookup do agendamento pelo token público.

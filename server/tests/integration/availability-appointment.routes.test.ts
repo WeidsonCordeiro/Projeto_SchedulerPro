@@ -30,7 +30,7 @@ const { authUser, availabilityRepository, appointmentRepository, userRepository,
   userRepository: { findById: vi.fn(), findByIdForAccessControl: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
   clientRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
   serviceRepository: { findById: vi.fn() },
-  companyRepository: { findById: vi.fn() },
+  companyRepository: { findById: vi.fn(), touchBookingSerialization: vi.fn() },
   availabilityExceptionRepository: { findByEmployeeAndDate: vi.fn() },
 }));
 
@@ -94,6 +94,7 @@ beforeEach(() => {
   clientRepository.findById.mockResolvedValue(clientA);
   serviceRepository.findById.mockResolvedValue(serviceA);
   companyRepository.findById.mockResolvedValue(companyA);
+  companyRepository.touchBookingSerialization.mockResolvedValue(companyA);
 
   availabilityRepository.findById.mockResolvedValue(availabilityA);
   availabilityRepository.findByCompanyId.mockResolvedValue([availabilityA]);

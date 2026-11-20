@@ -31,6 +31,7 @@ export interface ICompany {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
+  bookingSerializationVersion: number;
   logo?: StoredImage | null;
 }
 
@@ -105,6 +106,12 @@ const CompanySchema = new Schema<ICompany>(
       type: Date,
       default: null,
     },
+
+    bookingSerializationVersion: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -135,7 +142,7 @@ CompanySchema.index({
 
 CompanySchema.set("toJSON", {
   transform(_, returnedObject) {
-    const { __v, ...company } = returnedObject;
+    const { __v, bookingSerializationVersion, ...company } = returnedObject;
 
     return company;
   },
