@@ -25,7 +25,10 @@ const {
     findByPublicAccessTokenHash: vi.fn(),
   },
   clientRepository: { findById: vi.fn(), findByEmailAndCompany: vi.fn(), touchBookingSerialization: vi.fn().mockResolvedValue(undefined) },
-  companyRepository: { findById: vi.fn() },
+  companyRepository: {
+    findById: vi.fn(),
+    touchBookingSerialization: vi.fn(),
+  },
   serviceRepository: { findById: vi.fn() },
   userRepository: {
     findById: vi.fn(),
@@ -80,8 +83,17 @@ const entity = (extra = {}) => ({
   ...extra,
 });
 
+const activeCompany = {
+  _id: ref(companyId),
+  isActive: true,
+  timezone: "Europe/Lisbon",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
+
+  companyRepository.findById.mockResolvedValue(activeCompany);
+  companyRepository.touchBookingSerialization.mockResolvedValue(activeCompany);
 
   clientRepository.findById.mockResolvedValue({
     companyId: ref(companyId),

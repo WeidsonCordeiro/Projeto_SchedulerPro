@@ -72,7 +72,12 @@ const {
       create: vi.fn(),
       touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
     },
-    companyRepository: { findById: vi.fn(), findAll: vi.fn(), findByName: vi.fn() },
+    companyRepository: {
+      findById: vi.fn(),
+      findAll: vi.fn(),
+      findByName: vi.fn(),
+      touchBookingSerialization: vi.fn(),
+    },
     availabilityRepository: {
       findById: vi.fn(),
       findByCompanyId: vi.fn(),
@@ -201,6 +206,7 @@ beforeEach(() => {
   rateLimitCalls.count = 0;
 
   companyRepository.findById.mockResolvedValue(companyA);
+  companyRepository.touchBookingSerialization.mockResolvedValue(companyA);
   serviceRepository.findById.mockResolvedValue(serviceA);
   userRepository.findById.mockResolvedValue(employeeA);
   userRepository.findByCompanyId.mockResolvedValue([]);
@@ -327,6 +333,7 @@ describe("Agendamento público — rota sem autenticação", () => {
 describe("Agendamento público — empresa", () => {
   it("rejeita empresa inexistente ou eliminada com 404", async () => {
     companyRepository.findById.mockResolvedValue(null);
+    companyRepository.touchBookingSerialization.mockResolvedValue(null);
 
     const response = await request(app).post(publicUrl()).send(validPublicPayload());
 
@@ -335,7 +342,9 @@ describe("Agendamento público — empresa", () => {
   });
 
   it("rejeita empresa inativa com 400", async () => {
-    companyRepository.findById.mockResolvedValue({ ...companyA, isActive: false });
+    const inactiveCompany = { ...companyA, isActive: false };
+    companyRepository.findById.mockResolvedValue(inactiveCompany);
+    companyRepository.touchBookingSerialization.mockResolvedValue(inactiveCompany);
 
     const response = await request(app).post(publicUrl()).send(validPublicPayload());
 

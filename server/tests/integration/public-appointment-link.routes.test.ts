@@ -69,7 +69,12 @@ const {
     findByCompanyId: vi.fn(),
     touchBookingSerialization: vi.fn().mockResolvedValue(undefined),
   },
-  companyRepository: { findById: vi.fn(), findAll: vi.fn(), findByName: vi.fn() },
+  companyRepository: {
+    findById: vi.fn(),
+    findAll: vi.fn(),
+    findByName: vi.fn(),
+    touchBookingSerialization: vi.fn(),
+  },
   availabilityRepository: {
     findById: vi.fn(),
     findByCompanyId: vi.fn(),
@@ -240,11 +245,13 @@ beforeEach(() => {
   currentEmployeeId = ids.employee;
   currentNotes = null;
 
-  companyRepository.findById.mockResolvedValue({
+  const activeCompanyDoc = {
     _id: ref(ids.companyA),
     isActive: true,
     timezone: "Europe/Lisbon",
-  });
+  };
+  companyRepository.findById.mockResolvedValue(activeCompanyDoc);
+  companyRepository.touchBookingSerialization.mockResolvedValue(activeCompanyDoc);
   clientRepository.findById.mockResolvedValue(clientA);
   serviceRepository.findById.mockImplementation(async (id: unknown) =>
     String(id) === ids.serviceB
@@ -942,11 +949,13 @@ describe("Superfície das rotas públicas", () => {
   });
 
   it("mantém a criação pública disponível", async () => {
-    companyRepository.findById.mockResolvedValue({
+    const company = {
       _id: ref(ids.companyA),
       isActive: true,
       timezone: "Europe/Lisbon",
-    });
+    };
+    companyRepository.findById.mockResolvedValue(company);
+    companyRepository.touchBookingSerialization.mockResolvedValue(company);
     clientRepository.findByEmailAndCompany.mockResolvedValue(null);
     clientRepository.create.mockResolvedValue(clientA);
     appointmentRepository.create.mockImplementation(async () => appointment());
