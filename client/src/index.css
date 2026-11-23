@@ -1130,6 +1130,9 @@ button,
 .dashboard-kpis .dashboard-kpi:nth-child(3) {
   border-top-color: #168c72;
 }
+.dashboard-kpis .dashboard-kpi-accent-clients {
+  border-top-color: #4b6cbf;
+}
 .dashboard-kpis .dashboard-kpi .card-body {
   padding: 1.1rem;
 }
@@ -1154,7 +1157,7 @@ button,
   gap: 0.65rem;
 }
 .dashboard-status-distribution-progress {
-  height: 0.35rem;
+  height: 0.6rem;
 }
 .dashboard-agenda-grid {
   display: flex;

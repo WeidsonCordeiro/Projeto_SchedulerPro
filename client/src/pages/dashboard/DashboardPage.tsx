@@ -9,7 +9,10 @@ import {
   getApiError,
   getPageLoadErrorPresentation,
 } from "../../api/errors";
-import { buildReportRange } from "../../config/reportPeriod";
+import {
+  buildReportRange,
+  formatDashboardSummaryDay,
+} from "../../config/reportPeriod";
 import { DASHBOARD_REFRESH_WARNING_MESSAGE } from "../../config/dashboardRefresh";
 import { useDashboardVisibilityRefresh } from "../../hooks/useDashboardVisibilityRefresh";
 import { useAppSelector } from "../../store";
@@ -80,6 +83,11 @@ export default function DashboardPage() {
 
   const todayRange = useMemo(
     () => buildReportRange("today", timezone),
+    [timezone],
+  );
+
+  const summaryDayLabel = useMemo(
+    () => formatDashboardSummaryDay(timezone),
     [timezone],
   );
 
@@ -361,6 +369,14 @@ export default function DashboardPage() {
         <div>
           <span className="section-kicker mb-2">Operação</span>
           <h2 className="h5 mb-2">Resumo do dia</h2>
+          {summaryDayLabel && (
+            <p
+              className="text-muted small mb-1"
+              data-testid="dashboard-summary-day"
+            >
+              {summaryDayLabel}
+            </p>
+          )}
           <span className="text-muted small">
             Atualizado com os dados da sua agenda
           </span>
@@ -381,14 +397,15 @@ export default function DashboardPage() {
       <div className="row g-3 dashboard-kpis">
         <div className={kpiColClass}>
           <DashboardCard
-            title="Hoje"
+            title="Agendamentos do dia"
             value={todayAppointments.length}
             icon="bi-calendar-check"
+            footer="Inclui todos os estados excepto cancelados."
           />
         </div>
         <div className={kpiColClass}>
           <DashboardCard
-            title="Pendentes"
+            title="Agendados"
             value={scheduledCount}
             icon="bi-clock"
           />
@@ -406,6 +423,7 @@ export default function DashboardPage() {
               title="Clientes ativos"
               value={activeClientsCount}
               icon="bi-people"
+              accentClassName="dashboard-kpi-accent-clients"
             />
           </div>
         )}

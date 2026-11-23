@@ -6,6 +6,8 @@ interface Props {
   icon?: string;
   loading?: boolean;
   footer?: ReactNode;
+  /** Acento superior opcional (ex.: quarto KPI do Dashboard). */
+  accentClassName?: string;
 }
 
 export default function DashboardCard({
@@ -14,9 +16,14 @@ export default function DashboardCard({
   icon = "bi-calendar3",
   loading = false,
   footer,
+  accentClassName,
 }: Props) {
+  const cardClass = ["card", "dashboard-kpi", "h-100", accentClassName]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div className="card dashboard-kpi h-100">
+    <div className={cardClass}>
       <div className="card-body">
         <div className="d-flex justify-content-between align-items-start">
           <div>
