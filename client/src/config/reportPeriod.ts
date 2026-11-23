@@ -1,5 +1,7 @@
 import { DateTime } from "luxon";
 
+import { isValidIanaTimezone } from "./timezones";
+
 export type ReportPeriodKey = "today" | "week" | "month" | "custom";
 
 export const REPORT_PERIOD_LABELS: Record<ReportPeriodKey, string> = {
@@ -86,4 +88,31 @@ export function formatReportDate(dateText: string, timezone: string): string {
     return dateText;
   }
   return date.toFormat("dd/MM/yyyy");
+}
+
+function capitalizePortuguese(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase("pt") + text.slice(1) : text;
+}
+
+/**
+ * Rótulo do dia civil do resumo do Dashboard, alinhado a buildReportRange("today", …).
+ */
+export function formatDashboardSummaryDay(
+  timezone: string,
+  now: Date = new Date(),
+): string | null {
+  if (!isValidIanaTimezone(timezone)) {
+    return null;
+  }
+  const range = buildReportRange("today", timezone, undefined, undefined, now);
+  if (!range) {
+    return null;
+  }
+  const day = DateTime.fromISO(range.startAt, { zone: "utc" }).setZone(timezone);
+  if (!day.isValid) {
+    return null;
+  }
+  return capitalizePortuguese(
+    day.setLocale("pt").toFormat("cccc, d 'de' LLLL 'de' yyyy"),
+  );
 }

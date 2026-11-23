@@ -1033,8 +1033,10 @@ describe("DashboardPage", () => {
       renderDashboard();
       await waitForDashboardLoaded();
 
-      expect(screen.getByRole("heading", { name: "Hoje" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Pendentes" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Agendamentos do dia" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Agendados" })).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Confirmados" })).toBeInTheDocument();
       expect(cardValues()).toEqual(["1", "2", "1", "0"]);
     });
@@ -1051,6 +1053,94 @@ describe("DashboardPage", () => {
       expect(columns).toHaveLength(4);
       const fourth = columns[3] as HTMLElement;
       expect(fourth).toHaveClass("col-12", "col-md-6", "col-lg-3");
+    });
+
+    it("shows the summary day label in the company timezone", async () => {
+      mockSummaryResponse(makeSummary());
+      renderDashboard("OWNER", "Europe/Lisbon");
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-summary-day")).toHaveTextContent(
+        "Quinta-feira, 10 de setembro de 2026",
+      );
+    });
+
+    it("uses the company timezone from the store (America/Sao_Paulo)", async () => {
+      act(() => {
+        vi.setSystemTime(new Date("2026-09-16T12:00:00.000Z"));
+      });
+      mockSummaryResponse(makeSummary());
+      renderDashboard("OWNER", "America/Sao_Paulo");
+      await waitForDashboardLoaded();
+
+      expect(screen.getByTestId("dashboard-summary-day")).toHaveTextContent(
+        "Quarta-feira, 16 de setembro de 2026",
+      );
+      act(() => {
+        vi.setSystemTime(new Date(NOW));
+      });
+    });
+
+    it("applies accent class to the active clients KPI card", async () => {
+      mockSummaryResponse(makeSummary({ activeClientsCount: 3 }));
+      const { container } = renderDashboard();
+      await waitForDashboardLoaded();
+
+      expect(
+        container.querySelector(".dashboard-kpi-accent-clients"),
+      ).toBeInTheDocument();
+    });
+
+    it("counts today appointments from API list length across non-cancelled statuses", async () => {
+      const dayAppointments = [
+        makeAppointment({ id: "a1", status: "scheduled" }),
+        makeAppointment({ id: "a2", status: "confirmed" }),
+        makeAppointment({ id: "a3", status: "completed" }),
+        makeAppointment({ id: "a4", status: "no-show" }),
+      ];
+      mockSummaryResponse(
+        makeSummary({
+          todayAppointments: dayAppointments,
+          period: {
+            ...makeSummary().period,
+            total: 6,
+            byStatus: {
+              ...emptyByStatus(),
+              scheduled: 2,
+              confirmed: 1,
+              completed: 1,
+              "no-show": 1,
+              cancelled: 1,
+            },
+          },
+        }),
+      );
+
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      const headings = screen.getAllByRole("heading", {
+        name: "Agendamentos do dia",
+      });
+      const dayCard = headings[0].closest(".card") as HTMLElement;
+      expect(within(dayCard).getByTestId("card-value")).toHaveTextContent("4");
+      expect(
+        within(dayCard).getByText("Inclui todos os estados excepto cancelados."),
+      ).toBeInTheDocument();
+
+      const scheduledCard = screen
+        .getByRole("heading", { name: "Agendados" })
+        .closest(".card") as HTMLElement;
+      expect(within(scheduledCard).getByTestId("card-value")).toHaveTextContent(
+        "2",
+      );
+
+      const confirmedCard = screen
+        .getByRole("heading", { name: "Confirmados" })
+        .closest(".card") as HTMLElement;
+      expect(within(confirmedCard).getByTestId("card-value")).toHaveTextContent(
+        "1",
+      );
     });
   });
 
