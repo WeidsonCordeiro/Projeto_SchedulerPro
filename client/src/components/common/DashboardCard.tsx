@@ -39,7 +39,7 @@ export default function DashboardCard({
               )}
             </p>
           </div>
-          <i className={`bi ${icon} text-muted fs-4`} />
+          <i className={`bi ${icon} text-muted fs-4`} aria-hidden="true" />
         </div>
         {footer && (
           <small className="text-muted mt-2 d-block">{footer}</small>
