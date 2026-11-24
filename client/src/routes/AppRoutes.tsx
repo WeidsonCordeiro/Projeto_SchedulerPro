@@ -6,6 +6,8 @@ import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
 import RouteSuspense from "./RouteSuspense";
 import RoleRestrictedRoute from "./RoleRestrictedRoute";
+import { getCompanyAbilities } from "../config/companyPermissions";
+import { getEmployeeAbilities } from "../config/employeePermissions";
 import { getReportAbilities } from "../config/reportPermissions";
 
 const DashboardPage = lazy(() => import("../pages/dashboard/DashboardPage"));
@@ -99,7 +101,15 @@ export default function AppRoutes() {
           <Route path="/" element={lazyPage(DashboardPage)} />
           <Route path="/clients" element={lazyPage(ClientsPage)} />
           <Route path="/services" element={lazyPage(ServicesPage)} />
-          <Route path="/employees" element={lazyPage(EmployeesPage)} />
+          <Route
+            element={
+              <RoleRestrictedRoute
+                allow={(role) => getEmployeeAbilities(role).canList}
+              />
+            }
+          >
+            <Route path="/employees" element={lazyPage(EmployeesPage)} />
+          </Route>
           <Route path="/availability" element={lazyPage(AvailabilityPage)} />
           <Route path="/appointments" element={lazyPage(AppointmentsPage)} />
           <Route
@@ -111,7 +121,15 @@ export default function AppRoutes() {
           >
             <Route path="/reports" element={lazyPage(ReportsPage)} />
           </Route>
-          <Route path="/company" element={lazyPage(CompanyPage)} />
+          <Route
+            element={
+              <RoleRestrictedRoute
+                allow={(role) => getCompanyAbilities(role).canView}
+              />
+            }
+          >
+            <Route path="/company" element={lazyPage(CompanyPage)} />
+          </Route>
           <Route path="/portal" element={lazyPage(PortalHomePage)} />
           <Route
             path="/portal/agendamentos"
