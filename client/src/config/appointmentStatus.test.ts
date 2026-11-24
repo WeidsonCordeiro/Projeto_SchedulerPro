@@ -3,6 +3,7 @@ import {
   APPOINTMENT_ACTION_LABELS,
   APPOINTMENT_ACTION_SUCCESS_MESSAGES,
   APPOINTMENT_STATUS_BADGE_CLASS,
+  APPOINTMENT_STATUS_PROGRESS_BAR_CLASS,
   APPOINTMENT_STATUS_LABELS,
   getAppointmentStatusActions,
 } from "./appointmentStatus";
@@ -30,6 +31,12 @@ describe("appointmentStatus", () => {
   it("provides a badge class for every status", () => {
     ALL_STATUSES.forEach((status) => {
       expect(APPOINTMENT_STATUS_BADGE_CLASS[status]).toBeTruthy();
+    });
+  });
+
+  it("provides a progress bar class for every status", () => {
+    ALL_STATUSES.forEach((status) => {
+      expect(APPOINTMENT_STATUS_PROGRESS_BAR_CLASS[status]).toMatch(/^bg-/);
     });
   });
 
