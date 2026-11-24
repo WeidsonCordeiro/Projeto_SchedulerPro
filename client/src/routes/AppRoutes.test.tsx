@@ -433,7 +433,7 @@ describe("AppRoutes", () => {
     expect(screen.queryByText("Relatórios")).not.toBeInTheDocument();
   });
 
-  it("blocks EMPLOYEE from the reports page", async () => {
+  it("redirects EMPLOYEE away from the reports page", async () => {
     renderAt("/reports", {
       user: { ...user, role: "EMPLOYEE" },
       isAuthenticated: true,
@@ -441,8 +441,9 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      await screen.findByText("Você não tem permissão para acessar esta página."),
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Relatórios")).not.toBeInTheDocument();
   });
 
   it("renders the register page for guests", async () => {

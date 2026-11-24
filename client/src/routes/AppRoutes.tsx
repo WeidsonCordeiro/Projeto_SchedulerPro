@@ -5,6 +5,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import GuestRoute from "./GuestRoute";
 import ChangePasswordRoute from "./ChangePasswordRoute";
 import RouteSuspense from "./RouteSuspense";
+import RoleRestrictedRoute from "./RoleRestrictedRoute";
+import { getReportAbilities } from "../config/reportPermissions";
 
 const DashboardPage = lazy(() => import("../pages/dashboard/DashboardPage"));
 const ClientsPage = lazy(() => import("../pages/clients/ClientsPage"));
@@ -100,7 +102,15 @@ export default function AppRoutes() {
           <Route path="/employees" element={lazyPage(EmployeesPage)} />
           <Route path="/availability" element={lazyPage(AvailabilityPage)} />
           <Route path="/appointments" element={lazyPage(AppointmentsPage)} />
-          <Route path="/reports" element={lazyPage(ReportsPage)} />
+          <Route
+            element={
+              <RoleRestrictedRoute
+                allow={(role) => getReportAbilities(role).canView}
+              />
+            }
+          >
+            <Route path="/reports" element={lazyPage(ReportsPage)} />
+          </Route>
           <Route path="/company" element={lazyPage(CompanyPage)} />
           <Route path="/portal" element={lazyPage(PortalHomePage)} />
           <Route
