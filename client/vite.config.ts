@@ -17,6 +17,34 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) {
+            return undefined;
+          }
+          if (id.includes("luxon")) {
+            return "vendor-luxon";
+          }
+          if (id.includes("@reduxjs") || id.includes("react-redux")) {
+            return "vendor-redux";
+          }
+          if (
+            id.includes("react-dom") ||
+            id.includes("react-router") ||
+            id.includes("/react/")
+          ) {
+            return "vendor-react";
+          }
+          if (id.includes("axios")) {
+            return "vendor-axios";
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",
