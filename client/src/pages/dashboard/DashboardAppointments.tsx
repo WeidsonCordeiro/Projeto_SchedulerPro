@@ -1,4 +1,5 @@
 import { useState } from "react";
+import EmptyState from "../../components/common/EmptyState";
 import type { Appointment } from "../../types/appointment";
 import {
   APPOINTMENT_STATUS_BADGE_CLASS,
@@ -204,8 +205,8 @@ export default function DashboardAppointments({
         )}
       </div>
       {appointments.length === 0 ? (
-        <div className="card-body text-center text-muted py-5">
-          {emptyMessage}
+        <div className="card-body py-3">
+          <EmptyState title={emptyMessage} icon="○" />
         </div>
       ) : (
         <>

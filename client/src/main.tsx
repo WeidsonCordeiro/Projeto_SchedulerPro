@@ -4,6 +4,7 @@ import { Provider } from "react-redux";
 import App from "./app/App";
 import { store } from "./store";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import "./index.css";
 import "./styles/appointments-calendar.css";
 
