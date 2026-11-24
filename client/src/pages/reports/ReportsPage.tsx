@@ -14,7 +14,6 @@ import {
   type ReportPeriodKey,
   type ReportRangeISO,
 } from "../../config/reportPeriod";
-import RankingTable from "../../components/reports/RankingTable";
 import { useAppSelector } from "../../store";
 import { selectCompany, selectCompanyTimezone } from "../../store/slices/companySlice";
 import type { AppointmentStatus } from "../../types/appointment";
@@ -728,3 +727,43 @@ const STATUSES_HEADERS: Record<AppointmentStatus, string> = {
   cancelled: "Cancelados",
   "no-show": "Não compareceu",
 };
+
+function RankingTable({
+  headers,
+  rows,
+  emptyMessage,
+}: {
+  headers: string[];
+  rows: React.ReactNode[][];
+  emptyMessage: string;
+}) {
+  if (rows.length === 0) {
+    return <p className="text-muted small mb-0">{emptyMessage}</p>;
+  }
+  return (
+    <table className="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th scope="col" className="small text-muted">
+            #
+          </th>
+          {headers.map((header) => (
+            <th scope="col" className="small text-muted" key={header}>
+              {header}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((cells, index) => (
+          <tr key={index}>
+            <td className="text-muted">{index + 1}</td>
+            {cells.map((cell, cellIndex) => (
+              <td key={cellIndex}>{cell}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
