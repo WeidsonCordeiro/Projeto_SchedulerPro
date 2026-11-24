@@ -131,6 +131,9 @@ export default function AppLayout() {
 
   return (
     <div className="app-shell">
+      <a href="#app-main-content" className="skip-link">
+        Saltar para o conteúdo
+      </a>
       <Navbar
         menuToggleRef={menuToggleRef as RefObject<HTMLButtonElement>}
         onToggleSidebar={toggleSidebar}
@@ -161,8 +164,10 @@ export default function AppLayout() {
 
         <main
           ref={mainRef}
+          id="app-main-content"
           className="flex-grow-1 overflow-auto p-3 p-md-4"
           data-testid="app-main"
+          tabIndex={-1}
         >
           {showGlobalInactiveNotice && (
             <CompanyInactiveNotice

@@ -535,6 +535,15 @@ describe("AppLayout", () => {
       expect(sidebar.contains(document.activeElement)).toBe(true);
     });
 
-
+    it("exposes skip link targeting main content", () => {
+      renderLayout(makeStore({ authenticated: true }));
+      expect(
+        screen.getByRole("link", { name: /saltar para o conteúdo/i }),
+      ).toHaveAttribute("href", "#app-main-content");
+      expect(screen.getByTestId("app-main")).toHaveAttribute(
+        "id",
+        "app-main-content",
+      );
+    });
   });
 });
