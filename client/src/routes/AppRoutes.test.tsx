@@ -231,10 +231,12 @@ describe("AppRoutes", () => {
     ).toBeInTheDocument();
   }, 15000);
 
-  it("redirects an unauthenticated user from / to /login", () => {
+  it("redirects an unauthenticated user from / to /login", async () => {
     renderAt("/", { isInitializing: false });
 
-    expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /entrar/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/bem-vindo ao schedulerpro/i)).not.toBeInTheDocument();
   });
 
@@ -270,7 +272,7 @@ describe("AppRoutes", () => {
     ).toBeInTheDocument();
   });
 
-  it("sends a mustChangePassword user from /login to /change-password", () => {
+  it("sends a mustChangePassword user from /login to /change-password", async () => {
     renderAt("/login", {
       user,
       mustChangePassword: true,
@@ -279,11 +281,11 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /alterar senha/i }),
+      await screen.findByRole("heading", { name: /alterar senha/i }),
     ).toBeInTheDocument();
   });
 
-  it("redirects a mustChangePassword user away from /", () => {
+  it("redirects a mustChangePassword user away from /", async () => {
     renderAt("/", {
       user,
       mustChangePassword: true,
@@ -292,7 +294,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /alterar senha/i }),
+      await screen.findByRole("heading", { name: /alterar senha/i }),
     ).toBeInTheDocument();
   });
 
@@ -308,17 +310,19 @@ describe("AppRoutes", () => {
     ).toBeInTheDocument();
   });
 
-  it("redirects an unauthenticated user from /change-password to /login", () => {
+  it("redirects an unauthenticated user from /change-password to /login", async () => {
     renderAt("/change-password", { isInitializing: false });
 
-    expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /entrar/i }),
+    ).toBeInTheDocument();
   });
 
-  it("shows a not-found page for unknown paths when unauthenticated", () => {
+  it("shows a not-found page for unknown paths when unauthenticated", async () => {
     renderAt("/unknown", { isInitializing: false });
 
     expect(
-      screen.getByRole("heading", { name: /página não encontrada/i }),
+      await screen.findByRole("heading", { name: /página não encontrada/i }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: /entrar/i })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ir para o início/i })).toHaveAttribute(
@@ -327,7 +331,7 @@ describe("AppRoutes", () => {
     );
   });
 
-  it("shows a not-found page for unknown paths when authenticated", () => {
+  it("shows a not-found page for unknown paths when authenticated", async () => {
     renderAt("/unknown", {
       user,
       isAuthenticated: true,
@@ -335,7 +339,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /página não encontrada/i }),
+      await screen.findByRole("heading", { name: /página não encontrada/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ir para o painel/i })).toHaveAttribute(
       "href",
@@ -343,7 +347,7 @@ describe("AppRoutes", () => {
     );
   });
 
-  it("offers portal navigation on unknown paths for CLIENT users", () => {
+  it("offers portal navigation on unknown paths for CLIENT users", async () => {
     renderAt("/unknown", {
       user: { ...user, role: "CLIENT", clientId: "client1" },
       isAuthenticated: true,
@@ -351,7 +355,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /página não encontrada/i }),
+      await screen.findByRole("heading", { name: /página não encontrada/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ir para o portal/i })).toHaveAttribute(
       "href",
@@ -367,28 +371,32 @@ describe("AppRoutes", () => {
     ["/appointments", "Agendamentos"],
     ["/reports", "Relatórios"],
     ["/company", "Empresa"],
-  ])("renders the %s module page for an authenticated user", (path, title) => {
+  ])("renders the %s module page for an authenticated user", async (path, title) => {
     renderAt(path, {
       user,
       isAuthenticated: true,
       isInitializing: false,
     });
 
-    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: title }),
+    ).toBeInTheDocument();
   });
 
-  it("redirects a CLIENT role from /company to /portal", () => {
+  it("redirects a CLIENT role from /company to /portal", async () => {
     renderAt("/company", {
       user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
       isAuthenticated: true,
       isInitializing: false,
     });
 
-    expect(screen.getByRole("heading", { name: /olá, cliente teste/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /olá, cliente teste/i }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Empresa")).not.toBeInTheDocument();
   });
 
-  it("blocks MANAGER from the company page", () => {
+  it("blocks MANAGER from the company page", async () => {
     renderAt("/company", {
       user: { ...user, role: "MANAGER" },
       isAuthenticated: true,
@@ -396,11 +404,11 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      await screen.findByText("Você não tem permissão para acessar esta página."),
     ).toBeInTheDocument();
   });
 
-  it("blocks EMPLOYEE from the company page", () => {
+  it("blocks EMPLOYEE from the company page", async () => {
     renderAt("/company", {
       user: { ...user, role: "EMPLOYEE" },
       isAuthenticated: true,
@@ -408,11 +416,11 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      await screen.findByText("Você não tem permissão para acessar esta página."),
     ).toBeInTheDocument();
   });
 
-  it("redirects a CLIENT role from /reports to /portal", () => {
+  it("redirects a CLIENT role from /reports to /portal", async () => {
     renderAt("/reports", {
       user: { ...user, role: "CLIENT", clientId: "client1", name: "Cliente Teste" },
       isAuthenticated: true,
@@ -420,12 +428,12 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByRole("heading", { name: /olá, cliente teste/i }),
+      await screen.findByRole("heading", { name: /olá, cliente teste/i }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Relatórios")).not.toBeInTheDocument();
   });
 
-  it("blocks EMPLOYEE from the reports page", () => {
+  it("blocks EMPLOYEE from the reports page", async () => {
     renderAt("/reports", {
       user: { ...user, role: "EMPLOYEE" },
       isAuthenticated: true,
@@ -433,38 +441,38 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      await screen.findByText("Você não tem permissão para acessar esta página."),
     ).toBeInTheDocument();
   });
 
-  it("renders the register page for guests", () => {
+  it("renders the register page for guests", async () => {
     renderAt("/register", { isInitializing: false });
 
     expect(
-      screen.getByRole("heading", { name: /criar conta/i }),
+      await screen.findByRole("heading", { name: /criar conta/i }),
     ).toBeInTheDocument();
   });
 
-  it("renders the forgot password page for guests", () => {
+  it("renders the forgot password page for guests", async () => {
     renderAt("/forgot-password", { isInitializing: false });
 
     expect(
-      screen.getByRole("heading", { name: /recuperar senha/i }),
+      await screen.findByRole("heading", { name: /recuperar senha/i }),
     ).toBeInTheDocument();
   });
 
-  it("renders the reset password page", () => {
+  it("renders the reset password page", async () => {
     renderAt("/reset-password?token=test", { isInitializing: false });
 
     expect(
-      screen.getByRole("heading", { name: /redefinir senha/i }),
+      await screen.findByRole("heading", { name: /redefinir senha/i }),
     ).toBeInTheDocument();
   });
 
-  it("renders the verify email page", () => {
+  it("renders the verify email page", async () => {
     renderAt("/verify-email?token=test", { isInitializing: false });
 
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
   });
 
   it("renders the portal home for a CLIENT user", async () => {
@@ -519,7 +527,7 @@ describe("AppRoutes", () => {
     "/portal",
     "/portal/agendamentos",
     "/portal/perfil",
-  ])("redirects an unauthenticated CLIENT from %s to /login", (path) => {
+  ])("redirects an unauthenticated CLIENT from %s to /login", async (path) => {
     // Estado típico após a expiração da sessão: credenciais já limpas
     // (isAuthenticated=false), o usuário não pode permanecer preso no portal.
     renderAt(path, {
@@ -527,7 +535,9 @@ describe("AppRoutes", () => {
       isInitializing: false,
     });
 
-    expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /entrar/i }),
+    ).toBeInTheDocument();
     expect(
       screen.queryByText(/olá, cliente teste/i),
     ).not.toBeInTheDocument();
@@ -536,7 +546,7 @@ describe("AppRoutes", () => {
   it("shows login form links to register and forgot-password", async () => {
     renderAt("/login", { isInitializing: false });
 
-    const loginPage = screen.getByRole("heading", { name: /entrar/i });
+    const loginPage = await screen.findByRole("heading", { name: /entrar/i });
     expect(loginPage).toBeInTheDocument();
 
     expect(
@@ -565,11 +575,11 @@ describe("AppRoutes", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+    it("abre durante a inicialização da sessão, sem esperar por ela", async () => {
       renderAt("/agendar/qualquer-token", {});
 
       expect(
-        screen.getByRole("heading", { name: /seu agendamento/i }),
+        await screen.findByRole("heading", { name: /seu agendamento/i }),
       ).toBeInTheDocument();
       expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
     });
@@ -586,7 +596,7 @@ describe("AppRoutes", () => {
       renderAt("/agendar/qualquer-token", { isInitializing: false });
 
       expect(await screen.findByText("Corte de cabelo")).toBeInTheDocument();
-      expect(screen.getByText("João Silva")).toBeInTheDocument();
+      expect(await screen.findByText("João Silva")).toBeInTheDocument();
     });
 
     it("trata /agendar sem token como link inválido", async () => {
@@ -655,11 +665,11 @@ describe("AppRoutes", () => {
       expect(document.querySelector(".app-navbar")).toBeNull();
     });
 
-    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+    it("abre durante a inicialização da sessão, sem esperar por ela", async () => {
       renderAt("/convite/cliente/qualquer-token", {});
 
       expect(
-        screen.getByRole("heading", { name: /criar conta de cliente/i }),
+        await screen.findByRole("heading", { name: /criar conta de cliente/i }),
       ).toBeInTheDocument();
       expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
     });
@@ -668,7 +678,7 @@ describe("AppRoutes", () => {
       renderAt("/convite/cliente/qualquer-token", { isInitializing: false });
 
       expect(await screen.findByText("Studio Aurora")).toBeInTheDocument();
-      expect(screen.getByText("maria@email.com")).toBeInTheDocument();
+      expect(await screen.findByText("maria@email.com")).toBeInTheDocument();
       expect(clientInvitesApi.inspect).toHaveBeenCalledWith({
         token: "qualquer-token",
       });
@@ -720,11 +730,11 @@ describe("AppRoutes", () => {
       expect(document.querySelector(".app-navbar")).toBeNull();
     });
 
-    it("abre durante a inicialização da sessão, sem esperar por ela", () => {
+    it("abre durante a inicialização da sessão, sem esperar por ela", async () => {
       renderAt("/agendar/empresa/qualquer-empresa", {});
 
       expect(
-        screen.getByRole("heading", { name: /marcar atendimento/i }),
+        await screen.findByRole("heading", { name: /marcar atendimento/i }),
       ).toBeInTheDocument();
       expect(screen.queryByText("Carregando...")).not.toBeInTheDocument();
     });
