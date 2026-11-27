@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { CACHE_KEYS } from "../../cache/cacheKeys";
+import { fetchWithCache, invalidateCacheKey } from "../../cache/queryCache";
 import clientsApi from "../../api/endpoints/clients.api";
+import { DEFAULT_DATA_STALE_MS } from "../../config/dataCache";
 import { getApiError, getPageLoadErrorPresentation } from "../../api/errors";
 import ClientForm from "../../components/clients/ClientForm";
 import DeleteClientModal from "../../components/clients/DeleteClientModal";
@@ -34,12 +37,20 @@ export default function ClientsPage() {
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
   const [invitingClient, setInvitingClient] = useState<Client | null>(null);
 
-  const loadClients = useCallback(async () => {
+  const loadClients = useCallback(async (options?: { force?: boolean }) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const response = await clientsApi.getClients();
-      setClients(response.data ?? []);
+      const { data } = await fetchWithCache(
+        CACHE_KEYS.clientsList,
+        DEFAULT_DATA_STALE_MS,
+        async () => {
+          const response = await clientsApi.getClients();
+          return response.data ?? [];
+        },
+        { force: options?.force },
+      );
+      setClients(data);
     } catch (error) {
       const presentation = getPageLoadErrorPresentation(
         getApiError(error),
@@ -54,6 +65,11 @@ export default function ClientsPage() {
 
   useEffect(() => {
     void loadClients();
+  }, [loadClients]);
+
+  const reloadClientsAfterMutation = useCallback(() => {
+    invalidateCacheKey(CACHE_KEYS.clientsList);
+    void loadClients({ force: true });
   }, [loadClients]);
 
   function openCreate() {
@@ -79,13 +95,13 @@ export default function ClientsPage() {
     );
     setFormOpen(false);
     setEditingClient(null);
-    void loadClients();
+    reloadClientsAfterMutation();
   }
 
   function handleDeleted() {
     setSuccessMessage("Cliente excluído com sucesso.");
     setDeletingClient(null);
-    void loadClients();
+    reloadClientsAfterMutation();
   }
 
   function handleInviteSent(email: string) {

@@ -27,6 +27,7 @@ import type { Service } from "../../types/service";
 import type { Employee } from "../../types/employee";
 import type { Role } from "../../types/auth";
 import type { DashboardSummary } from "../../types/dashboard";
+import { clearQueryCacheForTests } from "../../cache/queryCache";
 import { DASHBOARD_REFRESH_WARNING_MESSAGE } from "../../config/dashboardRefresh";
 
 vi.mock("../../api/endpoints/dashboard.api", () => ({
@@ -284,6 +285,7 @@ const NOW = "2026-09-10T12:00:00.000Z";
 
 describe("DashboardPage", () => {
   beforeEach(() => {
+    clearQueryCacheForTests();
     vi.clearAllMocks();
     vi.mocked(dashboardApi.getSummary).mockReset();
     mockRelatedData();
@@ -1152,7 +1154,7 @@ describe("DashboardPage", () => {
   });
 
   describe("automatic refresh (O5)", () => {
-    it("reloads summary after unmount and remount", async () => {
+    it("reloads summary after unmount and remount when cache is stale", async () => {
       mockSummaryResponse(makeSummary({ activeClientsCount: 5 }));
       const { unmount } = renderDashboard();
       await waitForDashboardLoaded();
@@ -1161,6 +1163,10 @@ describe("DashboardPage", () => {
       );
 
       unmount();
+
+      act(() => {
+        vi.advanceTimersByTime(46_000);
+      });
 
       mockSummaryResponse(makeSummary({ activeClientsCount: 99 }));
       renderDashboard();
@@ -1192,6 +1198,22 @@ describe("DashboardPage", () => {
           "20",
         );
       });
+    });
+
+    it("does not refresh on visibility when cache is still fresh", async () => {
+      renderDashboard();
+      await waitForDashboardLoaded();
+
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      dispatchVisibilityVisible();
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(dashboardApi.getSummary).toHaveBeenCalledTimes(1);
     });
 
     it("does not refresh when visibility becomes hidden", async () => {

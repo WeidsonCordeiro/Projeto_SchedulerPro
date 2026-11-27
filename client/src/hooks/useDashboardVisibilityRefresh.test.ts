@@ -133,4 +133,26 @@ describe("useDashboardVisibilityRefresh", () => {
     });
     expect(onRefresh).toHaveBeenCalledTimes(2);
   });
+
+  it("skips refresh when shouldRefresh returns false", () => {
+    const onRefresh = vi.fn();
+    const shouldRefresh = vi.fn(() => false);
+
+    renderHook(() =>
+      useDashboardVisibilityRefresh({
+        enabled: true,
+        isInitialLoading: false,
+        onRefresh,
+        shouldRefresh,
+        minIntervalMs: 45_000,
+      }),
+    );
+
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    expect(shouldRefresh).toHaveBeenCalled();
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
 });

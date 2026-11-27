@@ -15,6 +15,8 @@ export interface UseDashboardVisibilityRefreshOptions {
   isInitialLoading: boolean;
   onRefresh: () => void;
   minIntervalMs?: number;
+  /** Quando devolve false, não dispara refresh (ex.: cache ainda fresco). */
+  shouldRefresh?: () => boolean;
 }
 
 /**
@@ -25,6 +27,7 @@ export function useDashboardVisibilityRefresh({
   isInitialLoading,
   onRefresh,
   minIntervalMs = DASHBOARD_AUTO_REFRESH_MIN_MS,
+  shouldRefresh,
 }: UseDashboardVisibilityRefreshOptions): void {
   const lastAutoRefreshAtRef = useRef(0);
   const wasInitialLoadingRef = useRef(isInitialLoading);
@@ -52,9 +55,12 @@ export function useDashboardVisibilityRefresh({
     if (!shouldRunVisibilityRefresh(now, lastAutoRefreshAtRef.current, minIntervalMs)) {
       return;
     }
+    if (shouldRefresh && !shouldRefresh()) {
+      return;
+    }
     lastAutoRefreshAtRef.current = now;
     onRefreshRef.current();
-  }, [enabled, isInitialLoading, minIntervalMs]);
+  }, [enabled, isInitialLoading, minIntervalMs, shouldRefresh]);
 
   useEffect(() => {
     if (!enabled) {

@@ -13,6 +13,12 @@ import {
   buildReportRange,
   formatDashboardSummaryDay,
 } from "../../config/reportPeriod";
+import { CACHE_KEYS } from "../../cache/cacheKeys";
+import {
+  areAllCacheKeysFresh,
+  fetchWithCache,
+} from "../../cache/queryCache";
+import { DEFAULT_DATA_STALE_MS } from "../../config/dataCache";
 import { DASHBOARD_REFRESH_WARNING_MESSAGE } from "../../config/dashboardRefresh";
 import { useDashboardVisibilityRefresh } from "../../hooks/useDashboardVisibilityRefresh";
 import { useAppSelector } from "../../store";
@@ -91,62 +97,126 @@ export default function DashboardPage() {
     [timezone],
   );
 
-  const fetchSummary = useCallback(async (): Promise<DashboardSummary | null> => {
+  const summaryCacheKey = useMemo(() => {
     if (!todayRange) {
-      throw new Error(
-        "Não foi possível calcular o período do dia no timezone da empresa.",
-      );
+      return null;
     }
-
-    const response = await dashboardApi.getSummary({
-      startAt: todayRange.startAt,
-      endAt: todayRange.endAt,
-      upcomingLimit: UPCOMING_LIMIT,
-    });
-    return response.data ?? null;
+    return CACHE_KEYS.dashboardSummary(
+      todayRange.startAt,
+      todayRange.endAt,
+      UPCOMING_LIMIT,
+    );
   }, [todayRange]);
 
-  const fetchRelatedData = useCallback(async (): Promise<FetchedRelatedData> => {
-    const failures: string[] = [];
-    let nextClients: Client[] = [];
-    let nextServices: Service[] = [];
-    let nextEmployees: Employee[] = [];
-
-    try {
-      const response = await clientsApi.getClients();
-      nextClients = response.data ?? [];
-    } catch (error) {
-      collectRelatedFailureMessages(failures, error, companyIsActive);
+  const dashboardCacheKeys = useMemo(() => {
+    if (!summaryCacheKey) {
+      return [];
     }
-
-    try {
-      const response = await servicesApi.getServices();
-      nextServices = response.data ?? [];
-    } catch (error) {
-      collectRelatedFailureMessages(failures, error, companyIsActive);
-    }
-
+    const keys = [
+      summaryCacheKey,
+      CACHE_KEYS.clientsList,
+      CACHE_KEYS.servicesList,
+    ];
     if (canListEmployees) {
-      try {
-        const response = await employeesApi.getEmployees();
-        nextEmployees = (response.data ?? []).filter(
-          (employee) => employee.role !== "CLIENT",
+      keys.push(CACHE_KEYS.employeesList);
+    }
+    return keys;
+  }, [canListEmployees, summaryCacheKey]);
+
+  const fetchSummary = useCallback(
+    async (options?: { force?: boolean }): Promise<DashboardSummary | null> => {
+      if (!todayRange || !summaryCacheKey) {
+        throw new Error(
+          "Não foi possível calcular o período do dia no timezone da empresa.",
         );
+      }
+
+      const { data } = await fetchWithCache(
+        summaryCacheKey,
+        DEFAULT_DATA_STALE_MS,
+        async () => {
+          const response = await dashboardApi.getSummary({
+            startAt: todayRange.startAt,
+            endAt: todayRange.endAt,
+            upcomingLimit: UPCOMING_LIMIT,
+          });
+          return response.data ?? null;
+        },
+        { force: options?.force },
+      );
+      return data;
+    },
+    [summaryCacheKey, todayRange],
+  );
+
+  const fetchRelatedData = useCallback(
+    async (options?: { force?: boolean }): Promise<FetchedRelatedData> => {
+      const failures: string[] = [];
+      let nextClients: Client[] = [];
+      let nextServices: Service[] = [];
+      let nextEmployees: Employee[] = [];
+
+      try {
+        const { data } = await fetchWithCache(
+          CACHE_KEYS.clientsList,
+          DEFAULT_DATA_STALE_MS,
+          async () => {
+            const response = await clientsApi.getClients();
+            return response.data ?? [];
+          },
+          { force: options?.force },
+        );
+        nextClients = data;
       } catch (error) {
         collectRelatedFailureMessages(failures, error, companyIsActive);
       }
-    }
 
-    return {
-      clients: nextClients,
-      services: nextServices,
-      employees: nextEmployees,
-      relatedError: formatRelatedFailuresMessage(
-        failures,
-        "Não foi possível carregar alguns nomes.",
-      ),
-    };
-  }, [canListEmployees, companyIsActive]);
+      try {
+        const { data } = await fetchWithCache(
+          CACHE_KEYS.servicesList,
+          DEFAULT_DATA_STALE_MS,
+          async () => {
+            const response = await servicesApi.getServices();
+            return response.data ?? [];
+          },
+          { force: options?.force },
+        );
+        nextServices = data;
+      } catch (error) {
+        collectRelatedFailureMessages(failures, error, companyIsActive);
+      }
+
+      if (canListEmployees) {
+        try {
+          const { data } = await fetchWithCache(
+            CACHE_KEYS.employeesList,
+            DEFAULT_DATA_STALE_MS,
+            async () => {
+              const response = await employeesApi.getEmployees();
+              return (response.data ?? []).filter(
+                (employee) => employee.role !== "CLIENT",
+              );
+            },
+            { force: options?.force },
+          );
+          nextEmployees = data;
+        } catch (error) {
+          collectRelatedFailureMessages(failures, error, companyIsActive);
+        }
+      }
+
+      return {
+        clients: nextClients,
+        services: nextServices,
+        employees: nextEmployees,
+        relatedError: formatRelatedFailuresMessage(
+          failures,
+          "Não foi possível carregar alguns nomes.",
+        ),
+      };
+    },
+    [canListEmployees, companyIsActive],
+  );
 
   const applyRelatedData = useCallback((related: FetchedRelatedData) => {
     setClients(related.clients);
@@ -227,6 +297,9 @@ export default function DashboardPage() {
     if (!hasInitialLoadCompletedRef.current) {
       return;
     }
+    if (areAllCacheKeysFresh(dashboardCacheKeys, DEFAULT_DATA_STALE_MS)) {
+      return;
+    }
 
     refreshInFlightRef.current = true;
     const generation = ++loadGenerationRef.current;
@@ -236,13 +309,13 @@ export default function DashboardPage() {
     let refreshFailed = false;
 
     try {
-      const summaryData = await fetchSummary();
+      const summaryData = await fetchSummary({ force: true });
       if (!isMountedRef.current || generation !== loadGenerationRef.current) {
         return;
       }
       setSummary(summaryData);
 
-      const relatedData = await fetchRelatedData();
+      const relatedData = await fetchRelatedData({ force: true });
       if (!isMountedRef.current || generation !== loadGenerationRef.current) {
         return;
       }
@@ -262,6 +335,7 @@ export default function DashboardPage() {
     }
   }, [
     applyRelatedData,
+    dashboardCacheKeys,
     fetchRelatedData,
     fetchSummary,
     staffCompanyAccessSuspended,
@@ -281,6 +355,8 @@ export default function DashboardPage() {
   useDashboardVisibilityRefresh({
     enabled: !staffCompanyAccessSuspended,
     isInitialLoading: isLoading,
+    shouldRefresh: () =>
+      !areAllCacheKeysFresh(dashboardCacheKeys, DEFAULT_DATA_STALE_MS),
     onRefresh: () => {
       void refreshDashboard();
     },

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { configureStore } from "@reduxjs/toolkit";
 import { Provider } from "react-redux";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { clearQueryCacheForTests } from "../../cache/queryCache";
 import ClientsPage from "./ClientsPage";
 import clientsApi from "../../api/endpoints/clients.api";
 import authReducer from "../../store/slices/authSlice";
@@ -78,6 +79,7 @@ function clientsTablet() {
 
 describe("ClientsPage", () => {
   beforeEach(() => {
+    clearQueryCacheForTests();
     vi.clearAllMocks();
   });
 
