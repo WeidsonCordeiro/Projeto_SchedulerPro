@@ -810,7 +810,15 @@ describe("DashboardPage", () => {
 
   describe("status distribution (O2)", () => {
     it("renders all five status distribution rows", async () => {
-      mockSummaryResponse(makeSummary());
+      mockSummaryResponse(
+        makeSummary({
+          period: {
+            ...makeSummary().period,
+            total: 1,
+            byStatus: { ...emptyByStatus(), scheduled: 1 },
+          },
+        }),
+      );
 
       renderDashboard();
       await waitForDashboardLoaded();
@@ -909,7 +917,15 @@ describe("DashboardPage", () => {
     });
 
     it("shows the centralized Portuguese labels", async () => {
-      mockSummaryResponse(makeSummary());
+      mockSummaryResponse(
+        makeSummary({
+          period: {
+            ...makeSummary().period,
+            total: 1,
+            byStatus: { ...emptyByStatus(), scheduled: 1 },
+          },
+        }),
+      );
 
       renderDashboard();
       await waitForDashboardLoaded();

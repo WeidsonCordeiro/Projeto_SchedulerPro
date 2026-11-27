@@ -65,20 +65,23 @@ describe("DashboardStatusDistribution", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses aria-valuemax at least 1 when total is zero", () => {
+  it("uses aria-valuemax matching total when total is positive", () => {
     render(
       <DashboardStatusDistribution
-        period={{ total: 0, byStatus: emptyByStatus() }}
+        period={{
+          total: 5,
+          byStatus: { ...emptyByStatus(), scheduled: 1 },
+        }}
       />,
     );
 
     expect(screen.getByTestId("dashboard-status-bar-scheduled")).toHaveAttribute(
       "aria-valuemax",
-      "1",
+      "5",
     );
     expect(screen.getByTestId("dashboard-status-bar-scheduled")).toHaveAttribute(
       "aria-valuenow",
-      "0",
+      "1",
     );
   });
 

@@ -240,14 +240,14 @@ describe("AppLayout", () => {
 
     expect(screen.getByText("Owner Teste")).toBeInTheDocument();
     expect(screen.getByText("OWNER")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /terminar sessão/i })).toBeInTheDocument();
   });
 
   it("hides the logout button for anonymous users", () => {
     renderLayout(makeStore());
 
     expect(screen.getByText("Home content")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /logout/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /terminar sessão/i })).not.toBeInTheDocument();
   });
 
   it("calls /auth/logout, clears Redux and redirects to /login", async () => {
@@ -256,7 +256,7 @@ describe("AppLayout", () => {
     const store = makeStore({ authenticated: true });
     renderLayout(store);
 
-    fireEvent.click(screen.getByRole("button", { name: /logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /terminar sessão/i }));
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(authApi.logout).toHaveBeenCalledTimes(1);
@@ -272,7 +272,7 @@ describe("AppLayout", () => {
     const store = makeStore({ authenticated: true });
     renderLayout(store);
 
-    fireEvent.click(screen.getByRole("button", { name: /logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /terminar sessão/i }));
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(store.getState().auth.isAuthenticated).toBe(false);
@@ -418,10 +418,11 @@ describe("AppLayout", () => {
       }),
     );
 
-    expect(screen.getByTestId("staff-company-suspended-view")).toBeInTheDocument();
+    const suspendedView = screen.getByTestId("staff-company-suspended-view");
+    expect(suspendedView).toBeInTheDocument();
     expect(screen.queryByText("Home content")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /terminar sessão/i }),
+      within(suspendedView).getByRole("button", { name: /terminar sessão/i }),
     ).toBeInTheDocument();
   });
 
@@ -434,7 +435,12 @@ describe("AppLayout", () => {
     });
     renderLayout(store);
 
-    fireEvent.click(screen.getByRole("button", { name: /terminar sessão/i }));
+    fireEvent.click(
+      within(screen.getByTestId("staff-company-suspended-view")).getByRole(
+        "button",
+        { name: /terminar sessão/i },
+      ),
+    );
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(store.getState().auth.staffCompanyAccessSuspended).toBe(false);

@@ -97,14 +97,14 @@ describe("Navbar", () => {
   it("renders a logout button when authenticated", () => {
     renderNavbar(makeStore(true));
 
-    expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /terminar sessão/i })).toBeInTheDocument();
   });
 
   it("does not render the user or logout for an anonymous user", () => {
     renderNavbar(makeStore(false));
 
     expect(screen.queryByText("Owner Teste")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /logout/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /terminar sessão/i })).not.toBeInTheDocument();
   });
 
   it("logs out and redirects to /login", async () => {
@@ -113,7 +113,7 @@ describe("Navbar", () => {
     const store = makeStore(true);
     renderNavbar(store);
 
-    fireEvent.click(screen.getByRole("button", { name: /logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /terminar sessão/i }));
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(authApi.logout).toHaveBeenCalledTimes(1);
@@ -129,7 +129,7 @@ describe("Navbar", () => {
     const store = makeStore(true);
     renderNavbar(store);
 
-    fireEvent.click(screen.getByRole("button", { name: /logout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /terminar sessão/i }));
 
     expect(await screen.findByText("Login page")).toBeInTheDocument();
     expect(store.getState().auth.user).toBeNull();
