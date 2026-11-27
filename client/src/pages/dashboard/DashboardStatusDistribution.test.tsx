@@ -4,7 +4,6 @@ import DashboardStatusDistribution, {
   DASHBOARD_STATUS_DISTRIBUTION_ORDER,
   statusDistributionBarWidthPercent,
 } from "./DashboardStatusDistribution";
-import { APPOINTMENT_STATUS_LABELS } from "../../config/appointmentStatus";
 import type { AppointmentStatus } from "../../types/appointment";
 
 function emptyByStatus(): Record<AppointmentStatus, number> {
@@ -48,18 +47,22 @@ describe("DASHBOARD_STATUS_DISTRIBUTION_ORDER", () => {
 });
 
 describe("DashboardStatusDistribution", () => {
-  it("renders all five status rows with labels", () => {
+  it("shows EmptyState when total is zero", () => {
     render(
       <DashboardStatusDistribution
         period={{ total: 0, byStatus: emptyByStatus() }}
       />,
     );
 
-    for (const status of DASHBOARD_STATUS_DISTRIBUTION_ORDER) {
-      expect(
-        screen.getByTestId(`dashboard-status-label-${status}`),
-      ).toHaveTextContent(APPOINTMENT_STATUS_LABELS[status]);
-    }
+    expect(
+      screen.getByTestId("dashboard-status-distribution-empty"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /sem agendamentos no período/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("dashboard-status-row-scheduled"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows proportional bar widths", () => {

@@ -1,3 +1,4 @@
+import EmptyState from "../../components/common/EmptyState";
 import type { AppointmentStatus } from "../../types/appointment";
 import {
   APPOINTMENT_STATUS_BADGE_CLASS,
@@ -64,14 +65,11 @@ export default function DashboardStatusDistribution({ period }: Props) {
         <p className="text-muted small mb-3">
           Contagens do dia no período reportado pela API.
         </p>
-        {total === 0 && (
-          <p
-            className="text-muted small mb-3 mb-md-2"
-            data-testid="dashboard-status-distribution-empty"
-          >
-            Sem agendamentos no período.
-          </p>
-        )}
+        {total === 0 ? (
+          <div data-testid="dashboard-status-distribution-empty">
+            <EmptyState title="Sem agendamentos no período." icon="○" />
+          </div>
+        ) : (
         <ul className="list-unstyled dashboard-status-distribution-list mb-0">
           {DASHBOARD_STATUS_DISTRIBUTION_ORDER.map((status) => {
             const count = byStatus[status] ?? 0;
@@ -120,6 +118,7 @@ export default function DashboardStatusDistribution({ period }: Props) {
             );
           })}
         </ul>
+        )}
       </div>
     </div>
   );

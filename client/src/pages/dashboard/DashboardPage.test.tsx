@@ -899,22 +899,13 @@ describe("DashboardPage", () => {
 
       expect(
         screen.getByTestId("dashboard-status-distribution-empty"),
-      ).toHaveTextContent(/sem agendamentos no período/i);
-
-      for (const status of [
-        "scheduled",
-        "confirmed",
-        "completed",
-        "cancelled",
-        "no-show",
-      ] as const) {
-        expect(screen.getByTestId(`dashboard-status-count-${status}`)).toHaveTextContent(
-          "0",
-        );
-        expect(screen.getByTestId(`dashboard-status-bar-${status}`)).toHaveStyle({
-          width: "0%",
-        });
-      }
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /sem agendamentos no período/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("dashboard-status-row-scheduled"),
+      ).not.toBeInTheDocument();
     });
 
     it("shows the centralized Portuguese labels", async () => {
