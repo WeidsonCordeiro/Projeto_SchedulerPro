@@ -3,6 +3,7 @@ import type { AppointmentStatus } from "../../types/appointment";
 import {
   APPOINTMENT_STATUS_BADGE_CLASS,
   APPOINTMENT_STATUS_LABELS,
+  APPOINTMENT_STATUS_PROGRESS_BAR_CLASS,
 } from "../../config/appointmentStatus";
 
 export const DASHBOARD_STATUS_DISTRIBUTION_ORDER: AppointmentStatus[] = [
@@ -12,21 +13,6 @@ export const DASHBOARD_STATUS_DISTRIBUTION_ORDER: AppointmentStatus[] = [
   "cancelled",
   "no-show",
 ];
-
-/**
- * Classes `bg-*` para barras Bootstrap, alinhadas às cores de
- * APPOINTMENT_STATUS_BADGE_CLASS (text-bg-* não se aplica a progress-bar).
- */
-export const APPOINTMENT_STATUS_PROGRESS_BAR_CLASS: Record<
-  AppointmentStatus,
-  string
-> = {
-  scheduled: "bg-primary",
-  confirmed: "bg-info",
-  completed: "bg-success",
-  cancelled: "bg-secondary",
-  "no-show": "bg-warning",
-};
 
 export function statusDistributionBarWidthPercent(
   count: number,
@@ -76,6 +62,8 @@ export default function DashboardStatusDistribution({ period }: Props) {
             const widthPercent = statusDistributionBarWidthPercent(count, total);
             const badgeClass = APPOINTMENT_STATUS_BADGE_CLASS[status];
             const barClass = APPOINTMENT_STATUS_PROGRESS_BAR_CLASS[status];
+            const progressMax = Math.max(total, 1);
+            const progressNow = total > 0 ? count : 0;
 
             return (
               <li
@@ -108,9 +96,9 @@ export default function DashboardStatusDistribution({ period }: Props) {
                     role="progressbar"
                     data-testid={`dashboard-status-bar-${status}`}
                     style={{ width: `${widthPercent}%` }}
-                    aria-valuenow={count}
+                    aria-valuenow={progressNow}
                     aria-valuemin={0}
-                    aria-valuemax={total > 0 ? total : 0}
+                    aria-valuemax={progressMax}
                     aria-label={`${APPOINTMENT_STATUS_LABELS[status]}: ${formatCount(count)}`}
                   />
                 </div>

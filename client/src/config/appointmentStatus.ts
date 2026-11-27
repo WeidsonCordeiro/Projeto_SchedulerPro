@@ -35,6 +35,21 @@ export const APPOINTMENT_STATUS_BADGE_CLASS: Record<AppointmentStatus, string> =
 };
 
 /**
+ * Classes `bg-*` para barras Bootstrap (progress-bar).
+ * Alinhadas a APPOINTMENT_STATUS_BADGE_CLASS (text-bg-* não se aplica a progress-bar).
+ */
+export const APPOINTMENT_STATUS_PROGRESS_BAR_CLASS: Record<
+  AppointmentStatus,
+  string
+> = {
+  scheduled: "bg-primary",
+  confirmed: "bg-info",
+  completed: "bg-success",
+  cancelled: "bg-secondary",
+  "no-show": "bg-warning",
+};
+
+/**
  * Classes de cor dos blocos de agendamento nas vistas de calendário
  * (`.status-*` em index.css). Compartilhadas por Month, Week e Day para que
  * um mesmo status tenha sempre a mesma cor, independentemente da vista.
