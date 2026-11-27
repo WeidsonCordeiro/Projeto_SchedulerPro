@@ -7,6 +7,7 @@ import clientsApi from "../../api/endpoints/clients.api";
 import authReducer from "../../store/slices/authSlice";
 import { user } from "../../test/fixtures";
 import type { Client } from "../../types/client";
+import { clearQueryCacheForTests } from "../../cache/queryCache";
 
 vi.mock("../../api/endpoints/clients.api", () => ({
   default: {
@@ -67,6 +68,7 @@ function listResponse(clients: Client[]) {
 
 describe("ClientsPage avatars", () => {
   beforeEach(() => {
+    clearQueryCacheForTests();
     vi.clearAllMocks();
   });
 
