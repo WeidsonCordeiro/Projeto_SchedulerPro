@@ -396,7 +396,7 @@ describe("AppRoutes", () => {
     expect(screen.queryByText("Empresa")).not.toBeInTheDocument();
   });
 
-  it("blocks MANAGER from the company page", async () => {
+  it("redirects MANAGER away from the company page", async () => {
     renderAt("/company", {
       user: { ...user, role: "MANAGER" },
       isAuthenticated: true,
@@ -404,11 +404,12 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      await screen.findByText("Você não tem permissão para acessar esta página."),
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Empresa")).not.toBeInTheDocument();
   });
 
-  it("blocks EMPLOYEE from the company page", async () => {
+  it("redirects EMPLOYEE away from the company page", async () => {
     renderAt("/company", {
       user: { ...user, role: "EMPLOYEE" },
       isAuthenticated: true,
@@ -416,8 +417,35 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      await screen.findByText("Você não tem permissão para acessar esta página."),
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
     ).toBeInTheDocument();
+    expect(screen.queryByText("Empresa")).not.toBeInTheDocument();
+  });
+
+  it("redirects EMPLOYEE away from the employees page", async () => {
+    renderAt("/employees", {
+      user: { ...user, role: "EMPLOYEE" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Funcionários")).not.toBeInTheDocument();
+  });
+
+  it("redirects MANAGER away from the employees page", async () => {
+    renderAt("/employees", {
+      user: { ...user, role: "MANAGER" },
+      isAuthenticated: true,
+      isInitializing: false,
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: /bem-vindo ao schedulerpro/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Funcionários" })).not.toBeInTheDocument();
   });
 
   it("redirects a CLIENT role from /reports to /portal", async () => {
