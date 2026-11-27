@@ -75,7 +75,7 @@ export default function Navbar({
                   aria-hidden="true"
                 />
               )}
-              <span>Logout</span>
+              <span>Terminar sessão</span>
             </button>
           </div>
         )}
