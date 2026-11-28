@@ -1,3 +1,4 @@
+import "../../styles/appointments-calendar.css";
 import { useCallback, useMemo, useState } from "react";
 import AppointmentScheduleFilters from "../../components/appointments/AppointmentScheduleFilters";
 import {

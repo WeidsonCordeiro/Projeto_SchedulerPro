@@ -7,7 +7,7 @@
 |--------|-----|---------|--------|
 | `feat/fe-perf-004-client-cache` | FE-PERF-004 + O5 | Cache in-memory com `staleTime = DASHBOARD_AUTO_REFRESH_MIN_MS`; dashboard + listas piloto; O5 só refetch se stale | `queryCache.test.ts`, `useCachedQuery.test.ts`, O5 existentes |
 | `feat/fe-wave-2-copy-pt-pt` | FE-UX-002 | Migração cópia PT-PT (grep-driven) | Atualizar testes por página |
-| `feat/fe-fu-001-css-phase-2` | CSS fase 2 | Purge / split calendário (sem O5 CSS) | `npm run build` antes/depois |
+| `feat/fe-fu-001-css-phase-2` | CSS fase 2 | ✅ Calendário fora do critical path | ver `fe-fu-001-css-phase-2-implementation.md` |
 | `feat/fe-a11y-headings` | FE-A11Y-05 | Auditoria + fixes headings | Testes RTL onde aplicável |
 | `feat/fe-a11y-mobile-landmarks` | FE-A11Y-06 | Landmarks listas mobile | RTL |
 | `feat/fe-stage37-calendar-tests` | FE-016 | Cobertura subvistas calendário | Vitest |
