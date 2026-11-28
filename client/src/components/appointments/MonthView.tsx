@@ -78,7 +78,7 @@ export default function MonthView({
   const { year, month } = DateTime.fromISO(currentDateKey, { zone: timezone });
 
   return (
-    <>
+    <div data-testid="calendar-view-month">
       <MonthCalendar
         year={year}
         month={month}
@@ -106,6 +106,6 @@ export default function MonthView({
           onCreateForDay={onCreateForDay ?? onDayClick}
         />
       )}
-    </>
+    </div>
   );
 }

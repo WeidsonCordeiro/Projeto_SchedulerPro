@@ -12,6 +12,6 @@
 | `feat/fe-a11y-wave-2` | A11y | ✅ Landmarks + headings (piloto) | ver `fe-a11y-wave-2-implementation.md` |
 | `feat/fe-a11y-headings` | FE-A11Y-05 | Auditoria + fixes headings | Testes RTL onde aplicável |
 | `feat/fe-a11y-mobile-landmarks` | FE-A11Y-06 | Landmarks listas mobile | RTL |
-| `feat/fe-stage37-calendar-tests` | FE-016 | Cobertura subvistas calendário | Vitest |
+| `feat/fe-stage37-calendar-tests` | FE-016 | ✅ Subvistas + switcher | `CalendarView.fe016-subviews.test.tsx` |
 
 **Ordem sugerida:** PERF-004 → cópia → CSS → a11y (paralelizável após PERF-004).

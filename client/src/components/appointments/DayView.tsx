@@ -27,6 +27,7 @@ export default function DayView({
 }: DayViewProps) {
   if (isMobileViewport) {
     return (
+      <div data-testid="calendar-view-day">
       <DayMobileAgenda
         currentDateKey={currentDateKey}
         appointments={appointments}
@@ -37,10 +38,12 @@ export default function DayView({
         onAppointmentClick={onAppointmentClick}
         onSlotClick={onSlotClick}
       />
+      </div>
     );
   }
 
   return (
+    <div data-testid="calendar-view-day">
     <DayCalendar
       currentDateKey={currentDateKey}
       appointments={appointments}
@@ -50,5 +53,6 @@ export default function DayView({
       todayKey={todayKey}
       onAppointmentClick={(appointment) => onAppointmentClick(appointment)}
     />
+    </div>
   );
 }

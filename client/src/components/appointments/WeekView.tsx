@@ -33,6 +33,7 @@ export default function WeekView({
     const createHandler = onCreateForDay ?? onDayClick;
 
     return (
+      <div data-testid="calendar-view-week">
       <WeekMobileAgenda
         currentDateKey={currentDateKey}
         appointments={appointments}
@@ -43,10 +44,12 @@ export default function WeekView({
         onAppointmentClick={onAppointmentClick}
         onCreateForDay={createHandler}
       />
+      </div>
     );
   }
 
   return (
+    <div data-testid="calendar-view-week">
     <WeekCalendar
       currentDateKey={currentDateKey}
       appointments={appointments}
@@ -57,5 +60,6 @@ export default function WeekView({
       todayKey={todayKey}
       onAppointmentClick={(appointment) => onAppointmentClick(appointment)}
     />
+    </div>
   );
 }
