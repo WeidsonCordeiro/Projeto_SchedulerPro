@@ -1,3 +1,4 @@
+import "../../styles/reports-ranking.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import reportsApi from "../../api/endpoints/reports.api";
 import {

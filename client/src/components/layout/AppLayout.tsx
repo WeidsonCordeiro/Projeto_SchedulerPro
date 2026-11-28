@@ -167,6 +167,7 @@ export default function AppLayout() {
           id="app-main-content"
           className="flex-grow-1 overflow-auto p-3 p-md-4"
           data-testid="app-main"
+          aria-label="Conteúdo principal"
           tabIndex={-1}
         >
           {showGlobalInactiveNotice && (

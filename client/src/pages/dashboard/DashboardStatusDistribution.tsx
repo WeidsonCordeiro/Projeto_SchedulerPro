@@ -47,7 +47,7 @@ export default function DashboardStatusDistribution({ period }: Props) {
       data-testid="dashboard-status-distribution"
     >
       <div className="card-body">
-        <h3 className="h6 mb-1">Distribuição por estado</h3>
+        <h2 className="h6 mb-1">Distribuição por estado</h2>
         <p className="text-muted small mb-3">
           Contagens do dia no período reportado pela API.
         </p>

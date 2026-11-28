@@ -255,6 +255,8 @@ export default function ServicesPage() {
           <div
             className="card table-card mt-3 d-none d-xl-block"
             data-testid="services-list-desktop"
+            role="region"
+            aria-label="Lista de serviços"
           >
             <div className="table-responsive">
               <table className="table table-hover align-middle">
@@ -299,17 +301,18 @@ export default function ServicesPage() {
             </div>
           </div>
 
-          <div
+          <section
             className="entity-list-tablet d-none d-md-block d-xl-none mt-3"
             data-testid="services-list-tablet"
+            aria-label="Lista de serviços"
           >
             {services.map((service) => (
               <div key={service.id} className="card entity-tablet-card">
                 <div className="card-body py-3">
                   <div className="entity-tablet-card-title-row mb-2">
-                    <h3 className="h6 mb-0 entity-tablet-service-name">
+                    <h2 className="h6 mb-0 entity-tablet-service-name">
                       {service.name}
-                    </h3>
+                    </h2>
                     {service.isActive ? (
                       <span className="badge text-bg-success flex-shrink-0">
                         Ativo
@@ -347,16 +350,17 @@ export default function ServicesPage() {
                 )}
               </div>
             ))}
-          </div>
+          </section>
 
-          <div
+          <section
             className="entity-list-mobile d-md-none mt-3"
             data-testid="services-list-mobile"
+            aria-label="Lista de serviços"
           >
             {services.map((service) => (
               <div key={service.id} className="card">
                 <div className="card-body">
-                  <h3 className="h6 mb-1">{service.name}</h3>
+                  <h2 className="h6 mb-1">{service.name}</h2>
                   {service.description && (
                     <p
                       className="table-subline entity-card-description mb-2"
@@ -381,7 +385,7 @@ export default function ServicesPage() {
                 )}
               </div>
             ))}
-          </div>
+          </section>
         </>
       )}
 

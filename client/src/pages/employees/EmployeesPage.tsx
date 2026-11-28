@@ -296,6 +296,8 @@ export default function EmployeesPage() {
           <div
             className="card table-card mt-3 d-none d-xl-block"
             data-testid="employees-list-desktop"
+            role="region"
+            aria-label="Lista de funcionários"
           >
             <div className="table-responsive">
               <table className="table table-hover align-middle">
@@ -360,9 +362,10 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div
+          <section
             className="entity-list-tablet d-none d-md-block d-xl-none mt-3"
             data-testid="employees-list-tablet"
+            aria-label="Lista de funcionários"
           >
             {employees.map((employee) => {
               const isSelf = employee.id === currentUser?.id;
@@ -419,11 +422,12 @@ export default function EmployeesPage() {
                 </div>
               );
             })}
-          </div>
+          </section>
 
-          <div
+          <section
             className="entity-list-mobile d-md-none mt-3"
             data-testid="employees-list-mobile"
+            aria-label="Lista de funcionários"
           >
             {employees.map((employee) => {
               const isSelf = employee.id === currentUser?.id;
@@ -472,7 +476,7 @@ export default function EmployeesPage() {
                 </div>
               );
             })}
-          </div>
+          </section>
         </>
       )}
 

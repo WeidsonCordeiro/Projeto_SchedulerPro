@@ -228,6 +228,8 @@ export default function ClientsPage() {
           <div
             className="card table-card mt-3 d-none d-xl-block"
             data-testid="clients-list-desktop"
+            role="region"
+            aria-label="Lista de clientes"
           >
             <div className="table-responsive">
               <table className="table table-hover align-middle">
@@ -278,9 +280,10 @@ export default function ClientsPage() {
             </div>
           </div>
 
-          <div
+          <section
             className="entity-list-tablet d-none d-md-block d-xl-none mt-3"
             data-testid="clients-list-tablet"
+            aria-label="Lista de clientes"
           >
             {clients.map((client) => (
               <div key={client.id} className="card entity-tablet-card">
@@ -324,11 +327,12 @@ export default function ClientsPage() {
                 )}
               </div>
             ))}
-          </div>
+          </section>
 
-          <div
+          <section
             className="entity-list-mobile d-md-none mt-3"
             data-testid="clients-list-mobile"
+            aria-label="Lista de clientes"
           >
             {clients.map((client) => (
               <div key={client.id} className="card">
@@ -362,7 +366,7 @@ export default function ClientsPage() {
                 )}
               </div>
             ))}
-          </div>
+          </section>
         </>
       )}
 

@@ -1,3 +1,4 @@
+import "../../styles/public-appointment-token.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import publicAppointmentsApi from "../../api/endpoints/publicAppointments.api";

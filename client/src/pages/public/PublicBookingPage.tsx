@@ -1,3 +1,4 @@
+import "../../styles/public-booking.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
