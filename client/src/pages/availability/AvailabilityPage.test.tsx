@@ -250,7 +250,7 @@ describe("AvailabilityPage", () => {
     renderPage(makeStore("MANAGER"));
 
     expect(
-      await screen.findByText("Você está visualizando sua própria disponibilidade."),
+      await screen.findByText("Está a ver a sua própria disponibilidade."),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Funcionário")).not.toBeInTheDocument();
     expect(employeesApi.getEmployees).not.toHaveBeenCalled();
@@ -593,7 +593,7 @@ expect(
     renderPage(makeStore("CLIENT"));
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      screen.getByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(
       availabilityApi.getEmployeeAvailabilities,

@@ -16,15 +16,15 @@ function validate(password: string, confirmPassword: string): FieldErrors {
   const errors: FieldErrors = {};
 
   if (!password) {
-    errors.password = "A senha é obrigatória.";
+    errors.password = "A palavra-passe é obrigatória.";
   } else if (password.length < 8) {
-    errors.password = "A senha deve possuir pelo menos 8 caracteres.";
+    errors.password = "A palavra-passe deve ter pelo menos 8 caracteres.";
   }
 
   if (!confirmPassword) {
-    errors.confirmPassword = "Confirme a senha.";
+    errors.confirmPassword = "Confirme a palavra-passe.";
   } else if (confirmPassword !== password) {
-    errors.confirmPassword = "As senhas não coincidem.";
+    errors.confirmPassword = "As palavras-passe não coincidem.";
   }
 
   return errors;
@@ -166,7 +166,7 @@ export default function ClientInvitePage() {
       <main className="public-content">
         <PageHeader
           title="Criar conta de cliente"
-          description="Defina a sua senha para aceder aos seus agendamentos."
+          description="Defina a sua palavra-passe para aceder aos seus agendamentos."
         />
 
         {isLoading && (
@@ -235,7 +235,7 @@ export default function ClientInvitePage() {
                 <form onSubmit={handleSubmit} noValidate>
                   <div className="mb-3">
                     <label htmlFor="invite-password" className="form-label">
-                      Senha
+                      Palavra-passe
                     </label>
                     <input
                       id="invite-password"
@@ -257,7 +257,7 @@ export default function ClientInvitePage() {
                       htmlFor="invite-confirm-password"
                       className="form-label"
                     >
-                      Confirmar senha
+                      Confirmar palavra-passe
                     </label>
                     <input
                       id="invite-confirm-password"

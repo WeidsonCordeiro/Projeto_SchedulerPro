@@ -11,7 +11,7 @@ const EXACT_PATH_TITLES: Record<string, string> = {
   "/company": "Empresa",
   "/portal": "Portal",
   "/portal/agendamentos": "Meus agendamentos",
-  "/portal/perfil": "Meu perfil",
+  "/portal/perfil": "O meu perfil",
   "/login": "Entrar",
   "/register": "Criar conta",
   "/forgot-password": "Recuperar palavra-passe",

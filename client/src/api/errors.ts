@@ -65,9 +65,10 @@ export function getApiError(error: unknown): ApiFailure {
 }
 
 const FRIENDLY_MESSAGES: Record<ApiErrorKind, string> = {
-  network: "Não foi possível conectar ao servidor. Verifique sua conexão.",
+  network:
+    "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
   validation: "Dados inválidos. Verifique as informações e tente novamente.",
-  auth: "Não foi possível autenticar. Verifique suas credenciais.",
+  auth: "Não foi possível autenticar. Verifique as suas credenciais.",
   not_found: "Recurso não encontrado.",
   conflict: "Já existe um registro com os mesmos dados.",
   server: "Erro interno do servidor. Tente novamente mais tarde.",

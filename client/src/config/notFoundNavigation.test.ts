@@ -28,7 +28,7 @@ describe("getNotFoundHomeLabel", () => {
   });
 
   it("labels the must-change-password action", () => {
-    expect(getNotFoundHomeLabel(true, true, "EMPLOYEE")).toBe("Alterar senha");
+    expect(getNotFoundHomeLabel(true, true, "EMPLOYEE")).toBe("Alterar palavra-passe");
   });
 
   it("labels the client action", () => {

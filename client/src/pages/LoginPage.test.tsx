@@ -74,7 +74,7 @@ function renderLogin(
 
 function loginAs(email: string, password: string) {
   fireEvent.change(screen.getByLabelText("Email"), { target: { value: email } });
-  fireEvent.change(screen.getByLabelText("Senha"), { target: { value: password } });
+  fireEvent.change(screen.getByLabelText("Palavra-passe"), { target: { value: password } });
   fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 }
 
@@ -93,7 +93,7 @@ describe("LoginPage", () => {
 
     expect(screen.getByRole("heading", { name: /entrar/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Palavra-passe")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
   });
 
@@ -103,7 +103,7 @@ describe("LoginPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
     expect(screen.getByText("O email é obrigatório.")).toBeInTheDocument();
-    expect(screen.getByText("A senha é obrigatória.")).toBeInTheDocument();
+    expect(screen.getByText("A palavra-passe é obrigatória.")).toBeInTheDocument();
     expect(authApi.login).not.toHaveBeenCalled();
   });
 
@@ -115,7 +115,7 @@ describe("LoginPage", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
 
-    expect(screen.getByText("A senha é obrigatória.")).toBeInTheDocument();
+    expect(screen.getByText("A palavra-passe é obrigatória.")).toBeInTheDocument();
     expect(authApi.login).not.toHaveBeenCalled();
   });
 
@@ -125,7 +125,7 @@ describe("LoginPage", () => {
     fireEvent.change(screen.getByLabelText("Email"), {
       target: { value: "not-an-email" },
     });
-    fireEvent.change(screen.getByLabelText("Senha"), {
+    fireEvent.change(screen.getByLabelText("Palavra-passe"), {
       target: { value: "password123" },
     });
     fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
@@ -274,7 +274,7 @@ describe("LoginPage", () => {
     loginAs("owner@example.com", "password123");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
     );
   });
 

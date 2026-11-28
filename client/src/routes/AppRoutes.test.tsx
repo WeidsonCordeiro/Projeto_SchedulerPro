@@ -281,7 +281,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: /alterar senha/i }),
+      await screen.findByRole("heading", { name: /alterar palavra-passe/i }),
     ).toBeInTheDocument();
   });
 
@@ -294,7 +294,7 @@ describe("AppRoutes", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: /alterar senha/i }),
+      await screen.findByRole("heading", { name: /alterar palavra-passe/i }),
     ).toBeInTheDocument();
   });
 
@@ -486,7 +486,7 @@ describe("AppRoutes", () => {
     renderAt("/forgot-password", { isInitializing: false });
 
     expect(
-      await screen.findByRole("heading", { name: /recuperar senha/i }),
+      await screen.findByRole("heading", { name: /recuperar palavra-passe/i }),
     ).toBeInTheDocument();
   });
 
@@ -494,7 +494,7 @@ describe("AppRoutes", () => {
     renderAt("/reset-password?token=test", { isInitializing: false });
 
     expect(
-      await screen.findByRole("heading", { name: /redefinir senha/i }),
+      await screen.findByRole("heading", { name: /redefinir palavra-passe/i }),
     ).toBeInTheDocument();
   });
 
@@ -582,7 +582,7 @@ describe("AppRoutes", () => {
       screen.getByRole("link", { name: /criar conta/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /esqueceu a senha/i }),
+      screen.getByRole("link", { name: /esqueceu a palavra-passe/i }),
     ).toBeInTheDocument();
   });
 
@@ -729,7 +729,7 @@ describe("AppRoutes", () => {
           "Este convite expirou. Solicite um novo convite ao responsável.",
         ),
       ).toBeInTheDocument();
-      expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Palavra-passe")).not.toBeInTheDocument();
     });
   });
 

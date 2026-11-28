@@ -76,7 +76,7 @@ export default function SendClientInviteModal({
             <p className="text-muted">
               Será enviado um convite para <strong>{client.email}</strong> com
               um link para <strong>{client.name}</strong> definir a própria
-              senha e criar a conta de acesso. O link expira em 7 dias e só
+              palavra-passe e criar a conta de acesso. O link expira em 7 dias e só
               pode ser usado uma vez — um novo convite invalida o anterior.
             </p>
 

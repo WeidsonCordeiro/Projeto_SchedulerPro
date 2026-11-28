@@ -238,7 +238,7 @@ export default function CompanyPage() {
           <h1 className="h3 mb-0">Empresa</h1>
         </div>
         <div className="alert alert-warning" role="alert">
-          Você não tem permissão para acessar esta página.
+          Não tem permissão para aceder a esta página.
         </div>
       </section>
     );

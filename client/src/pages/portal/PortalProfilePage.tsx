@@ -36,7 +36,10 @@ export default function PortalProfilePage() {
 
   return (
     <section>
-      <PageHeader title="Meu perfil" description="Consulte os dados da sua conta e do seu cadastro." />
+      <PageHeader
+        title="O meu perfil"
+        description="Consulte os dados da sua conta e do seu registo."
+      />
 
       {isLoading && <LoadingState label="A carregar perfil…" />}
 

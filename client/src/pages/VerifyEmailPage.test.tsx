@@ -85,7 +85,7 @@ describe("VerifyEmailPage", () => {
       screen.getByRole("link", { name: /entrar/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /recuperar senha/i }),
+      screen.getByRole("link", { name: /recuperar palavra-passe/i }),
     ).toBeInTheDocument();
   });
 });

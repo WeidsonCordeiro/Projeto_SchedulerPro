@@ -98,7 +98,7 @@ describe("getFriendlyErrorMessage", () => {
   it("hides network failure details behind a friendly message", () => {
     const failure = getApiError(new AxiosError("Network Error", "ERR_NETWORK"));
     expect(getFriendlyErrorMessage(failure)).toBe(
-      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
     );
   });
 

@@ -102,7 +102,7 @@ describe("AppointmentsListView", () => {
 
     expect(screen.getByText("Nenhum agendamento encontrado")).toBeInTheDocument();
     fireEvent.click(
-      screen.getByRole("button", { name: /cadastrar primeiro agendamento/i }),
+      screen.getByRole("button", { name: /registar primeiro agendamento/i }),
     );
     expect(onCreate).toHaveBeenCalled();
   });
@@ -112,7 +112,7 @@ describe("AppointmentsListView", () => {
 
     expect(screen.getByText("Nenhum agendamento encontrado")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /cadastrar primeiro agendamento/i }),
+      screen.queryByRole("button", { name: /registar primeiro agendamento/i }),
     ).not.toBeInTheDocument();
   });
 

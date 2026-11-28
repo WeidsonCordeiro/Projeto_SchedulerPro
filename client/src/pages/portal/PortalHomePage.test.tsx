@@ -71,7 +71,7 @@ describe("PortalHomePage", () => {
     renderPage();
 
     expect(
-      await screen.findByText(/não possui agendamentos futuros/i),
+      await screen.findByText(/não tem agendamentos futuros/i),
     ).toBeInTheDocument();
   });
 

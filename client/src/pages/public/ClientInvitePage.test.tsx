@@ -34,10 +34,10 @@ function renderPage(path = `/convite/cliente/${TOKEN}`) {
 }
 
 function fillAndSubmit(password = "senhaForte123", confirm = password) {
-  fireEvent.change(screen.getByLabelText("Senha"), {
+  fireEvent.change(screen.getByLabelText("Palavra-passe"), {
     target: { value: password },
   });
-  fireEvent.change(screen.getByLabelText("Confirmar senha"), {
+  fireEvent.change(screen.getByLabelText("Confirmar palavra-passe"), {
     target: { value: confirm },
   });
   fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
@@ -104,7 +104,7 @@ describe("ClientInvitePage", () => {
     expect(
       await screen.findByText("Este convite não é mais válido."),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Palavra-passe")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /ir para o início/i }),
     ).toBeInTheDocument();
@@ -142,7 +142,7 @@ describe("ClientInvitePage", () => {
       await screen.findByText("Este cliente já possui uma conta de acesso."),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /entrar/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Palavra-passe")).not.toBeInTheDocument();
   });
 
   it("offers a retry on a server failure and recovers", async () => {
@@ -188,7 +188,7 @@ describe("ClientInvitePage", () => {
     fillAndSubmit("123", "123");
 
     expect(
-      await screen.findByText("A senha deve possuir pelo menos 8 caracteres."),
+      await screen.findByText("A palavra-passe deve ter pelo menos 8 caracteres."),
     ).toBeInTheDocument();
     expect(clientInvitesApi.accept).not.toHaveBeenCalled();
   });
@@ -205,7 +205,7 @@ describe("ClientInvitePage", () => {
 
     fillAndSubmit("senhaForte123", "outra-senha");
 
-    expect(await screen.findByText("As senhas não coincidem.")).toBeInTheDocument();
+    expect(await screen.findByText("As palavras-passe não coincidem.")).toBeInTheDocument();
     expect(clientInvitesApi.accept).not.toHaveBeenCalled();
   });
 
@@ -235,7 +235,7 @@ describe("ClientInvitePage", () => {
       confirmPassword: "senhaForte123",
     });
     expect(screen.getByRole("link", { name: /entrar/i })).toBeInTheDocument();
-    expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Palavra-passe")).not.toBeInTheDocument();
   });
 
   it("shows the server message when the acceptance fails", async () => {
@@ -259,7 +259,7 @@ describe("ClientInvitePage", () => {
     expect(
       await screen.findByText("Já existe um usuário com este e-mail."),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Palavra-passe")).toBeInTheDocument();
   });
 
   it("re-inspects the invite when it disappears during acceptance", async () => {

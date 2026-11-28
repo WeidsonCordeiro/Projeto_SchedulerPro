@@ -49,12 +49,12 @@ export default function ForgotPasswordPage() {
   return (
     <div className="row">
       <div className="col-12">
-        <h1 className="h3 mb-3">Recuperar senha</h1>
+        <h1 className="h3 mb-3">Recuperar palavra-passe</h1>
 
         {submitted ? (
           <div className="alert alert-success" role="alert">
             Se existir uma conta com este email, enviaremos um link para
-            redefinir a senha. Verifique sua caixa de entrada.
+            redefinir a palavra-passe. Verifique a sua caixa de entrada.
           </div>
         ) : (
           <>
@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
         )}
 
         <p className="mt-3 mb-0 text-center">
-          Lembrou a senha? <Link to="/login">Entrar</Link>
+          Lembrou a palavra-passe? <Link to="/login">Entrar</Link>
         </p>
       </div>
     </div>

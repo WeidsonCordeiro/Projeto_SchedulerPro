@@ -216,7 +216,7 @@ describe("CompanyForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /salvar alterações/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
     );
   });
 

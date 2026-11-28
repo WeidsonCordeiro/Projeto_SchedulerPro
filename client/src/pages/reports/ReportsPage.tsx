@@ -276,7 +276,7 @@ export default function ReportsPage() {
           description="Indicadores e rankings do período selecionado."
         />
         <div className="alert alert-warning" role="alert">
-          Você não tem permissão para acessar esta página.
+          Não tem permissão para aceder a esta página.
         </div>
       </section>
     );

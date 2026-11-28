@@ -57,15 +57,15 @@ function validate(
 
   if (!isEdit) {
     if (!password) {
-      errors.password = "A senha é obrigatória.";
+      errors.password = "A palavra-passe é obrigatória.";
     } else if (password.length < PASSWORD_MIN) {
-      errors.password = `A senha deve possuir pelo menos ${PASSWORD_MIN} caracteres.`;
+      errors.password = `A palavra-passe deve ter pelo menos ${PASSWORD_MIN} caracteres.`;
     }
 
     if (!confirmPassword) {
-      errors.confirmPassword = "A confirmação de senha é obrigatória.";
+      errors.confirmPassword = "A confirmação da palavra-passe é obrigatória.";
     } else if (confirmPassword !== password) {
-      errors.confirmPassword = "As senhas não coincidem.";
+      errors.confirmPassword = "As palavras-passe não coincidem.";
     }
   }
 
@@ -296,7 +296,7 @@ export default function EmployeeForm({
                 <>
                   <div className="mb-3">
                     <label htmlFor="employee-password" className="form-label">
-                      Senha
+                      Palavra-passe
                     </label>
                     <input
                       id="employee-password"
@@ -315,7 +315,7 @@ export default function EmployeeForm({
                       htmlFor="employee-confirm-password"
                       className="form-label"
                     >
-                      Confirmação de senha
+                      Confirmação da palavra-passe
                     </label>
                     <input
                       id="employee-confirm-password"
@@ -335,7 +335,7 @@ export default function EmployeeForm({
 
                   {role === "EMPLOYEE" && (
                     <div className="form-text mb-3">
-                      Funcionários devem alterar a senha no primeiro acesso.
+                      Funcionários devem alterar a palavra-passe no primeiro acesso.
                     </div>
                   )}
                 </>

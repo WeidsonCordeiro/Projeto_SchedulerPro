@@ -92,7 +92,7 @@ describe("NotFoundPage", () => {
       user,
     });
 
-    expect(screen.getByRole("link", { name: /alterar senha/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /alterar palavra-passe/i })).toHaveAttribute(
       "href",
       "/change-password",
     );

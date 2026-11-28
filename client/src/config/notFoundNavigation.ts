@@ -26,7 +26,7 @@ export function getNotFoundHomeLabel(
     return "Ir para o início";
   }
   if (mustChangePassword) {
-    return "Alterar senha";
+    return "Alterar palavra-passe";
   }
   if (role === "CLIENT") {
     return "Ir para o portal";

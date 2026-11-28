@@ -60,7 +60,7 @@ export default function LoginPage() {
 
     const errors: FieldErrors = {
       email: validateEmail(email),
-      password: password ? undefined : "A senha é obrigatória.",
+      password: password ? undefined : "A palavra-passe é obrigatória.",
     };
     setFieldErrors(errors);
 
@@ -127,7 +127,7 @@ export default function LoginPage() {
 
           <div className="mb-3">
             <label htmlFor="login-password" className="form-label">
-              Senha
+              Palavra-passe
             </label>
             <input
               id="login-password"
@@ -165,7 +165,7 @@ export default function LoginPage() {
 
         <div className="mt-3 text-center">
           <div className="d-flex justify-content-center gap-3">
-            <Link to="/forgot-password">Esqueceu a senha?</Link>
+            <Link to="/forgot-password">Esqueceu a palavra-passe?</Link>
             <span className="text-muted">|</span>
             <Link to="/register">Criar conta</Link>
           </div>

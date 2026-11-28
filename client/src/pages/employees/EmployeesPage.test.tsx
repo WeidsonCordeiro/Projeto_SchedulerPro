@@ -123,9 +123,9 @@ describe("EmployeesPage", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("button", { name: /cadastrar primeiro funcionário/i }),
+      await screen.findByRole("button", { name: /registar primeiro funcionário/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Nenhum funcionário cadastrado.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum funcionário registado.")).toBeInTheDocument();
   });
 
   it("renders the employee list with name, email, role and creation date", async () => {
@@ -222,10 +222,10 @@ describe("EmployeesPage", () => {
     fireEvent.change(within(dialog).getByLabelText("E-mail"), {
       target: { value: "bruno@example.com" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Senha"), {
+    fireEvent.change(within(dialog).getByLabelText("Palavra-passe"), {
       target: { value: "secret123" },
     });
-    fireEvent.change(within(dialog).getByLabelText("Confirmação de senha"), {
+    fireEvent.change(within(dialog).getByLabelText("Confirmação da palavra-passe"), {
       target: { value: "secret123" },
     });
     fireEvent.click(
@@ -440,7 +440,7 @@ describe("EmployeesPage", () => {
     renderPage(makeStore("MANAGER"));
 
     expect(
-      await screen.findByText("Você não tem permissão para acessar esta página."),
+      await screen.findByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /novo funcionário/i }),
@@ -459,7 +459,7 @@ describe("EmployeesPage", () => {
     renderPage(makeStore("EMPLOYEE"));
 
     expect(
-      await screen.findByText("Você não tem permissão para acessar esta página."),
+      await screen.findByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(employeesApi.getEmployees).not.toHaveBeenCalled();
@@ -536,7 +536,7 @@ describe("EmployeesPage", () => {
 
     const table = await findDesktopTable();
     const selfRow = within(table).getByText("Owner Teste").closest("tr");
-    expect(selfRow?.textContent?.toLowerCase()).toContain("você");
+    expect(selfRow?.textContent?.toLowerCase()).toContain("a sua conta");
     expect(
       employeesDesktop().getByRole("button", { name: /editar/i }),
     ).toBeInTheDocument();
@@ -644,7 +644,7 @@ describe("EmployeesPage", () => {
       await findDesktopTable();
 
       const tablet = employeesTablet();
-      expect(tablet.getByText("Você")).toBeInTheDocument();
+      expect(tablet.getByText("A sua conta")).toBeInTheDocument();
       expect(tablet.getByRole("button", { name: /editar/i })).toBeInTheDocument();
       expect(
         tablet.queryByRole("button", { name: /desativar/i }),
@@ -707,7 +707,7 @@ describe("EmployeesPage", () => {
       await findDesktopTable();
 
       const mobile = employeesMobile();
-      expect(mobile.getByText("Você")).toBeInTheDocument();
+      expect(mobile.getByText("A sua conta")).toBeInTheDocument();
       expect(mobile.getByRole("button", { name: /editar/i })).toBeInTheDocument();
       expect(
         mobile.queryByRole("button", { name: /desativar/i }),

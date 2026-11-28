@@ -15,8 +15,16 @@
 |-------|--------|----------|
 | Logout | Terminar sessão | `Navbar.tsx` |
 
-## Pendente (branches futuras)
+## FE-Wave-2 (branch `feat/fe-wave-2-copy-pt-pt`)
 
-- Unificar “Você não tem permissão…” em páginas admin.
-- Empty states com “cadastrar” → “registar” onde fizer sentido.
-- Revisão completa via grep antes de mass replace.
+- Mensagem impessoal de acesso negado nas páginas admin.
+- Empty states: **registar** / **registado** (clientes, serviços, funcionários, agendamentos).
+- **Palavra-passe** nos fluxos de autenticação e convite.
+- Portal: **O meu perfil**, **registo**.
+- Erros de rede: **ligação à Internet** (`api/errors.ts`).
+- Constantes partilhadas: `client/src/config/copyPt.ts`.
+
+## Pendente (futuro)
+
+- Revisão residual de “seu/sua” em marketing (`GuestRoute`, público).
+- Alinhar mensagens devolvidas pelo backend quando forem expostas na UI.

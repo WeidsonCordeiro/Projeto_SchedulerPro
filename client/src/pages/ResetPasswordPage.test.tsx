@@ -55,33 +55,33 @@ describe("ResetPasswordPage", () => {
     renderPageWithToken();
 
     expect(
-      screen.getByRole("heading", { name: /redefinir senha/i }),
+      screen.getByRole("heading", { name: /redefinir palavra-passe/i }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText("Nova senha")).toBeInTheDocument();
-    expect(screen.getByLabelText("Confirmar nova senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nova palavra-passe")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar nova palavra-passe")).toBeInTheDocument();
   });
 
   it("validates password minimum length", async () => {
     renderPageWithToken();
 
-    fireEvent.change(screen.getByLabelText("Nova senha"), { target: { value: "short" } });
-    fireEvent.change(screen.getByLabelText("Confirmar nova senha"), { target: { value: "short" } });
-    fireEvent.click(screen.getByRole("button", { name: /redefinir senha/i }));
+    fireEvent.change(screen.getByLabelText("Nova palavra-passe"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nova palavra-passe"), { target: { value: "short" } });
+    fireEvent.click(screen.getByRole("button", { name: /redefinir palavra-passe/i }));
 
     expect(
-      await screen.findByText("A senha deve possuir pelo menos 8 caracteres."),
+      await screen.findByText("A palavra-passe deve ter pelo menos 8 caracteres."),
     ).toBeInTheDocument();
   });
 
   it("validates password confirmation match", async () => {
     renderPageWithToken();
 
-    fireEvent.change(screen.getByLabelText("Nova senha"), { target: { value: "password123" } });
-    fireEvent.change(screen.getByLabelText("Confirmar nova senha"), { target: { value: "different" } });
-    fireEvent.click(screen.getByRole("button", { name: /redefinir senha/i }));
+    fireEvent.change(screen.getByLabelText("Nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nova palavra-passe"), { target: { value: "different" } });
+    fireEvent.click(screen.getByRole("button", { name: /redefinir palavra-passe/i }));
 
     expect(
-      await screen.findByText("As senhas não coincidem."),
+      await screen.findByText("As palavras-passe não coincidem."),
     ).toBeInTheDocument();
   });
 
@@ -93,12 +93,12 @@ describe("ResetPasswordPage", () => {
 
     renderPageWithToken("valid-token");
 
-    fireEvent.change(screen.getByLabelText("Nova senha"), { target: { value: "password123" } });
-    fireEvent.change(screen.getByLabelText("Confirmar nova senha"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: /redefinir senha/i }));
+    fireEvent.change(screen.getByLabelText("Nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: /redefinir palavra-passe/i }));
 
     expect(
-      await screen.findByText(/senha redefinida com sucesso/i),
+      await screen.findByText(/palavra-passe redefinida com sucesso/i),
     ).toBeInTheDocument();
     expect(authApi.resetPassword).toHaveBeenCalledWith({
       token: "valid-token",
@@ -113,9 +113,9 @@ describe("ResetPasswordPage", () => {
 
     renderPageWithToken("bad-token");
 
-    fireEvent.change(screen.getByLabelText("Nova senha"), { target: { value: "password123" } });
-    fireEvent.change(screen.getByLabelText("Confirmar nova senha"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: /redefinir senha/i }));
+    fireEvent.change(screen.getByLabelText("Nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: /redefinir palavra-passe/i }));
 
     expect(
       await screen.findByRole("alert"),
@@ -130,9 +130,9 @@ describe("ResetPasswordPage", () => {
 
     renderPageWithToken();
 
-    fireEvent.change(screen.getByLabelText("Nova senha"), { target: { value: "password123" } });
-    fireEvent.change(screen.getByLabelText("Confirmar nova senha"), { target: { value: "password123" } });
-    fireEvent.click(screen.getByRole("button", { name: /redefinir senha/i }));
+    fireEvent.change(screen.getByLabelText("Nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nova palavra-passe"), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: /redefinir palavra-passe/i }));
 
     expect(await screen.findByRole("link", { name: /entrar/i })).toBeInTheDocument();
   });

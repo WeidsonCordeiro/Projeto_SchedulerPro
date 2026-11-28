@@ -106,7 +106,7 @@ export default function AppointmentsListView({
         action={
           canCreate && (
             <button type="button" className="btn btn-primary" onClick={onCreate}>
-              Cadastrar primeiro agendamento
+              Registar primeiro agendamento
             </button>
           )
         }

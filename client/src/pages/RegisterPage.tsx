@@ -56,15 +56,15 @@ function validate(
   }
 
   if (!password) {
-    errors.password = "A senha é obrigatória.";
+    errors.password = "A palavra-passe é obrigatória.";
   } else if (password.length < 8) {
-    errors.password = "A senha deve possuir pelo menos 8 caracteres.";
+    errors.password = "A palavra-passe deve ter pelo menos 8 caracteres.";
   }
 
   if (!confirmPassword) {
-    errors.confirmPassword = "Confirme a senha.";
+    errors.confirmPassword = "Confirme a palavra-passe.";
   } else if (confirmPassword !== password) {
-    errors.confirmPassword = "As senhas não coincidem.";
+    errors.confirmPassword = "As palavras-passe não coincidem.";
   }
 
   if (!companyName.trim()) {
@@ -189,7 +189,7 @@ export default function RegisterPage() {
 
           <div className="mb-3">
             <label htmlFor="register-password" className="form-label">
-              Senha
+              Palavra-passe
             </label>
             <input
               id="register-password"
@@ -208,7 +208,7 @@ export default function RegisterPage() {
 
           <div className="mb-3">
             <label htmlFor="register-confirm-password" className="form-label">
-              Confirmar senha
+              Confirmar palavra-passe
             </label>
             <input
               id="register-confirm-password"

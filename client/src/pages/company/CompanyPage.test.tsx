@@ -265,7 +265,7 @@ describe("CompanyPage", () => {
     renderPage("CLIENT");
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      screen.getByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(companyApi.getCompany).not.toHaveBeenCalled();
   });
@@ -274,7 +274,7 @@ describe("CompanyPage", () => {
     renderPage("MANAGER");
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      screen.getByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(companyApi.getCompany).not.toHaveBeenCalled();
   });
@@ -283,7 +283,7 @@ describe("CompanyPage", () => {
     renderPage("EMPLOYEE");
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      screen.getByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(companyApi.getCompany).not.toHaveBeenCalled();
   });

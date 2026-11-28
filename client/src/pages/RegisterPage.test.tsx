@@ -102,10 +102,10 @@ function fillValidRegistrationFields() {
   fireEvent.change(screen.getByLabelText("Email"), {
     target: { value: "owner@example.com" },
   });
-  fireEvent.change(screen.getByLabelText("Senha"), {
+  fireEvent.change(screen.getByLabelText("Palavra-passe"), {
     target: { value: "password123" },
   });
-  fireEvent.change(screen.getByLabelText("Confirmar senha"), {
+  fireEvent.change(screen.getByLabelText("Confirmar palavra-passe"), {
     target: { value: "password123" },
   });
   fireEvent.change(screen.getByLabelText("Nome da empresa"), {
@@ -139,8 +139,8 @@ describe("RegisterPage", () => {
     expect(screen.getByRole("heading", { name: /criar conta/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
-    expect(screen.getByLabelText("Confirmar senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Palavra-passe")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar palavra-passe")).toBeInTheDocument();
     expect(screen.getByLabelText("Nome da empresa")).toBeInTheDocument();
     expect(getTimezoneCombobox()).toBeInTheDocument();
   });
@@ -170,8 +170,8 @@ describe("RegisterPage", () => {
 
     expect(await screen.findByText("O nome é obrigatório.")).toBeInTheDocument();
     expect(screen.getByText("O email é obrigatório.")).toBeInTheDocument();
-    expect(screen.getByText("A senha é obrigatória.")).toBeInTheDocument();
-    expect(screen.getByText("Confirme a senha.")).toBeInTheDocument();
+    expect(screen.getByText("A palavra-passe é obrigatória.")).toBeInTheDocument();
+    expect(screen.getByText("Confirme a palavra-passe.")).toBeInTheDocument();
     expect(screen.getByText("O nome da empresa é obrigatório.")).toBeInTheDocument();
   });
 
@@ -180,14 +180,14 @@ describe("RegisterPage", () => {
 
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Test User" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } });
-    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "short" } });
-    fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Palavra-passe"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Confirmar palavra-passe"), { target: { value: "short" } });
     fireEvent.change(screen.getByLabelText("Nome da empresa"), { target: { value: "Test Company" } });
 
     fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
 
     expect(
-      await screen.findByText("A senha deve possuir pelo menos 8 caracteres."),
+      await screen.findByText("A palavra-passe deve ter pelo menos 8 caracteres."),
     ).toBeInTheDocument();
   });
 
@@ -196,14 +196,14 @@ describe("RegisterPage", () => {
 
     fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Test User" } });
     fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@example.com" } });
-    fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "password123" } });
-    fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "different" } });
+    fireEvent.change(screen.getByLabelText("Palavra-passe"), { target: { value: "password123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar palavra-passe"), { target: { value: "different" } });
     fireEvent.change(screen.getByLabelText("Nome da empresa"), { target: { value: "Test Company" } });
 
     fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
 
     expect(
-      await screen.findByText("As senhas não coincidem."),
+      await screen.findByText("As palavras-passe não coincidem."),
     ).toBeInTheDocument();
   });
 

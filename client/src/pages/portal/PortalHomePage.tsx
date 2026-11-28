@@ -82,7 +82,7 @@ export default function PortalHomePage() {
               <div className="card-body">
                 {nextAppointments.length === 0 ? (
                   <p className="mb-0 text-muted">
-                    Você não possui agendamentos futuros por agora.
+                    Não tem agendamentos futuros por agora.
                   </p>
                 ) : (
                   <ul className="list-group list-group-flush">
@@ -125,7 +125,7 @@ export default function PortalHomePage() {
                   Meus agendamentos
                 </Link>
                 <Link to="/portal/perfil" className="btn btn-outline-secondary">
-                  Meu perfil
+                  O meu perfil
                 </Link>
               </div>
             </div>

@@ -127,7 +127,7 @@ describe("DeleteServiceModal", () => {
     fireEvent.click(screen.getByRole("button", { name: /excluir$/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
     );
   });
 

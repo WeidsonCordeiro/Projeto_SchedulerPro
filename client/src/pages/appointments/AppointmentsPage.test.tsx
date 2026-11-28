@@ -437,7 +437,7 @@ describe("AppointmentsPage", () => {
 
     expect(await screen.findByText("Nenhum agendamento encontrado")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /cadastrar primeiro agendamento/i }),
+      screen.getByRole("button", { name: /registar primeiro agendamento/i }),
     ).toBeInTheDocument();
   });
 
@@ -452,7 +452,7 @@ describe("AppointmentsPage", () => {
 
     expect(await screen.findByText("Nenhum agendamento encontrado")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /cadastrar primeiro agendamento/i }),
+      screen.queryByRole("button", { name: /registar primeiro agendamento/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -869,7 +869,7 @@ describe("AppointmentsPage", () => {
     renderPage(null);
 
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      screen.getByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
   });
 

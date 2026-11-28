@@ -56,16 +56,16 @@ function fillForm(
   newPassword: string,
   confirmPassword: string,
 ) {
-  fireEvent.change(screen.getByLabelText("Senha atual"), {
+  fireEvent.change(screen.getByLabelText("Palavra-passe atual"), {
     target: { value: currentPassword },
   });
-  fireEvent.change(screen.getByLabelText("Nova senha"), {
+  fireEvent.change(screen.getByLabelText("Nova palavra-passe"), {
     target: { value: newPassword },
   });
-  fireEvent.change(screen.getByLabelText("Confirmar nova senha"), {
+  fireEvent.change(screen.getByLabelText("Confirmar nova palavra-passe"), {
     target: { value: confirmPassword },
   });
-  fireEvent.click(screen.getByRole("button", { name: /alterar senha/i }));
+  fireEvent.click(screen.getByRole("button", { name: /alterar palavra-passe/i }));
 }
 
 describe("ChangePasswordPage", () => {
@@ -76,12 +76,12 @@ describe("ChangePasswordPage", () => {
   it("renders title, fields and submit button", () => {
     renderPage();
 
-    expect(screen.getByRole("heading", { name: /alterar senha/i })).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha atual")).toBeInTheDocument();
-    expect(screen.getByLabelText("Nova senha")).toBeInTheDocument();
-    expect(screen.getByLabelText("Confirmar nova senha")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /alterar palavra-passe/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Palavra-passe atual")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nova palavra-passe")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar nova palavra-passe")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /alterar senha/i }),
+      screen.getByRole("button", { name: /alterar palavra-passe/i }),
     ).toBeInTheDocument();
   });
 
@@ -89,7 +89,7 @@ describe("ChangePasswordPage", () => {
     renderPage(makeStore({ mustChangePassword: true }));
 
     expect(
-      screen.getByText(/é necessário alterar sua senha antes de continuar/i),
+      screen.getByText(/é necessário alterar a sua palavra-passe antes de continuar/i),
     ).toBeInTheDocument();
   });
 
@@ -97,7 +97,7 @@ describe("ChangePasswordPage", () => {
     renderPage(makeStore({ mustChangePassword: false }));
 
     expect(
-      screen.queryByText(/é necessário alterar sua senha antes de continuar/i),
+      screen.queryByText(/é necessário alterar a sua palavra-passe antes de continuar/i),
     ).not.toBeInTheDocument();
   });
 
@@ -118,7 +118,7 @@ describe("ChangePasswordPage", () => {
     fillForm("current123", "short", "short");
 
     expect(
-      screen.getByText("A nova senha deve possuir pelo menos 8 caracteres."),
+      screen.getByText("A nova palavra-passe deve ter pelo menos 8 caracteres."),
     ).toBeInTheDocument();
     expect(authApi.changePassword).not.toHaveBeenCalled();
   });
@@ -127,7 +127,7 @@ describe("ChangePasswordPage", () => {
     renderPage();
     fillForm("current123", "newpassword123", "different456");
 
-    expect(screen.getByText("As senhas não coincidem.")).toBeInTheDocument();
+    expect(screen.getByText("As palavras-passe não coincidem.")).toBeInTheDocument();
     expect(authApi.changePassword).not.toHaveBeenCalled();
   });
 
@@ -135,15 +135,15 @@ describe("ChangePasswordPage", () => {
     renderPage();
     fillForm("", "", "");
 
-    expect(screen.getByText("A senha atual é obrigatória.")).toBeInTheDocument();
-    expect(screen.getByText("A nova senha é obrigatória.")).toBeInTheDocument();
-    expect(screen.getByText("Confirme a nova senha.")).toBeInTheDocument();
+    expect(screen.getByText("A palavra-passe atual é obrigatória.")).toBeInTheDocument();
+    expect(screen.getByText("A nova palavra-passe é obrigatória.")).toBeInTheDocument();
+    expect(screen.getByText("Confirme a nova palavra-passe.")).toBeInTheDocument();
   });
 
   it("calls the endpoint with the correct body and navigates to / on success", async () => {
     vi.mocked(authApi.changePassword).mockResolvedValue({
       success: true,
-      message: "Senha alterada com sucesso.",
+      message: "Palavra-passe alterada com sucesso.",
     });
 
     const store = makeStore();
@@ -205,7 +205,7 @@ describe("ChangePasswordPage", () => {
     fillForm("wrong123", "newpassword123", "newpassword123");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "A senha atual está incorreta.",
+      "A palavra-passe atual está incorreta.",
     );
   });
 
@@ -229,7 +229,7 @@ describe("ChangePasswordPage", () => {
     fillForm("current123", "newpassword123", "newpassword123");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
     );
   });
 
@@ -242,7 +242,7 @@ describe("ChangePasswordPage", () => {
     fillForm("current123", "newpassword123", "newpassword123");
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /alterar senha/i })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /alterar palavra-passe/i })).toBeEnabled();
   });
 
   it("never persists passwords to storage or the auth slice", async () => {

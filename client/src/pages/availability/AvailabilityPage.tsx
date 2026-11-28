@@ -290,7 +290,7 @@ export default function AvailabilityPage() {
           <h1 className="h3 mb-0">Disponibilidade</h1>
         </div>
         <div className="alert alert-warning" role="alert">
-          Você não tem permissão para acessar esta página.
+          Não tem permissão para aceder a esta página.
         </div>
       </section>
     );
@@ -308,7 +308,7 @@ export default function AvailabilityPage() {
 
       {!canListUsers && (
         <div className="alert alert-info" role="alert">
-          Você está visualizando sua própria disponibilidade.
+          Está a ver a sua própria disponibilidade.
         </div>
       )}
 

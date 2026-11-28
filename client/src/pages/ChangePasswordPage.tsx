@@ -23,19 +23,19 @@ function validate(
   const errors: FieldErrors = {};
 
   if (!currentPassword) {
-    errors.currentPassword = "A senha atual é obrigatória.";
+    errors.currentPassword = "A palavra-passe atual é obrigatória.";
   }
 
   if (!newPassword) {
-    errors.newPassword = "A nova senha é obrigatória.";
+    errors.newPassword = "A nova palavra-passe é obrigatória.";
   } else if (newPassword.length < 8) {
-    errors.newPassword = "A nova senha deve possuir pelo menos 8 caracteres.";
+    errors.newPassword = "A nova palavra-passe deve ter pelo menos 8 caracteres.";
   }
 
   if (!confirmPassword) {
-    errors.confirmPassword = "Confirme a nova senha.";
+    errors.confirmPassword = "Confirme a nova palavra-passe.";
   } else if (confirmPassword !== newPassword) {
-    errors.confirmPassword = "As senhas não coincidem.";
+    errors.confirmPassword = "As palavras-passe não coincidem.";
   }
 
   return errors;
@@ -82,7 +82,7 @@ export default function ChangePasswordPage() {
       const failure = getApiError(error);
       let message = getFriendlyErrorMessage(failure);
       if (failure.kind === "auth") {
-        message = "A senha atual está incorreta.";
+        message = "A palavra-passe atual está incorreta.";
       }
       setErrorMessage(message);
       dispatch(setLoading(false));
@@ -92,10 +92,10 @@ export default function ChangePasswordPage() {
   return (
     <div className="row justify-content-center">
       <div className="col-sm-8 col-md-6 col-lg-4">
-        <h1 className="h3 mb-2">Alterar senha</h1>
+        <h1 className="h3 mb-2">Alterar palavra-passe</h1>
         {mustChangePassword && (
           <p className="text-muted">
-            Por segurança, é necessário alterar sua senha antes de continuar.
+            Por segurança, é necessário alterar a sua palavra-passe antes de continuar.
           </p>
         )}
 
@@ -108,7 +108,7 @@ export default function ChangePasswordPage() {
         <form onSubmit={handleSubmit} noValidate>
           <div className="mb-3">
             <label htmlFor="cp-current-password" className="form-label">
-              Senha atual
+              Palavra-passe atual
             </label>
             <input
               id="cp-current-password"
@@ -127,7 +127,7 @@ export default function ChangePasswordPage() {
 
           <div className="mb-3">
             <label htmlFor="cp-new-password" className="form-label">
-              Nova senha
+              Nova palavra-passe
             </label>
             <input
               id="cp-new-password"
@@ -144,7 +144,7 @@ export default function ChangePasswordPage() {
 
           <div className="mb-3">
             <label htmlFor="cp-confirm-password" className="form-label">
-              Confirmar nova senha
+              Confirmar nova palavra-passe
             </label>
             <input
               id="cp-confirm-password"
@@ -175,7 +175,7 @@ export default function ChangePasswordPage() {
                 Alterando...
               </>
             ) : (
-              "Alterar senha"
+              "Alterar palavra-passe"
             )}
           </button>
         </form>

@@ -624,7 +624,7 @@ describe("ReportsPage", () => {
       screen.getByRole("heading", { name: "Relatórios" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Você não tem permissão para acessar esta página."),
+      screen.getByText("Não tem permissão para aceder a esta página."),
     ).toBeInTheDocument();
     expect(reportsApi.getOverview).not.toHaveBeenCalled();
   });

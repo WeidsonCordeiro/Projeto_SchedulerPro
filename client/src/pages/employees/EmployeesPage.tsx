@@ -148,7 +148,7 @@ export default function EmployeesPage() {
           <h1 className="h3 mb-0">Funcionários</h1>
         </div>
         <div className="alert alert-warning" role="alert">
-          Você não tem permissão para acessar esta página.
+          Não tem permissão para aceder a esta página.
         </div>
       </section>
     );
@@ -275,8 +275,8 @@ export default function EmployeesPage() {
 
       {!isLoading && !loadError && employees.length === 0 && (
         <EmptyState
-          title="Nenhum funcionário cadastrado."
-          description="Você ainda não possui funcionários. Adicione a equipa que participa dos seus agendamentos."
+          title="Nenhum funcionário registado."
+          description="Ainda não tem funcionários. Adicione a equipa que participa dos seus agendamentos."
           action={
             canCreate && (
               <button
@@ -284,7 +284,7 @@ export default function EmployeesPage() {
                 className="btn btn-primary"
                 onClick={openCreate}
               >
-                Cadastrar primeiro funcionário
+                Registar primeiro funcionário
               </button>
             )
           }
@@ -326,7 +326,7 @@ export default function EmployeesPage() {
                             <span>
                               <strong className="d-block">{employee.name}</strong>
                               {isSelf && (
-                                <span className="table-subline">Você</span>
+                                <span className="table-subline">A sua conta</span>
                               )}
                             </span>
                           </div>
@@ -382,7 +382,7 @@ export default function EmployeesPage() {
                           <div className="entity-tablet-card-title-text">
                             <strong className="d-block">{employee.name}</strong>
                             {isSelf && (
-                              <span className="table-subline">Você</span>
+                              <span className="table-subline">A sua conta</span>
                             )}
                           </div>
                           {employee.isActive === false ? (
@@ -441,7 +441,7 @@ export default function EmployeesPage() {
                       <span>
                         <strong className="d-block">{employee.name}</strong>
                         {isSelf && (
-                          <span className="table-subline">Você</span>
+                          <span className="table-subline">A sua conta</span>
                         )}
                       </span>
                     </div>

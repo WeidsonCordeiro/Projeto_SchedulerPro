@@ -234,8 +234,8 @@ export default function ServicesPage() {
 
       {!isLoading && !loadError && services.length === 0 && (
         <EmptyState
-          title="Nenhum serviço cadastrado."
-          description="Você ainda não possui serviços. Cadastre os serviços oferecidos para agilizar novos agendamentos."
+          title="Nenhum serviço registado."
+          description="Ainda não tem serviços. Registe os serviços oferecidos para agilizar novos agendamentos."
           action={
             canCreate && (
               <button
@@ -243,7 +243,7 @@ export default function ServicesPage() {
                 className="btn btn-primary"
                 onClick={openCreate}
               >
-                Cadastrar primeiro serviço
+                Registar primeiro serviço
               </button>
             )
           }

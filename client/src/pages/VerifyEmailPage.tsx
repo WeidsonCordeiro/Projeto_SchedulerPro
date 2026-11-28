@@ -72,7 +72,7 @@ export default function VerifyEmailPage() {
                 Entrar
               </Link>
               <Link to="/forgot-password" className="btn btn-outline-secondary">
-                Recuperar senha
+                Recuperar palavra-passe
               </Link>
             </>
           )}

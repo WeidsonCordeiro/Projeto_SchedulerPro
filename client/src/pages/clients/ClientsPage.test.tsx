@@ -122,9 +122,9 @@ describe("ClientsPage", () => {
 
     renderPage(makeStore("EMPLOYEE"));
 
-    expect(await screen.findByText("Nenhum cliente cadastrado.")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhum cliente registado.")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /cadastrar primeiro cliente/i }),
+      screen.queryByRole("button", { name: /registar primeiro cliente/i }),
     ).not.toBeInTheDocument();
   });
 
@@ -138,7 +138,7 @@ describe("ClientsPage", () => {
     renderPage(makeStore("MANAGER"));
 
     expect(
-      await screen.findByRole("button", { name: /cadastrar primeiro cliente/i }),
+      await screen.findByRole("button", { name: /registar primeiro cliente/i }),
     ).toBeInTheDocument();
   });
 

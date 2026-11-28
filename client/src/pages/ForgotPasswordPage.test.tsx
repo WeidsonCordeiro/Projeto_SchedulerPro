@@ -35,7 +35,7 @@ describe("ForgotPasswordPage", () => {
   it("renders the forgot password form", () => {
     renderPage();
 
-    expect(screen.getByRole("heading", { name: /recuperar senha/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /recuperar palavra-passe/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
   });
 

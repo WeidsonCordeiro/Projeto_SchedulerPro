@@ -224,7 +224,7 @@ export default function AppointmentsPage() {
           <h1 className="h3 mb-0">Agendamentos</h1>
         </div>
         <div className="alert alert-warning" role="alert">
-          Você não tem permissão para acessar esta página.
+          Não tem permissão para aceder a esta página.
         </div>
       </section>
     );
@@ -367,7 +367,7 @@ export default function AppointmentsPage() {
                 className="btn btn-primary"
                 onClick={() => openCreate()}
               >
-                Cadastrar agendamento
+                Registar agendamento
               </button>
             )}
           </div>

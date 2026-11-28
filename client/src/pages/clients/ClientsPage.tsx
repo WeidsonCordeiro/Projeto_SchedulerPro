@@ -207,8 +207,8 @@ export default function ClientsPage() {
 
       {!isLoading && !loadError && clients.length === 0 && (
         <EmptyState
-          title="Nenhum cliente cadastrado."
-          description="Você ainda não possui clientes. Cadastre seu primeiro cliente para começar a criar agendamentos."
+          title="Nenhum cliente registado."
+          description="Ainda não tem clientes. Registe o primeiro cliente para começar a criar agendamentos."
           action={
             canCreate && (
               <button
@@ -216,7 +216,7 @@ export default function ClientsPage() {
                 className="btn btn-primary"
                 onClick={openCreate}
               >
-                Cadastrar primeiro cliente
+                Registar primeiro cliente
               </button>
             )
           }

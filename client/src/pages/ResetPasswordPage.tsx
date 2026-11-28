@@ -13,15 +13,15 @@ function validate(password: string, confirmPassword: string): FieldErrors {
   const errors: FieldErrors = {};
 
   if (!password) {
-    errors.password = "A nova senha é obrigatória.";
+    errors.password = "A nova palavra-passe é obrigatória.";
   } else if (password.length < 8) {
-    errors.password = "A senha deve possuir pelo menos 8 caracteres.";
+    errors.password = "A palavra-passe deve ter pelo menos 8 caracteres.";
   }
 
   if (!confirmPassword) {
-    errors.confirmPassword = "Confirme a nova senha.";
+    errors.confirmPassword = "Confirme a nova palavra-passe.";
   } else if (confirmPassword !== password) {
-    errors.confirmPassword = "As senhas não coincidem.";
+    errors.confirmPassword = "As palavras-passe não coincidem.";
   }
 
   return errors;
@@ -79,11 +79,11 @@ export default function ResetPasswordPage() {
   return (
     <div className="row justify-content-center">
       <div className="col-sm-8 col-md-6 col-lg-4">
-        <h1 className="h3 mb-3">Redefinir senha</h1>
+        <h1 className="h3 mb-3">Redefinir palavra-passe</h1>
 
         {success ? (
           <div className="alert alert-success" role="alert">
-            Senha redefinida com sucesso. Pode entrar com a nova senha.
+            Palavra-passe redefinida com sucesso. Pode entrar com a nova palavra-passe.
           </div>
         ) : (
           <>
@@ -96,7 +96,7 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit} noValidate>
               <div className="mb-3">
                 <label htmlFor="reset-password" className="form-label">
-                  Nova senha
+                  Nova palavra-passe
                 </label>
                 <input
                   id="reset-password"
@@ -113,7 +113,7 @@ export default function ResetPasswordPage() {
 
               <div className="mb-3">
                 <label htmlFor="reset-confirm-password" className="form-label">
-                  Confirmar nova senha
+                  Confirmar nova palavra-passe
                 </label>
                 <input
                   id="reset-confirm-password"
@@ -144,7 +144,7 @@ export default function ResetPasswordPage() {
                     Redefinindo...
                   </>
                 ) : (
-                  "Redefinir senha"
+                  "Redefinir palavra-passe"
                 )}
               </button>
             </form>

@@ -57,10 +57,10 @@ function fillCreateForm({
   fireEvent.change(screen.getByLabelText("E-mail"), {
     target: { value: email },
   });
-  fireEvent.change(screen.getByLabelText("Senha"), {
+  fireEvent.change(screen.getByLabelText("Palavra-passe"), {
     target: { value: password },
   });
-  fireEvent.change(screen.getByLabelText("Confirmação de senha"), {
+  fireEvent.change(screen.getByLabelText("Confirmação da palavra-passe"), {
     target: { value: confirmPassword },
   });
 }
@@ -92,8 +92,8 @@ describe("EmployeeForm", () => {
     expect(screen.getByLabelText("Nome")).toBeInTheDocument();
     expect(screen.getByLabelText("E-mail")).toBeInTheDocument();
     expect(screen.getByLabelText("Perfil")).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
-    expect(screen.getByLabelText("Confirmação de senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Palavra-passe")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmação da palavra-passe")).toBeInTheDocument();
   });
 
   it("defaults the role to EMPLOYEE for a company member", () => {
@@ -104,7 +104,7 @@ describe("EmployeeForm", () => {
   it("shows the first access note when the selected role is EMPLOYEE", () => {
     renderForm();
     expect(
-      screen.getByText("Funcionários devem alterar a senha no primeiro acesso."),
+      screen.getByText("Funcionários devem alterar a palavra-passe no primeiro acesso."),
     ).toBeInTheDocument();
   });
 
@@ -116,9 +116,9 @@ describe("EmployeeForm", () => {
     expect(screen.getByLabelText("Nome")).toHaveValue("Ana Silva");
     expect(screen.getByLabelText("E-mail")).toHaveValue("ana@example.com");
     expect(screen.getByLabelText("Perfil")).toHaveValue("EMPLOYEE");
-    expect(screen.queryByLabelText("Senha")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Palavra-passe")).not.toBeInTheDocument();
     expect(
-      screen.queryByLabelText("Confirmação de senha"),
+      screen.queryByLabelText("Confirmação da palavra-passe"),
     ).not.toBeInTheDocument();
   });
 
@@ -129,9 +129,9 @@ describe("EmployeeForm", () => {
 
     expect(screen.getByText("O nome é obrigatório.")).toBeInTheDocument();
     expect(screen.getByText("O e-mail é obrigatório.")).toBeInTheDocument();
-    expect(screen.getByText("A senha é obrigatória.")).toBeInTheDocument();
+    expect(screen.getByText("A palavra-passe é obrigatória.")).toBeInTheDocument();
     expect(
-      screen.getByText("A confirmação de senha é obrigatória."),
+      screen.getByText("A confirmação da palavra-passe é obrigatória."),
     ).toBeInTheDocument();
     expect(employeesApi.createEmployee).not.toHaveBeenCalled();
   });
@@ -162,7 +162,7 @@ describe("EmployeeForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /criar funcionário/i }));
 
     expect(
-      screen.getByText("A senha deve possuir pelo menos 8 caracteres."),
+      screen.getByText("A palavra-passe deve ter pelo menos 8 caracteres."),
     ).toBeInTheDocument();
     expect(employeesApi.createEmployee).not.toHaveBeenCalled();
   });
@@ -172,7 +172,7 @@ describe("EmployeeForm", () => {
     fillCreateForm({ password: "secret123", confirmPassword: "different456" });
     fireEvent.click(screen.getByRole("button", { name: /criar funcionário/i }));
 
-    expect(screen.getByText("As senhas não coincidem.")).toBeInTheDocument();
+    expect(screen.getByText("As palavras-passe não coincidem.")).toBeInTheDocument();
     expect(employeesApi.createEmployee).not.toHaveBeenCalled();
   });
 
@@ -347,7 +347,7 @@ describe("EmployeeForm", () => {
     fireEvent.click(screen.getByRole("button", { name: /criar funcionário/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Não foi possível conectar ao servidor. Verifique sua conexão.",
+      "Não foi possível conectar ao servidor. Verifique a sua ligação à Internet.",
     );
   });
 
@@ -371,7 +371,7 @@ describe("EmployeeForm", () => {
     const submittingButton = screen.getByRole("button", { name: /criando/i });
     expect(submittingButton).toBeDisabled();
     expect(screen.getByRole("button", { name: /cancelar/i })).toBeDisabled();
-    expect(screen.getByLabelText("Confirmação de senha")).toHaveValue(
+    expect(screen.getByLabelText("Confirmação da palavra-passe")).toHaveValue(
       "secret123",
     );
 
